@@ -1380,6 +1380,38 @@ Only after the basic eval loop works:
 
 # 10. How to Study Each Topic
 
+## Repository operating rules
+
+GitHub repository `i-kohan/ai-native-learning` on `main` is the **only durable source of truth** for permanent project knowledge.
+
+Core learning documents live in the repository:
+
+```text
+docs/learning/master-learning-plan.md
+docs/learning/learning-process.md
+docs/learning/learning-cheatsheet.md
+docs/learning/deep-research-report.md
+docs/learning/progress.md
+docs/learning/experiments.md
+.cursor/rules/learning-harness.mdc
+```
+
+Architecture docs, eval artifacts, traces, skills, and implementation code also live in the repository.
+
+The ChatGPT Project is a workspace for Master Chat and Topic Chats, not a second document store. Do not maintain duplicate permanent copies of repository documents there.
+
+Before important roadmap or module-completion decisions, Master reads current repository state directly from GitHub. At minimum: `master-learning-plan.md` and `progress.md`; when relevant also `experiments.md`, `learning-process.md`, architecture docs, eval artifacts, and relevant code.
+
+When Master chooses the next module, it produces a ready-to-copy Topic Chat prompt containing current progress, current harness state, roadmap position, why the module comes now, what must be understood, expected practical outcome, explicit scope/non-goals, and relevant repository paths.
+
+Topic Chats receive that compact context from Master and may read GitHub directly when more detail is needed.
+
+Cursor owns code/doc changes in the repository and, after user review and module closure, commit + push of the completed module state.
+
+If a durable decision appears in a chat and matters to future modules, transfer it into the appropriate repository document. Chat history is not durable project state.
+
+A learning module is not done only because code works. At a depth appropriate to the topic priority, the user should understand the problem, core mechanism, key execution flow, inspect learning-critical code, complete verification/experiment, understand failure modes/trade-offs, and know when not to use the pattern.
+
 Every topic should use the same loop.
 
 ## Step 1 — Understand
@@ -1404,11 +1436,19 @@ Before coding, be able to answer:
 
 If those are unclear, the topic is not understood yet.
 
-## Step 3 — Implement
+## Step 3 — Mark learning-critical code
 
-Add the smallest real version to the same capstone harness.
+Before implementation, explicitly identify:
 
-## Step 4 — Experiment
+- the architecture / execution flow I must understand;
+- the concrete files/functions I will inspect after Cursor finishes;
+- what is delegatable boilerplate/plumbing.
+
+## Step 4 — Implement
+
+Add the smallest real version to the same capstone harness. Before substantial implementation, Cursor should show a short proposed implementation plan. After implementation, it should provide a short code tour of the 3–5 most important files/functions and their execution flow.
+
+## Step 5 — Experiment
 
 Compare against the previous version.
 
@@ -1428,7 +1468,7 @@ vs
 targeted context
 ```
 
-## Step 5 — Write a short conclusion
+## Step 6 — Write a short conclusion
 
 For each topic keep:
 
@@ -1468,14 +1508,11 @@ Purpose:
 - review progress;
 - change priorities;
 - connect concepts;
-- update this master plan.
+- ensure durable decisions are reflected in repository docs.
 
-Give it:
-- this `master-learning-plan.md`;
-- the deep research report when needed;
-- progress summaries from topic chats.
+Before important decisions, Master reads current documents directly from GitHub. Do not manually attach or synchronize permanent repository documents into the ChatGPT Project.
 
-Do not use it for every detailed implementation problem.
+Do not use Master for every detailed implementation problem.
 
 ### B. One Chat Per Major Topic / Module
 
@@ -1511,22 +1548,20 @@ Return only the useful conclusion to the topic chat / master chat.
 
 # 12. What Context to Give a New Topic Chat
 
-Do **not** dump the full deep research into every chat by default.
+Do **not** dump the full repository or full deep research into every chat by default.
 
-Give:
+Master provides a compact self-contained starter prompt containing:
 
-1. this master plan;
-2. the specific section for the current topic;
-3. current capstone architecture / repo state;
-4. relevant benchmark results;
-5. only the relevant research excerpts or source links.
+1. current progress and harness version;
+2. the module's place in the roadmap and why it comes now;
+3. the concepts to understand;
+4. expected practical outcome;
+5. explicit scope / non-goals;
+6. relevant repository paths and experiment results.
 
-Use the full research report when:
-- the topic has many dependencies;
-- you want source-grounded validation;
-- there is ambiguity about why the topic is in the plan.
+If the Topic Chat needs more detail, it should read authoritative files directly from GitHub rather than asking the user to copy or upload them.
 
-This preserves context quality.
+Use `deep-research-report.md` only when the topic benefits from the research basis or source-grounded validation.
 
 ---
 
@@ -1535,7 +1570,7 @@ This preserves context quality.
 Use something like:
 
 ```text
-I am following the attached master learning plan for AI-native / agentic engineering.
+I am following the AI-native / agentic engineering roadmap in `i-kohan/ai-native-learning` → `docs/learning/master-learning-plan.md`.
 
 Current module: <TOPIC>.
 
@@ -1572,8 +1607,10 @@ Suggested structure:
 /docs
   /learning
     master-learning-plan.md
+    learning-process.md
+    learning-cheatsheet.md
+    deep-research-report.md
     progress.md
-    decisions.md
     experiments.md
 
   /architecture
@@ -1620,6 +1657,8 @@ Metrics:
 Result:
 Decision:
 ```
+
+If a discussion in Master or a Topic Chat produces a decision that changes future learning, architecture, experiment policy, or workflow, write that decision into the appropriate repository document before treating it as durable.
 
 This turns the month into a reproducible engineering project, not a collection of chats.
 
