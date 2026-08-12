@@ -2,13 +2,12 @@
 alwaysApply: true
 ---
 
-This repository is my capstone project for learning
-AI-native / agentic software engineering.
+This repository is my capstone project for learning AI-native / agentic software engineering.
 
 Learning roadmap:
 docs/learning/master-learning-plan.md
 
-Current progress:
+Current learning/capstone state:
 docs/learning/progress.md
 
 Experiments:
@@ -17,11 +16,32 @@ docs/learning/experiments.md
 Research:
 docs/learning/deep-research-report.md
 
+GitHub is the source of truth for current learning/capstone state.
+
 When implementing learning tasks:
 
-- read the current progress first;
-- do not implement future roadmap modules prematurely;
-- prefer the smallest implementation that demonstrates the concept;
-- run relevant checks;
-- update progress.md after completing a module;
-- record experiments in experiments.md.
+1. Read docs/learning/progress.md and relevant architecture first.
+2. Read docs/learning/experiments.md when the task depends on prior experiment results.
+3. Before substantial implementation, show a short proposed implementation plan.
+4. Implement only the smallest real version needed to learn/test the current concept.
+5. Do not implement future roadmap modules prematurely.
+6. Prefer explicit, understandable architecture over unnecessary framework abstraction.
+7. Respect the Topic Chat split between learning-critical code and delegatable boilerplate/plumbing.
+8. Run required tests/checks.
+9. Run the requested experiment when practical.
+10. After implementation, give a short code tour:
+    - 3–5 main files/functions the user should personally inspect;
+    - the role of each;
+    - the execution flow between them.
+11. Update docs/learning/progress.md with:
+    - module/task;
+    - what was implemented;
+    - important design decisions;
+    - current result;
+    - failures/open questions.
+12. Update docs/learning/experiments.md when an experiment was run.
+13. Do not mark a module complete merely because the code works.
+14. Keep Git workflow simple until the Worktrees / Isolation module:
+    module → implementation → tests/experiment → review/understanding → progress update → commit → push.
+15. Do not introduce worktrees, complex branching, or parallel development before that module requires them.
+16. After the user reviews the learning-critical code and the Topic Chat closes the module, commit and push the completed module state to GitHub.
