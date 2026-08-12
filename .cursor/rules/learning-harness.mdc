@@ -1,0 +1,27 @@
+---
+alwaysApply: true
+---
+
+This repository is my capstone project for learning
+AI-native / agentic software engineering.
+
+Learning roadmap:
+docs/learning/master-learning-plan.md
+
+Current progress:
+docs/learning/progress.md
+
+Experiments:
+docs/learning/experiments.md
+
+Research:
+docs/learning/deep-research-report.md
+
+When implementing learning tasks:
+
+- read the current progress first;
+- do not implement future roadmap modules prematurely;
+- prefer the smallest implementation that demonstrates the concept;
+- run relevant checks;
+- update progress.md after completing a module;
+- record experiments in experiments.md.
