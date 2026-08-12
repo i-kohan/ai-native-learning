@@ -4,44 +4,42 @@ alwaysApply: true
 
 This repository is my capstone project for learning AI-native / agentic software engineering.
 
-Learning roadmap:
-docs/learning/master-learning-plan.md
+GitHub repository state is the only durable source of truth.
 
-Current learning/capstone state:
-docs/learning/progress.md
-
-Experiments:
-docs/learning/experiments.md
-
-Research:
-docs/learning/deep-research-report.md
-
-GitHub is the source of truth for current learning/capstone state.
+Core learning documents:
+- docs/learning/master-learning-plan.md
+- docs/learning/learning-process.md
+- docs/learning/learning-cheatsheet.md
+- docs/learning/deep-research-report.md
+- docs/learning/progress.md
+- docs/learning/experiments.md
 
 When implementing learning tasks:
 
-1. Read docs/learning/progress.md and relevant architecture first.
+1. Read docs/learning/progress.md and relevant architecture/code first.
 2. Read docs/learning/experiments.md when the task depends on prior experiment results.
-3. Before substantial implementation, show a short proposed implementation plan.
-4. Implement only the smallest real version needed to learn/test the current concept.
-5. Do not implement future roadmap modules prematurely.
-6. Prefer explicit, understandable architecture over unnecessary framework abstraction.
-7. Respect the Topic Chat split between learning-critical code and delegatable boilerplate/plumbing.
-8. Run required tests/checks.
-9. Run the requested experiment when practical.
-10. After implementation, give a short code tour:
+3. Read master/process docs when module scope or workflow is relevant.
+4. Before substantial implementation, show a short proposed implementation plan.
+5. Implement only the smallest real version needed to learn/test the current concept.
+6. Do not implement future roadmap modules prematurely.
+7. Prefer explicit, understandable architecture over unnecessary framework abstraction.
+8. Respect the Topic Chat split between learning-critical code and delegatable boilerplate/plumbing.
+9. Run required tests/checks.
+10. Run the requested experiment when practical.
+11. After implementation, give a short code tour:
     - 3–5 main files/functions the user should personally inspect;
     - the role of each;
     - the execution flow between them.
-11. Update docs/learning/progress.md with:
+12. Update docs/learning/progress.md with:
     - module/task;
     - what was implemented;
     - important design decisions;
     - current result;
     - failures/open questions.
-12. Update docs/learning/experiments.md when an experiment was run.
-13. Do not mark a module complete merely because the code works.
-14. Keep Git workflow simple until the Worktrees / Isolation module:
+13. Update docs/learning/experiments.md when an experiment was run.
+14. If a durable architecture/workflow decision emerges and matters to future modules, update the appropriate repository document; do not rely on chat history as durable state.
+15. Do not mark a module complete merely because the code works.
+16. Keep Git workflow simple until the Worktrees / Isolation module:
     module → implementation → tests/experiment → review/understanding → progress update → commit → push.
-15. Do not introduce worktrees, complex branching, or parallel development before that module requires them.
-16. After the user reviews the learning-critical code and the Topic Chat closes the module, commit and push the completed module state to GitHub.
+17. Do not introduce worktrees, complex branching, or parallel development before that module requires them.
+18. After the user reviews the learning-critical code and the Topic Chat closes the module, commit and push the completed module state to GitHub.
