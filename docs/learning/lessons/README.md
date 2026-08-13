@@ -9,4 +9,4 @@
 | Ты                         | `docs/learning/lessons/NN-.../notes.md` |
 | Процесс / LLM / Topic Chat | `progress.md`, `experiments.md`         |
 
-Формат папки: `NN-short-name/` + `notes.md`.
+Формат папки: `NN-short-name/` + `notes.md` (+ опционально `traces/` с representative runs).

@@ -2,10 +2,10 @@
 
 ## Module: 01 — Agent Loop & Harness
 
-**Status:** baseline T01–T04 complete; ready for Topic Chat review  
-**Not marked fully completed yet.**
+**Status:** baseline + docs ready for Master formal close / next-module choice  
+**Not marked fully completed here — hand off to Master Chat.**
 
-Human notes: `docs/learning/lessons/01-agent-loop-harness/notes.md`
+Human notes + traces: `docs/learning/lessons/01-agent-loop-harness/`
 
 ### Built
 
@@ -13,43 +13,45 @@ Human notes: `docs/learning/lessons/01-agent-loop-harness/notes.md`
 - `harness/` — explicit Responses API agent loop
 - Bounded tools + independent final verification + JSONL traces
 - Benchmarks T01–T04
-- `docs/learning/lessons/` for human notes
+- Lesson notes + copied representative traces
 
 ### Important design decisions
 
 - No agent framework; one readable loop
-- Model never sole authority on completion
+- Tests are completion truth; model text is not
 - No auto-repair after final verify fail (intentional V0)
 - Strict tool path/command boundaries
-- `progress`/`experiments` = process; `lessons/` = personal
+- Stop signal renamed to `receivedTerminalResponse` (not “claimed done”)
+- V0 does **not** classify terminal text (done vs clarify vs blocked)
 
 ### Tasks executed
 
-| Task | Result                             | Trace                                       |
-| ---- | ---------------------------------- | ------------------------------------------- |
-| T01  | PASS                               | `traces/T01-2026-08-12T20-56-59-115Z.jsonl` |
-| T02  | PASS                               | `traces/T02-2026-08-13T13-17-10-680Z.jsonl` |
-| T03  | PASS                               | `traces/T03-2026-08-13T13-38-53-109Z.jsonl` |
-| T04  | FAIL (`final_verification_failed`) | `traces/T04-2026-08-13T13-44-20-768Z.jsonl` |
+| Task | Result                             | Lesson trace                                             |
+| ---- | ---------------------------------- | -------------------------------------------------------- |
+| T01  | PASS                               | `lessons/01-agent-loop-harness/traces/T01-...115Z.jsonl` |
+| T02  | PASS                               | `.../T02-...680Z.jsonl`                                  |
+| T03  | PASS                               | `.../T03-...109Z.jsonl`                                  |
+| T04  | FAIL (`final_verification_failed`) | `.../T04-...768Z.jsonl`                                  |
 
 ### Current results
 
-- T01–T03: autonomous PASS, ~6 model calls / ~12 tools, done≡verify
-- T04: invented default pending filter, changed 2 files, claimed done while tests red
-- Stable soft issue on T01–T03: broad discovery before small fix
+- T01–T03: autonomous PASS, ~6 calls / ~12 tools, terminal + tests aligned
+- T04: invented default pending filter; noted test conflict; still emitted terminal; verify failed
+- Soft: broad discovery before small fixes
 
-### Observed failures
+### Observed failures / harness limits
 
-- T04 false-done after knowingly conflicting with existing test
-- No clarification request on ambiguous product intent
-- Discovery overhead on easy tasks
+1. Ambiguous intent → product invention without escalation
+2. Terminal response with known red tests (aware note, still stopped)
+3. **Terminal response ≠ done:** any no-tool-call message ends the loop; clarify-only on a green fixture could look like success
+4. Discovery overhead on easy tasks
 
-### Open questions for Topic Chat
+### Open questions for Master / Topic close
 
-- Spec/escalation next vs repair-first?
-- How to grade T04-like tasks without hidden acceptance criteria?
-- When to invest in context/repo map given discovery pattern?
+- Next module: Spec/escalation first vs repair-first?
+- How to represent “needs human” as a first-class terminal outcome later?
+- When to invest in context/repo map?
 
 ### Remaining
 
-Topic Chat review of module 01; then choose next roadmap module. Do not mark fully completed until that review.
+Master Chat: formal Module 01 close + choose next roadmap module. No further V0 feature work planned.

@@ -20,14 +20,14 @@ Model: `gpt-5.6-luna`
 
 ### Results
 
-| Task | Final tests | Model calls | Tool calls | Wall time | Claimed done | Verify agreed | Notable                                                                             |
-| ---- | ----------- | ----------- | ---------- | --------- | ------------ | ------------- | ----------------------------------------------------------------------------------- |
-| T01  | PASS        | 6           | 12         | ~19s      | yes          | yes           | minimal `task-routes` fix; broad explore                                            |
-| T02  | PASS        | 6           | 12         | ~17s      | yes          | yes           | correct `task-service` layer                                                        |
-| T03  | PASS        | 6           | 12         | ~22s      | yes          | yes           | restored `list(status)`; tests-as-spec                                              |
-| T04  | FAIL        | 8           | 13         | ~41s      | yes          | **no**        | invented default pending; edited routes+service; admitted test conflict; still done |
+| Task | Final tests | Model calls | Tool calls | Wall time | Terminal | Verify agreed | Notable |
+| ---- | ----------- | ----------- | ---------- | --------- | -------- | ------------- | ------- |
+| T01  | PASS        | 6           | 12         | ~19s      | yes      | yes           | minimal `task-routes` fix; broad explore |
+| T02  | PASS        | 6           | 12         | ~17s      | yes      | yes           | correct `task-service` layer |
+| T03  | PASS        | 6           | 12         | ~22s      | yes      | yes           | restored `list(status)`; tests-as-spec |
+| T04  | FAIL        | 8           | 13         | ~41s      | yes      | **no**        | invented default pending; noted test conflict; still emitted terminal |
 
-Traces: `T01-...115Z`, `T02-...680Z`, `T03-...109Z`, `T04-2026-08-13T13-44-20-768Z.jsonl`
+Lesson traces: `docs/learning/lessons/01-agent-loop-harness/traces/`
 
 ### T04 qualitative
 
@@ -35,18 +35,22 @@ Traces: `T01-...115Z`, `T02-...680Z`, `T03-...109Z`, `T04-2026-08-13T13-44-20-76
 - Asked for clarification? **No**
 - Invented assumptions? **Yes** — omit `status` ⇒ pending only; completed via `?status=completed`
 - Code change? **Yes** — `task-routes.ts`, `task-service.ts`
-- Failure mode: `final_verification_failed` after false-done
+- Failure mode: `final_verification_failed` after terminal stop with red tests
 
 ### Observed failure modes
 
 1. Ambiguous intent → product invention without escalation
-2. False completion: claimed done with known failing test
-3. Soft: repeated broad discovery on T01–T03
+2. Terminal stop with known failing test (model noted conflict, still stopped)
+3. **Terminal response ≠ done** — V0 treats any no-tool-call message as loop end; “fixed” and “please clarify” are indistinguishable; clarify-only on green fixture would look like success
+4. Soft: repeated broad discovery on T01–T03
 
 ### Initial conclusion
 
 Hypothesis supported.
 
-- Bounded clear tasks (T01–T03): V0 succeeds reliably with aligned verification.
-- Ambiguous intent (T04): exposes missing spec/escalation and weak completion discipline; external verify correctly caught it.
+- Bounded clear tasks (T01–T03): V0 succeeds reliably when terminal stop + tests agree.
+- Ambiguous intent (T04): exposes missing spec/escalation; external verify caught the bad code change.
+- Additional V0 limit: stop semantics are “terminal message”, not “task done”.
 - Next leverage is not multi-agent first — likely spec/clarification policy and/or repair after verify fail; context efficiency is secondary but visible.
+
+Code note: result field renamed to `receivedTerminalResponse` (no escalation logic added in V0).

@@ -22,7 +22,12 @@ export type AgentRunResult = {
   turns: number;
   modelCalls: number;
   toolCalls: number;
-  modelClaimedDone: boolean;
+  /**
+   * V0 stop signal only: model returned a non-tool (terminal) message.
+   * This is NOT the same as "task is done" — clarification / blocked /
+   * "please confirm" also end here. Distinguishing those is out of scope for V0.
+   */
+  receivedTerminalResponse: boolean;
   finalVerificationPassed: boolean;
   finalVerification: VerificationResult | null;
   modelFinalResponse: string;
@@ -65,7 +70,7 @@ export async function runAgentLoop(options: {
   let modelCalls = 0;
   let toolCalls = 0;
   let modelFinalResponse = "";
-  let modelClaimedDone = false;
+  let receivedTerminalResponse = false;
   let failureReason: AgentRunResult["failureReason"];
 
   tracer.record("run_started", {
@@ -111,13 +116,19 @@ export async function runAgentLoop(options: {
         (item): item is FunctionCallItem => item.type === "function_call",
       );
 
-      // No tool calls → model produced a final response. Stop the loop.
+      // No tool calls → terminal text response. Stop the loop.
+      // V0 limitation: "done" and "need clarification" look the same here.
       if (functionCalls.length === 0) {
         modelFinalResponse = extractText(response) || "(empty final response)";
-        modelClaimedDone = true;
+        receivedTerminalResponse = true;
         tracer.record(
           "model_final",
-          { response: modelFinalResponse, modelClaimedDone: true },
+          {
+            response: modelFinalResponse,
+            receivedTerminalResponse: true,
+            // Kept for older trace readers; not a true completion claim.
+            modelClaimedDone: true,
+          },
           turns,
         );
         break;
@@ -163,12 +174,13 @@ export async function runAgentLoop(options: {
       // Next while-iteration starts the next model inference with tool results.
     }
 
-    if (!modelClaimedDone) {
+    if (!receivedTerminalResponse) {
       failureReason = "max_turns_exceeded";
       modelFinalResponse =
         modelFinalResponse || "Agent stopped: max_turns_exceeded";
       tracer.record("model_final", {
         response: modelFinalResponse,
+        receivedTerminalResponse: false,
         modelClaimedDone: false,
         failureReason,
       });
@@ -183,19 +195,19 @@ export async function runAgentLoop(options: {
     );
   }
 
-  // Independent final verification — do not trust the model's claim of completion.
+  // Independent final verification — tests are truth; terminal text is not.
   const finalVerification = runFinalVerification(config);
   tracer.record("final_verification", {
     passed: finalVerification.passed,
     exitCode: finalVerification.exitCode,
     durationMs: finalVerification.durationMs,
     outputPreview: truncate(finalVerification.output, 4000),
-    modelClaimedDone,
+    receivedTerminalResponse,
   });
 
-  if (modelClaimedDone && !finalVerification.passed) {
+  if (receivedTerminalResponse && !finalVerification.passed) {
     failureReason = "final_verification_failed";
-  } else if (!modelClaimedDone && failureReason === undefined) {
+  } else if (!receivedTerminalResponse && failureReason === undefined) {
     failureReason = "max_turns_exceeded";
   }
 
@@ -205,8 +217,12 @@ export async function runAgentLoop(options: {
     afterSnapshot,
   );
 
+  // V0 success = loop ended with a terminal message AND tests pass.
+  // A clarification-only terminal on a green fixture would still look like success.
   const status: RunStatus =
-    modelClaimedDone && finalVerification.passed && failureReason === undefined
+    receivedTerminalResponse &&
+    finalVerification.passed &&
+    failureReason === undefined
       ? "success"
       : "failure";
 
@@ -221,7 +237,7 @@ export async function runAgentLoop(options: {
     turns,
     modelCalls,
     toolCalls,
-    modelClaimedDone,
+    receivedTerminalResponse,
     finalVerificationPassed: finalVerification.passed,
     finalVerification,
     modelFinalResponse,
@@ -237,7 +253,7 @@ export async function runAgentLoop(options: {
     turns: result.turns,
     modelCalls: result.modelCalls,
     toolCalls: result.toolCalls,
-    modelClaimedDone: result.modelClaimedDone,
+    receivedTerminalResponse: result.receivedTerminalResponse,
     finalVerificationPassed: result.finalVerificationPassed,
     changedFiles: result.changedFiles,
     durationMs: result.durationMs,
@@ -259,9 +275,9 @@ export function printRunResult(result: AgentRunResult): void {
   console.log(
     `final_tests: ${result.finalVerificationPassed ? "PASS" : "FAIL"} (exit ${result.finalVerification?.exitCode ?? "n/a"})`,
   );
-  console.log(`model_claimed_done: ${result.modelClaimedDone}`);
+  console.log(`received_terminal_response: ${result.receivedTerminalResponse}`);
   console.log(
-    `final_verification_agreed: ${result.modelClaimedDone && result.finalVerificationPassed}`,
+    `terminal_and_tests_pass: ${result.receivedTerminalResponse && result.finalVerificationPassed}`,
   );
   console.log(
     `changed_files: ${result.changedFiles.length ? result.changedFiles.join(", ") : "(none)"}`,
