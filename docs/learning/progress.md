@@ -2,8 +2,7 @@
 
 ## Module: 01 — Agent Loop & Harness
 
-**Status:** baseline + docs ready for Master formal close / next-module choice  
-**Not marked fully completed here — hand off to Master Chat.**
+**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-13
 
 Human notes + traces: `docs/learning/lessons/01-agent-loop-harness/`
 
@@ -46,12 +45,24 @@ Human notes + traces: `docs/learning/lessons/01-agent-loop-harness/`
 3. **Terminal response ≠ done:** any no-tool-call message ends the loop; clarify-only on a green fixture could look like success
 4. Discovery overhead on easy tasks
 
-### Open questions for Master / Topic close
+### Master closure
 
-- Next module: Spec/escalation first vs repair-first?
-- How to represent “needs human” as a first-class terminal outcome later?
-- When to invest in context/repo map?
+Module 01 is sufficient for its roadmap goal:
 
-### Remaining
+- atomic agent loop understood and implemented explicitly;
+- model / harness / tool / environment boundaries exercised in a real runner;
+- external verification is independent from model completion text;
+- baseline experiment T01–T04 produced both successes and a useful failure;
+- basic tracing/eval baseline exists for comparing future harness versions;
+- concrete V0 limitations are documented rather than prematurely repaired.
 
-Master Chat: formal Module 01 close + choose next roadmap module. No further V0 feature work planned.
+No further V0 feature work is required before moving on.
+
+## Next module
+
+**02 — Spec-Driven Development**
+
+Why now: T04 exposed the next highest-leverage failure class — ambiguous intent was converted into an invented product decision instead of a safe explicit escalation. The roadmap's SDD layer directly addresses this by turning intent into a structured contract and separating repository-resolvable facts, safe defaults, and decisions requiring human judgment.
+
+Current harness entering Module 02: **V0 Minimal Runner**.
+Target after Module 02: **V1 Spec-Driven**.
