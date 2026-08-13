@@ -1,0 +1,12 @@
+{
+  "name": "ai-native-learning",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:target": "npm test --prefix target-app",
+    "test:harness": "npm test --prefix harness",
+    "test": "npm run test:target && npm run test:harness",
+    "benchmark": "npm run benchmark --prefix harness --",
+    "benchmark:all": "npm run benchmark:all --prefix harness"
+  }
+}

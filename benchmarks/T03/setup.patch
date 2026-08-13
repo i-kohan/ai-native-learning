@@ -1,0 +1,18 @@
+--- tasks/task-service.ts
++++ tasks/task-service.ts
+@@ -4,12 +4,9 @@
+   private tasks = new Map<string, Task>();
+   private nextId = 1;
+ 
+-  list(status?: TaskStatus): Task[] {
+-    const all = [...this.tasks.values()];
+-    if (!status) {
+-      return all;
+-    }
+-    return all.filter((task) => task.status === status);
++  list(_status?: TaskStatus): Task[] {
++    // Bug/feature gap: status filter ignored
++    return [...this.tasks.values()];
+   }
+ 
+   get(id: string): Task | undefined {

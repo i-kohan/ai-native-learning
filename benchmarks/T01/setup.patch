@@ -1,0 +1,11 @@
+--- tasks/task-routes.ts
++++ tasks/task-routes.ts
+@@ -63,7 +63,7 @@
+ function getTask(service: TaskService, id: string): HttpResponse {
+   const task = service.get(id);
+   if (!task) {
+-    return { status: 404, body: { error: "task_not_found" } };
++    return { status: 500, body: { error: "task_not_found" } };
+   }
+   return { status: 200, body: task };
+ }

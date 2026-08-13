@@ -1,0 +1,20 @@
+{
+  "name": "harness",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "benchmark": "tsx src/run-benchmark.ts",
+    "benchmark:all": "tsx src/run-benchmark.ts --all",
+    "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "openai": "^5.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
