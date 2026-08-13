@@ -2,65 +2,54 @@
 
 ## Module: 01 — Agent Loop & Harness
 
-**Status:** implementation + deterministic checks ready for Topic Chat review  
+**Status:** baseline T01–T04 complete; ready for Topic Chat review  
 **Not marked fully completed yet.**
+
+Human notes: `docs/learning/lessons/01-agent-loop-harness/notes.md`
 
 ### Built
 
-- `target-app/` — small Task Board (in-memory TS API + `npm test`)
-- `harness/` — explicit model→tool→observation loop using OpenAI Responses API
-- Tools with capability boundaries: `list_files`, `read_file`, `write_file`, `run_command`
-- Independent final verification (`npm test`) after the model claims done
-- JSONL traces under `traces/`
-- Benchmarks `T01`–`T04` with fixture restore + setup patches
-- Root `.env` / `.env.example` for `OPENAI_API_KEY` and `OPENAI_MODEL`
+- `target-app/` — Task Board + `npm test`
+- `harness/` — explicit Responses API agent loop
+- Bounded tools + independent final verification + JSONL traces
+- Benchmarks T01–T04
+- `docs/learning/lessons/` for human notes
 
 ### Important design decisions
 
-- One readable loop in `harness/src/loop.ts` — no agent framework
-- Model is never the authority on completion; harness always re-runs tests
-- No automatic repair after final verification fails (intentional V0 limitation)
-- `run_command` allows only `npm test` (cwd fixed to `target-app/`)
-- `write_file` restricted to `target-app/src/`; benchmarks/docs/harness unreachable
-- Nested `node:test` needs `NODE_TEST_*` stripped from child env, otherwise verification falsely passes
+- No agent framework; one readable loop
+- Model never sole authority on completion
+- No auto-repair after final verify fail (intentional V0)
+- Strict tool path/command boundaries
+- `progress`/`experiments` = process; `lessons/` = personal
 
 ### Tasks executed
 
-- Deterministic: `target-app` tests, harness boundary tests, benchmark setup validation for T01–T03
-- Model experiment T01–T04: **not run yet** — `OPENAI_API_KEY` / `OPENAI_MODEL` were empty
+| Task | Result                             | Trace                                       |
+| ---- | ---------------------------------- | ------------------------------------------- |
+| T01  | PASS                               | `traces/T01-2026-08-12T20-56-59-115Z.jsonl` |
+| T02  | PASS                               | `traces/T02-2026-08-13T13-17-10-680Z.jsonl` |
+| T03  | PASS                               | `traces/T03-2026-08-13T13-38-53-109Z.jsonl` |
+| T04  | FAIL (`final_verification_failed`) | `traces/T04-2026-08-13T13-44-20-768Z.jsonl` |
 
 ### Current results
 
-| Check | Result |
-|-------|--------|
-| `npm test` (target + harness) | PASS |
-| T01–T03 initial setup fails tests | PASS (validated) |
-| T01–T04 agent runs | pending credentials |
+- T01–T03: autonomous PASS, ~6 model calls / ~12 tools, done≡verify
+- T04: invented default pending filter, changed 2 files, claimed done while tests red
+- Stable soft issue on T01–T03: broad discovery before small fix
 
 ### Observed failures
 
-- None in the agent loop yet (model runs not executed)
-- During harness testing: nested `npm test` under `node:test` skipped child suites until env cleanup
+- T04 false-done after knowingly conflicting with existing test
+- No clarification request on ambiguous product intent
+- Discovery overhead on easy tasks
 
-### Open questions
+### Open questions for Topic Chat
 
-- How often will the model claim done while final verification still fails?
-- Will T04 ask for clarification, invent a filter default, or change code anyway?
-- Is max-turns=20 enough for multi-file tasks without repair scaffolding?
+- Spec/escalation next vs repair-first?
+- How to grade T04-like tasks without hidden acceptance criteria?
+- When to invest in context/repo map given discovery pattern?
 
-### Remaining to run (after filling `.env`)
+### Remaining
 
-```bash
-# edit .env:
-# OPENAI_API_KEY=...
-# OPENAI_MODEL=...
-
-npm run benchmark --prefix harness -- T01
-npm run benchmark --prefix harness -- T02
-npm run benchmark --prefix harness -- T03
-npm run benchmark --prefix harness -- T04
-# or:
-npm run benchmark:all --prefix harness
-```
-
-Then update `docs/learning/experiments.md` with real metrics and revisit this progress entry.
+Topic Chat review of module 01; then choose next roadmap module. Do not mark fully completed until that review.
