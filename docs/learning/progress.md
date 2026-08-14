@@ -4,7 +4,8 @@
 
 **Status:** ✅ COMPLETED — formally closed by Master on 2026-08-13
 
-Human notes + traces: `docs/learning/lessons/01-agent-loop-harness/`
+Lesson recap: `docs/learning/lessons/01-agent-loop-harness/theory.md`  
+Practical notes + traces: `docs/learning/lessons/01-agent-loop-harness/`
 
 ### Built
 
@@ -12,7 +13,7 @@ Human notes + traces: `docs/learning/lessons/01-agent-loop-harness/`
 - `harness/` — explicit Responses API agent loop
 - Bounded tools + independent final verification + JSONL traces
 - Benchmarks T01–T04
-- Lesson notes + copied representative traces
+- Compact theory recap + practical lesson notes + representative traces
 
 ### Important design decisions
 
@@ -54,7 +55,8 @@ Module 01 is sufficient for its roadmap goal:
 - external verification is independent from model completion text;
 - baseline experiment T01–T04 produced both successes and a useful failure;
 - basic tracing/eval baseline exists for comparing future harness versions;
-- concrete V0 limitations are documented rather than prematurely repaired.
+- concrete V0 limitations are documented rather than prematurely repaired;
+- compact theory + practical evidence are preserved under `lessons/` for later refresh.
 
 No further V0 feature work is required before moving on.
 

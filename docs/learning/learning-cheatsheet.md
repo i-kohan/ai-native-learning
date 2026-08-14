@@ -17,6 +17,7 @@ docs/learning/learning-cheatsheet.md
 docs/learning/deep-research-report.md
 docs/learning/progress.md
 docs/learning/experiments.md
+docs/learning/lessons/
 ```
 
 ChatGPT Project stores chats, not duplicate permanent docs.
@@ -30,7 +31,7 @@ Master → Topic Chat → Cursor → Topic Chat → GitHub → Master
 ### Master
 
 - read current `master-learning-plan.md` + `progress.md` from GitHub;
-- inspect experiments/architecture/code when needed;
+- inspect experiments/lesson recap/architecture/code when needed;
 - choose one next module;
 - give a ready-to-copy Topic prompt with progress, harness state, roadmap position, why now, learning goals, practical outcome, scope/non-goals, relevant repo paths.
 
@@ -42,6 +43,16 @@ Master → Topic Chat → Cursor → Topic Chat → GitHub → Master
 4. Define experiment.
 5. Produce Cursor Task.
 6. Review results and understanding.
+7. Before handoff to Master, ensure compact lesson artifacts exist:
+
+```text
+lessons/NN-short-name/
+  theory.md   # 3–5 min theory refresher
+  notes.md    # practical/personal module notes
+  traces/     # optional representative evidence
+```
+
+`theory.md` = core mental model, mechanism, boundaries, main failures/trade-offs, 2–4 practical observations, 3–6 takeaways. Keep it short; do not duplicate research docs.
 
 ### Cursor
 
@@ -52,14 +63,15 @@ Master → Topic Chat → Cursor → Topic Chat → GitHub → Master
 5. Run experiment.
 6. Give 3–5-file/function code tour.
 7. Update `progress.md` and `experiments.md`.
-8. After module review/closure: commit + push.
+8. Update practical lesson notes; maintain the compact theory recap when the module theory is established.
+9. After module review/closure: commit + push.
 
 ## Simple Git flow
 
 Until Worktrees / Isolation:
 
 ```text
-module → implementation → tests/experiment → review/understanding → progress update → commit → push
+module → implementation → tests/experiment → review/understanding → lesson recap → progress update → commit → push
 ```
 
 No worktrees / complex branching / parallel development early.
@@ -74,7 +86,9 @@ No worktrees / complex branching / parallel development early.
 - verification/experiment completed;
 - failure modes understood;
 - trade-offs understood;
-- know when not to use it.
+- know when not to use it;
+- compact `theory.md` exists;
+- practical notes/evidence are saved.
 
 ## Durable decisions
 

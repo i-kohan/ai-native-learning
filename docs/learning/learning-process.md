@@ -20,10 +20,11 @@ docs/learning/learning-cheatsheet.md
 docs/learning/deep-research-report.md
 docs/learning/progress.md
 docs/learning/experiments.md
+docs/learning/lessons/
 .cursor/rules/learning-harness.mdc
 ```
 
-Architecture docs, evals, traces, skills, and capstone code also live there.
+Architecture docs, evals, traces, skills, capstone code, and compact lesson recaps also live there.
 
 The ChatGPT Project is used only as a workspace for:
 
@@ -51,6 +52,7 @@ required:
 when relevant:
   docs/learning/experiments.md
   docs/learning/learning-process.md
+  docs/learning/lessons/<current-module>/
   docs/architecture/*
   relevant implementation / eval code
 ```
@@ -138,9 +140,31 @@ Produce a compact task describing:
 - requested experiment;
 - documentation/result updates.
 
-### Stage 6 — Review
+### Stage 6 — Review + lesson recap
 
 After Cursor work, Topic Chat analyzes implementation and experiment results, checks understanding, and decides whether the module is complete.
+
+Before handing the module back to Master, ensure the module lesson folder contains:
+
+```text
+docs/learning/lessons/NN-short-name/
+  theory.md
+  notes.md
+  traces/   # optional representative evidence
+```
+
+`theory.md` is a **3–5 minute refresher**, not a textbook. It should contain only:
+
+- core mental model / key definitions;
+- mechanism / execution flow;
+- important boundaries;
+- main failure modes / trade-offs;
+- 2–4 concrete observations from our implementation/experiments that confirm, challenge, or qualify the theory;
+- 3–6 takeaways worth remembering.
+
+`notes.md` remains the practical/personal module journal: implementation nuances, commands, surprising behavior, concrete results, and personal takeaways.
+
+Do not duplicate large sections from `master-learning-plan.md` or `deep-research-report.md` into lesson files.
 
 If more repository context is needed, Topic Chat should read GitHub directly rather than ask for duplicated files.
 
@@ -164,7 +188,8 @@ For substantial module implementation:
    - execution flow between them;
 8. update `docs/learning/progress.md`;
 9. update `docs/learning/experiments.md` when an experiment was run;
-10. after user review and Topic Chat closure, commit and push the completed module state.
+10. update the current module `notes.md` with practical results and help maintain a compact `theory.md` when the Topic Chat has established/closed the theory;
+11. after user review and Topic Chat closure, commit and push the completed module state.
 
 If implementation reveals a durable architecture/workflow decision, update the appropriate repository document as part of the same module work.
 
@@ -179,6 +204,7 @@ module
 → implementation
 → tests / experiment
 → code review / understanding
+→ lesson recap
 → progress update
 → commit
 → push
@@ -206,6 +232,8 @@ VERIFICATION / EXPERIMENT ✅ / ❌
 FAILURE MODES             ✅ / ❌
 TRADE-OFFS                ✅ / ❌
 WHEN NOT TO USE           ✅ / ❌
+THEORY RECAP              ✅ / ❌
+PRACTICAL NOTES/EVIDENCE  ✅ / ❌
 ```
 
 Level A topics require deeper mastery than Level B or Level C topics.
@@ -228,7 +256,7 @@ teaches → connects to capstone → defines experiment → separates learning-c
 shows implementation plan → implements → tests/experiment → code tour → updates docs.
 
 **Topic Chat**
-reviews results → checks understanding → closes module.
+reviews results → checks understanding → writes/validates compact lesson recap → closes module.
 
 **GitHub**
 receives commit/push and becomes the current durable state.

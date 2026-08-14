@@ -13,33 +13,40 @@ Core learning documents:
 - docs/learning/deep-research-report.md
 - docs/learning/progress.md
 - docs/learning/experiments.md
+- docs/learning/lessons/
 
 When implementing learning tasks:
 
 1. Read docs/learning/progress.md and relevant architecture/code first.
 2. Read docs/learning/experiments.md when the task depends on prior experiment results.
 3. Read master/process docs when module scope or workflow is relevant.
-4. Before substantial implementation, show a short proposed implementation plan.
-5. Implement only the smallest real version needed to learn/test the current concept.
-6. Do not implement future roadmap modules prematurely.
-7. Prefer explicit, understandable architecture over unnecessary framework abstraction.
-8. Respect the Topic Chat split between learning-critical code and delegatable boilerplate/plumbing.
-9. Run required tests/checks.
-10. Run the requested experiment when practical.
-11. After implementation, give a short code tour:
+4. Read the current module lesson recap when one exists.
+5. Before substantial implementation, show a short proposed implementation plan.
+6. Implement only the smallest real version needed to learn/test the current concept.
+7. Do not implement future roadmap modules prematurely.
+8. Prefer explicit, understandable architecture over unnecessary framework abstraction.
+9. Respect the Topic Chat split between learning-critical code and delegatable boilerplate/plumbing.
+10. Run required tests/checks.
+11. Run the requested experiment when practical.
+12. After implementation, give a short code tour:
     - 3–5 main files/functions the user should personally inspect;
     - the role of each;
     - the execution flow between them.
-12. Update docs/learning/progress.md with:
+13. Update docs/learning/progress.md with:
     - module/task;
     - what was implemented;
     - important design decisions;
     - current result;
     - failures/open questions.
-13. Update docs/learning/experiments.md when an experiment was run.
-14. If a durable architecture/workflow decision emerges and matters to future modules, update the appropriate repository document; do not rely on chat history as durable state.
-15. Do not mark a module complete merely because the code works.
-16. Keep Git workflow simple until the Worktrees / Isolation module:
-    module → implementation → tests/experiment → review/understanding → progress update → commit → push.
-17. Do not introduce worktrees, complex branching, or parallel development before that module requires them.
-18. After the user reviews the learning-critical code and the Topic Chat closes the module, commit and push the completed module state to GitHub.
+14. Update docs/learning/experiments.md when an experiment was run.
+15. Maintain module lesson artifacts under `docs/learning/lessons/NN-short-name/`:
+    - `notes.md`: practical/personal notes, implementation nuances, commands, concrete results;
+    - `theory.md`: concise 3–5 minute theory refresher with core mental model, mechanism/flow, boundaries, main failures/trade-offs, 2–4 practical observations from our work, and 3–6 takeaways;
+    - optional `traces/`: representative evidence only.
+16. Keep `theory.md` short. Do not duplicate large sections from master/research docs.
+17. If a durable architecture/workflow decision emerges and matters to future modules, update the appropriate repository document; do not rely on chat history as durable state.
+18. Do not mark a module complete merely because the code works.
+19. Keep Git workflow simple until the Worktrees / Isolation module:
+    module → implementation → tests/experiment → review/understanding → lesson recap → progress update → commit → push.
+20. Do not introduce worktrees, complex branching, or parallel development before that module requires them.
+21. After the user reviews the learning-critical code and the Topic Chat closes the module, commit and push the completed module state to GitHub.
