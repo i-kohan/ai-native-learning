@@ -82,10 +82,28 @@ export const TOOL_DEFINITIONS = [
   },
 ];
 
+export const READ_ONLY_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(
+  (tool) => tool.name === "list_files" || tool.name === "read_file",
+);
+
 export type ToolExecution = {
   ok: boolean;
   output: string;
 };
+
+export function executeReadOnlyTool(
+  config: HarnessConfig,
+  name: string,
+  argsJson: string,
+): ToolExecution {
+  if (name !== "list_files" && name !== "read_file") {
+    return {
+      ok: false,
+      output: `Spec phase is read-only. Tool not allowed: ${name}`,
+    };
+  }
+  return executeTool(config, name, argsJson);
+}
 
 export function executeTool(
   config: HarnessConfig,

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { HarnessConfig } from "./config.ts";
 import { AGENT_INSTRUCTIONS } from "./instructions.ts";
+import type { Spec } from "./spec.ts";
 import { TOOL_DEFINITIONS, executeTool } from "./tools.ts";
 import { Tracer } from "./trace.ts";
 import { runFinalVerification, type VerificationResult } from "./verify.ts";
@@ -49,10 +50,13 @@ export async function runAgentLoop(options: {
   task: string;
   runId: string;
   beforeSnapshot?: FileSnapshot;
+  spec?: Spec;
+  tracer?: Tracer;
 }): Promise<AgentRunResult> {
-  const { config, task, runId } = options;
+  const { config, task, runId, spec } = options;
   const startedAt = Date.now();
-  const tracer = new Tracer(config.tracesDir, runId);
+  const nested = Boolean(options.tracer);
+  const tracer = options.tracer ?? new Tracer(config.tracesDir, runId);
   const beforeSnapshot =
     options.beforeSnapshot ?? snapshotDirectory(config.targetSrcRoot);
 
@@ -73,11 +77,19 @@ export async function runAgentLoop(options: {
   let receivedTerminalResponse = false;
   let failureReason: AgentRunResult["failureReason"];
 
-  tracer.record("run_started", {
-    task,
-    model: config.model,
-    maxTurns: config.maxTurns,
-  });
+  if (!nested) {
+    tracer.record("run_started", {
+      task,
+      model: config.model,
+      maxTurns: config.maxTurns,
+      ...(spec ? { specStatus: "provided" } : {}),
+    });
+  } else {
+    tracer.record("implementation_started", {
+      specGoal: spec?.goal ?? null,
+      requirementCount: spec?.requirements.length ?? 0,
+    });
+  }
 
   try {
     // Explicit agent loop: model → (tool → observation → model)* → final
@@ -247,19 +259,20 @@ export async function runAgentLoop(options: {
     durationMs: Date.now() - startedAt,
   };
 
-  tracer.record("run_completed", {
-    status: result.status,
-    failureReason: result.failureReason ?? null,
-    turns: result.turns,
-    modelCalls: result.modelCalls,
-    toolCalls: result.toolCalls,
-    receivedTerminalResponse: result.receivedTerminalResponse,
-    finalVerificationPassed: result.finalVerificationPassed,
-    changedFiles: result.changedFiles,
-    durationMs: result.durationMs,
-  });
-
-  await tracer.close();
+  if (!nested) {
+    tracer.record("run_completed", {
+      status: result.status,
+      failureReason: result.failureReason ?? null,
+      turns: result.turns,
+      modelCalls: result.modelCalls,
+      toolCalls: result.toolCalls,
+      receivedTerminalResponse: result.receivedTerminalResponse,
+      finalVerificationPassed: result.finalVerificationPassed,
+      changedFiles: result.changedFiles,
+      durationMs: result.durationMs,
+    });
+    await tracer.close();
+  }
   return result;
 }
 

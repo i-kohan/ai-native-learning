@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { REPO_ROOT, loadConfig } from "./config.ts";
-import { printRunResult, runAgentLoop, type AgentRunResult } from "./loop.ts";
 import { snapshotDirectory } from "./diff.ts";
+import { printHarnessResult, runV1Harness, type HarnessRunResult } from "./run.ts";
 import { runFinalVerification } from "./verify.ts";
 
 const BENCHMARKS_ROOT = path.join(REPO_ROOT, "benchmarks");
@@ -53,7 +53,7 @@ export function prepareBenchmark(taskId: TaskId): BenchmarkPrepResult {
   };
 }
 
-export async function runBenchmark(taskId: TaskId): Promise<AgentRunResult> {
+export async function runBenchmark(taskId: TaskId): Promise<HarnessRunResult> {
   const prep = prepareBenchmark(taskId);
 
   if (taskId !== "T04" && prep.initialTestsPassed) {
@@ -69,15 +69,33 @@ export async function runBenchmark(taskId: TaskId): Promise<AgentRunResult> {
   const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
   const runId = `${taskId}-${timestamp()}`;
 
-  const result = await runAgentLoop({
+  const result = await runV1Harness({
     config,
     task: prep.task,
     runId,
     beforeSnapshot,
   });
 
-  printRunResult(result);
+  printHarnessResult(result);
   return result;
+}
+
+export function isExpectedV1Outcome(taskId: TaskId, result: HarnessRunResult): boolean {
+  if (taskId === "T04") {
+    return (
+      result.workflowStatus === "needs_human_judgment" &&
+      result.specDecision?.status === "needs_human_judgment" &&
+      result.implementationStarted === false &&
+      result.changedFiles.length === 0 &&
+      result.unresolvedQuestions.length > 0
+    );
+  }
+  return (
+    result.workflowStatus === "success" &&
+    result.specDecision?.status === "executable" &&
+    result.implementationStarted === true &&
+    result.finalVerificationPassed
+  );
 }
 
 function restoreFixture(): void {
@@ -143,7 +161,7 @@ async function main(): Promise<void> {
   }
 
   const ids = all ? [...TASK_IDS] : [taskId!];
-  const results: AgentRunResult[] = [];
+  const results: HarnessRunResult[] = [];
 
   for (const id of ids) {
     const result = await runBenchmark(id);
@@ -154,13 +172,17 @@ async function main(): Promise<void> {
     console.log("\n=== Benchmark Summary ===");
     for (const [index, result] of results.entries()) {
       const id = ids[index];
+      const expected = isExpectedV1Outcome(id, result) ? "expected" : "UNEXPECTED";
       console.log(
-        `${id}: ${result.status} | tests=${result.finalVerificationPassed ? "PASS" : "FAIL"} | turns=${result.turns} | tools=${result.toolCalls} | ${path.basename(result.tracePath)}`,
+        `${id}: ${result.workflowStatus} | spec=${result.specDecision?.status ?? "none"} | impl=${result.implementationStarted ? "yes" : "no"} | tests=${result.implementationStarted ? (result.finalVerificationPassed ? "PASS" : "FAIL") : "skipped"} | ${expected} | ${path.basename(result.tracePath)}`,
       );
     }
   }
 
-  process.exit(results.every((r) => r.status === "success") ? 0 : 1);
+  const allExpected = results.every((result, index) =>
+    isExpectedV1Outcome(ids[index], result),
+  );
+  process.exit(allExpected ? 0 : 1);
 }
 
 const isDirectRun = process.argv[1]?.endsWith("run-benchmark.ts");

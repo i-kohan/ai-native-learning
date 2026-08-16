@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 traces/*.jsonl
+traces/*.spec.json
 *.log
 .DS_Store
 target-app/coverage/

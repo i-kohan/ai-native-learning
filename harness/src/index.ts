@@ -1,5 +1,5 @@
 import { loadConfig } from "./config.ts";
-import { printRunResult, runAgentLoop } from "./loop.ts";
+import { printHarnessResult, runV1Harness } from "./run.ts";
 
 async function main(): Promise<void> {
   const taskArgIndex = process.argv.indexOf("--task");
@@ -7,21 +7,21 @@ async function main(): Promise<void> {
     taskArgIndex >= 0 && process.argv[taskArgIndex + 1]
       ? process.argv[taskArgIndex + 1]
       : undefined;
-  const taskFromStdin = !process.stdin.isTTY
-    ? (await readStdin()).trim()
-    : "";
+  const taskFromStdin = !process.stdin.isTTY ? (await readStdin()).trim() : "";
   const task = taskFromArg ?? taskFromStdin;
 
   if (!task) {
-    console.error("Usage: npm start -- --task \"...\"   OR pipe task text via stdin");
+    console.error(
+      'Usage: npm start -- --task "..."   OR pipe task text via stdin',
+    );
     process.exit(1);
   }
 
   const config = loadConfig();
   const runId = `manual-${timestamp()}`;
-  const result = await runAgentLoop({ config, task, runId });
-  printRunResult(result);
-  process.exit(result.status === "success" ? 0 : 1);
+  const result = await runV1Harness({ config, task, runId });
+  printHarnessResult(result);
+  process.exit(result.workflowStatus === "failure" ? 1 : 0);
 }
 
 async function readStdin(): Promise<string> {
