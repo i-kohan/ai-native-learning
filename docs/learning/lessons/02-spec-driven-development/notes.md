@@ -1,6 +1,6 @@
 # 02 — Spec-Driven Development
 
-Личные выводы. V1 T01–T04 прогнаны; модуль ещё не closed Topic Chat / Master.
+Личные выводы. V1 T01–T04 прогнаны; Topic Chat review завершён; модуль готов к формальному закрытию Master.
 
 ## Что это за урок одной фразой
 
@@ -81,14 +81,19 @@ benchmarks/T0X
 
 ## Ограничения, которые V1 не закрыл
 
-- Discovery на T01–T03 всё ещё широкий (spec смотрит репо, потом coding loop смотрит снова).
+- Spec laundering нельзя полностью гарантированно поймать: если модель сама запишет придуманную semantics как resolved requirement и не оставит RHJ ambiguity, gate это не докажет.
+- Discovery на T01–T03 всё ещё широкий (spec смотрит repo, потом coding loop смотрит снова).
 - Terminal response ≠ done внутри coding loop — как в V0.
 - Нет repair после красных тестов.
 
 ## Вывод себе
 
-V1 делает то, для чего задуман: ambiguity → escalation, clear task → тот же coding agent. Дальше не раздувать spec в фреймворк.
+V1 делает то, для чего задуман: ambiguity → escalation, clear task → тот же coding agent. Spec — boundary intent/execution, а не бюрократия ради YAML. Дальше не раздувать spec в фреймворк.
+
+## Теория
+
+Короткий refresher: `theory.md`.
 
 ## Следующий шаг
 
-Topic Chat: review + `theory.md` + close. Commit/push после close. Master — следующий модуль (скорее repair или context, не multi-agent).
+Master/Roadmap: прочитать актуальные `progress.md`, `experiments.md` и при необходимости `lessons/02-spec-driven-development/`; формально закрыть Module 02 относительно master plan и выбрать следующий модуль. Не начинать repair/reviewer/context-builder здесь заранее.
