@@ -2,7 +2,7 @@
 
 ## Module: 02 — Spec-Driven Development
 
-**Status:** ✅ Topic Chat complete — **ready for Master formal close**.
+**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-17.
 
 Theory recap: `docs/learning/lessons/02-spec-driven-development/theory.md`  
 Practical notes + traces: `docs/learning/lessons/02-spec-driven-development/`
@@ -55,23 +55,33 @@ T01 spec.json is missing because that run happened before spec artifacts were ad
 4. Terminal response ≠ done remains unchanged inside the V0 coding loop
 5. No repair loop after final verification failure (intentionally out of scope)
 
-### Topic Chat review
+### Master closure
 
-Reviewed against the Module 02 learning goal and V1 experiment criteria:
+Module 02 is sufficient for its roadmap goal:
 
-- understanding of spec vs task/plan, acceptance vs verification, observable behavior/product semantics, delegated-authority boundaries, and ambiguity taxonomy is sufficient;
-- learning-critical architecture is explicit in code (`task → read-only spec → SpecDecision → harness gate → execute/escalate`);
-- read-only capability boundary is enforced by the harness, not only by model instructions;
-- T01–T03 preserve autonomous execution;
-- T04 correctly escalates before implementation;
-- failure modes and trade-offs, including spec laundering and added discovery cost, are documented rather than hidden;
-- `theory.md` preserves the compact conceptual recap.
+- raw intent is transformed into a structured, verifiable spec before implementation;
+- ambiguity is classified into repository-resolvable / safe inference / requires-human-judgment boundaries;
+- the spec phase is physically read-only and an explicit harness gate exists before coding side effects;
+- T01–T03 remain autonomous and correct with 0/3 regression;
+- T04 now escalates before implementation with no source changes, preventing the measured V0 product-invention failure;
+- learning-critical execution flow, trade-offs, failure modes, and spec-laundering limits are documented;
+- theory recap and experiment evidence are preserved in the repository.
 
-### Remaining
+No additional SDD mechanism is required before moving on. Spec laundering remains a known probabilistic limitation rather than a reason to expand Module 02 indefinitely.
 
-**Master/Roadmap:** compare Module 02 against `master-learning-plan.md`, formally close it if sufficient, then choose the next module and provide the next Topic Chat starter prompt.
+## Next module
 
-Do not add V2 repair / reviewer / context-builder work here before Master chooses the next module.
+**03 — Context Engineering**
+
+Why now:
+
+- it is the next core dependency in the roadmap after SDD;
+- V1 measured repeated repository discovery on every clear task, including ~5 extra spec-phase model calls;
+- both spec generation and implementation need better targeted, authoritative context;
+- improving context now creates a cleaner base before later Verification/Repair loops, reviewers, routing, or multi-agent orchestration.
+
+Current harness entering Module 03: **V1 Spec-Driven**.
+Target after Module 03: **V1 + minimal targeted context layer** (do not advance to repair/reviewer features yet).
 
 ---
 
