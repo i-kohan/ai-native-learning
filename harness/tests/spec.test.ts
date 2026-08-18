@@ -204,6 +204,29 @@ describe("V1 expected outcomes", () => {
       tracePath: "/tmp/trace.jsonl",
       specPath: "/tmp/trace.spec.json",
       durationMs: 1,
+      contextMode: "baseline",
+      contextMetrics: {
+        mode: "baseline",
+        preparation: null,
+        specDiscovery: {
+          listFilesCalls: 0,
+          readFileCalls: 0,
+          readFilePaths: [],
+          listedPaths: [],
+        },
+        implDiscovery: {
+          listFilesCalls: 0,
+          readFileCalls: 0,
+          readFilePaths: [],
+          listedPaths: [],
+        },
+        pathOverlap: {
+          readFileOverlap: [],
+          listedPathOverlap: [],
+        },
+        implNavCallsBeforeFirstWrite: 0,
+        tokenUsage: null,
+      },
       ...overrides,
     };
   }

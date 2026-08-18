@@ -1,5 +1,8 @@
 import OpenAI from "openai";
-import type { ResponseOutputItem, ResponseUsage } from "openai/resources/responses/responses.js";
+import type {
+  ResponseOutputItem,
+  ResponseUsage,
+} from "openai/resources/responses/responses.js";
 import type { HarnessConfig } from "./config.ts";
 import { SPEC_INSTRUCTIONS } from "./spec-instructions.ts";
 import {
@@ -9,10 +12,23 @@ import {
   parseSubmitSpec,
   type SpecDecision,
 } from "./spec.ts";
+import {
+  DiscoveryTracker,
+  formatSpecPhaseOrientation,
+  mergeTokenUsage,
+  type ContextMode,
+  type InspectedPaths,
+  type PhaseDiscoveryMetrics,
+  type RepositoryMap,
+  type TokenUsageSummary,
+} from "./context.ts";
 import { READ_ONLY_TOOL_DEFINITIONS, executeReadOnlyTool } from "./tools.ts";
 import type { Tracer } from "./trace.ts";
 
-export type SpecPhaseFailure = "max_turns_exceeded" | "model_error" | "invalid_spec";
+export type SpecPhaseFailure =
+  | "max_turns_exceeded"
+  | "model_error"
+  | "invalid_spec";
 
 export type SpecPhaseResult = {
   decision: SpecDecision | null;
@@ -22,6 +38,9 @@ export type SpecPhaseResult = {
   toolCalls: number;
   modelFinalResponse: string;
   durationMs: number;
+  inspectedPaths: InspectedPaths;
+  discovery: PhaseDiscoveryMetrics;
+  tokenUsage: TokenUsageSummary | null;
 };
 
 type FunctionCallItem = {
@@ -37,15 +56,25 @@ export async function buildSpec(options: {
   config: HarnessConfig;
   task: string;
   tracer: Tracer;
+  contextMode?: ContextMode;
+  repositoryMap?: RepositoryMap;
 }): Promise<SpecPhaseResult> {
   const { config, task, tracer } = options;
+  const contextMode = options.contextMode ?? "baseline";
   const startedAt = Date.now();
   const client = new OpenAI({ apiKey: config.apiKey });
+  const discovery = new DiscoveryTracker();
+  let tokenUsage: TokenUsageSummary | null = null;
+
+  const initialContent =
+    contextMode === "variant" && options.repositoryMap
+      ? `${formatSpecPhaseOrientation(options.repositoryMap)}\n\n## Task\n${task}`
+      : task;
 
   let input: Array<Record<string, unknown>> = [
     {
       role: "user",
-      content: task,
+      content: initialContent,
     },
   ];
 
@@ -60,6 +89,8 @@ export async function buildSpec(options: {
     task,
     model: config.model,
     tools: SPEC_TOOLS.map((tool) => tool.name),
+    contextMode,
+    repositoryMapProvided: Boolean(options.repositoryMap),
   });
 
   try {
@@ -79,6 +110,7 @@ export async function buildSpec(options: {
 
       const durationMs = Date.now() - callStarted;
       const usage = extractUsage(response);
+      tokenUsage = mergeTokenUsage(tokenUsage, usage, "spec");
       tracer.record(
         "spec_model_call_completed",
         {
@@ -187,6 +219,9 @@ export async function buildSpec(options: {
         );
 
         const result = executeReadOnlyTool(config, call.name, call.arguments);
+        if (result.ok) {
+          discovery.record(call.name, call.arguments, "spec");
+        }
 
         tracer.record(
           "spec_tool_result",
@@ -220,12 +255,19 @@ export async function buildSpec(options: {
   } catch (error) {
     failureReason = "model_error";
     modelFinalResponse = error instanceof Error ? error.message : String(error);
-    tracer.record("spec_model_error", { message: modelFinalResponse }, turns || undefined);
+    tracer.record(
+      "spec_model_error",
+      { message: modelFinalResponse },
+      turns || undefined,
+    );
   }
 
   if (!decision && failureReason === undefined) {
     failureReason = "invalid_spec";
   }
+
+  const inspectedPaths = discovery.toInspectedPaths();
+  const specDiscovery = discovery.toMetrics();
 
   tracer.record("spec_decision", {
     status: decision?.status ?? null,
@@ -233,10 +275,15 @@ export async function buildSpec(options: {
     spec: decision?.spec ?? null,
     ambiguities: decision?.spec.ambiguities ?? [],
     unresolvedQuestions:
-      decision?.status === "needs_human_judgment" ? decision.unresolvedQuestions : [],
+      decision?.status === "needs_human_judgment"
+        ? decision.unresolvedQuestions
+        : [],
     turns,
     modelCalls,
     toolCalls,
+    inspectedPaths,
+    specDiscovery,
+    tokenUsage,
   });
 
   return {
@@ -247,6 +294,9 @@ export async function buildSpec(options: {
     toolCalls,
     modelFinalResponse,
     durationMs: Date.now() - startedAt,
+    inspectedPaths,
+    discovery: specDiscovery,
+    tokenUsage,
   };
 }
 
@@ -289,7 +339,9 @@ function extractText(response: {
   return parts.join("\n").trim();
 }
 
-function extractUsage(response: { usage?: ResponseUsage }): Record<string, unknown> | null {
+function extractUsage(response: {
+  usage?: ResponseUsage;
+}): Record<string, unknown> | null {
   if (!response.usage || typeof response.usage !== "object") {
     return null;
   }

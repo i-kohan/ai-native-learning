@@ -1,9 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import type { ContextMode } from "./context.ts";
 import { REPO_ROOT, loadConfig } from "./config.ts";
 import { snapshotDirectory } from "./diff.ts";
-import { printHarnessResult, runV1Harness, type HarnessRunResult } from "./run.ts";
+import {
+  printHarnessResult,
+  runV1Harness,
+  type HarnessRunResult,
+} from "./run.ts";
 import { runFinalVerification } from "./verify.ts";
 
 const BENCHMARKS_ROOT = path.join(REPO_ROOT, "benchmarks");
@@ -18,6 +23,11 @@ export type BenchmarkPrepResult = {
   task: string;
   initialTestsPassed: boolean;
   initialTestOutput: string;
+};
+
+export type BenchmarkRunLabel = {
+  taskId: TaskId;
+  contextMode: ContextMode;
 };
 
 export function prepareBenchmark(taskId: TaskId): BenchmarkPrepResult {
@@ -53,7 +63,10 @@ export function prepareBenchmark(taskId: TaskId): BenchmarkPrepResult {
   };
 }
 
-export async function runBenchmark(taskId: TaskId): Promise<HarnessRunResult> {
+export async function runBenchmark(
+  taskId: TaskId,
+  contextMode: ContextMode = "baseline",
+): Promise<HarnessRunResult> {
   const prep = prepareBenchmark(taskId);
 
   if (taskId !== "T04" && prep.initialTestsPassed) {
@@ -62,25 +75,46 @@ export async function runBenchmark(taskId: TaskId): Promise<HarnessRunResult> {
     );
   }
 
-  console.log(`\n=== Preparing ${taskId} ===`);
+  console.log(`\n=== Preparing ${taskId} (${contextMode}) ===`);
   console.log(`initial_tests: ${prep.initialTestsPassed ? "PASS" : "FAIL"}`);
 
   const config = loadConfig();
   const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
-  const runId = `${taskId}-${timestamp()}`;
+  const runId = `${taskId}-${contextMode}-${timestamp()}`;
 
   const result = await runV1Harness({
     config,
     task: prep.task,
     runId,
     beforeSnapshot,
+    contextMode,
   });
 
   printHarnessResult(result);
   return result;
 }
 
-export function isExpectedV1Outcome(taskId: TaskId, result: HarnessRunResult): boolean {
+export async function runContextExperiment(): Promise<
+  Array<{ label: BenchmarkRunLabel; result: HarnessRunResult }>
+> {
+  const runs: Array<{ label: BenchmarkRunLabel; result: HarnessRunResult }> =
+    [];
+
+  for (const taskId of TASK_IDS) {
+    for (const contextMode of ["baseline", "variant"] as const) {
+      const result = await runBenchmark(taskId, contextMode);
+      runs.push({ label: { taskId, contextMode }, result });
+    }
+  }
+
+  printExperimentSummary(runs);
+  return runs;
+}
+
+export function isExpectedV1Outcome(
+  taskId: TaskId,
+  result: HarnessRunResult,
+): boolean {
   if (taskId === "T04") {
     return (
       result.workflowStatus === "needs_human_judgment" &&
@@ -96,6 +130,48 @@ export function isExpectedV1Outcome(taskId: TaskId, result: HarnessRunResult): b
     result.implementationStarted === true &&
     result.finalVerificationPassed
   );
+}
+
+export function printExperimentSummary(
+  runs: Array<{ label: BenchmarkRunLabel; result: HarnessRunResult }>,
+): void {
+  console.log("\n=== Context Experiment Summary ===");
+  console.log(
+    "task | mode | spec | impl | tests | model(spec) | tools(spec) | list(spec) | read(spec) | list(impl) | read(impl) | overlap_read | nav_before_write | prep_ms | wall_ms | expected",
+  );
+
+  for (const { label, result } of runs) {
+    const metrics = result.contextMetrics;
+    const expected = isExpectedV1Outcome(label.taskId, result)
+      ? "expected"
+      : "UNEXPECTED";
+    const tests = result.implementationStarted
+      ? result.finalVerificationPassed
+        ? "PASS"
+        : "FAIL"
+      : "skipped";
+
+    console.log(
+      [
+        label.taskId,
+        label.contextMode,
+        result.specDecision?.status ?? "none",
+        result.implementationStarted ? "yes" : "no",
+        tests,
+        `${result.modelCalls}(${result.specModelCalls})`,
+        `${result.toolCalls}(${result.specToolCalls})`,
+        metrics.specDiscovery.listFilesCalls,
+        metrics.specDiscovery.readFileCalls,
+        metrics.implDiscovery?.listFilesCalls ?? "n/a",
+        metrics.implDiscovery?.readFileCalls ?? "n/a",
+        metrics.pathOverlap?.readFileOverlap.join("|") || "(none)",
+        metrics.implNavCallsBeforeFirstWrite ?? "n/a",
+        metrics.preparation?.durationMs ?? 0,
+        result.durationMs,
+        expected,
+      ].join(" | "),
+    );
+  }
 }
 
 function restoreFixture(): void {
@@ -138,25 +214,53 @@ function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
-function parseArgs(argv: string[]): { all: boolean; taskId?: TaskId } {
+type CliOptions = {
+  all: boolean;
+  experiment: boolean;
+  taskId?: TaskId;
+  contextMode: ContextMode;
+};
+
+function parseArgs(argv: string[]): CliOptions {
+  const contextMode: ContextMode = argv.includes("--variant")
+    ? "variant"
+    : "baseline";
+
+  if (argv.includes("--experiment")) {
+    return { all: false, experiment: true, contextMode };
+  }
   if (argv.includes("--all")) {
-    return { all: true };
+    return { all: true, experiment: false, contextMode };
   }
   const taskId = argv.find((arg) => TASK_IDS.includes(arg as TaskId)) as
     | TaskId
     | undefined;
   if (!taskId) {
-    return { all: false };
+    return { all: false, experiment: false, contextMode };
   }
-  return { all: false, taskId };
+  return { all: false, experiment: false, taskId, contextMode };
 }
 
 async function main(): Promise<void> {
-  const { all, taskId } = parseArgs(process.argv.slice(2));
+  const { all, experiment, taskId, contextMode } = parseArgs(
+    process.argv.slice(2),
+  );
+
+  if (experiment) {
+    const runs = await runContextExperiment();
+    const allExpected = runs.every(({ label, result }) =>
+      isExpectedV1Outcome(label.taskId, result),
+    );
+    process.exit(allExpected ? 0 : 1);
+    return;
+  }
 
   if (!all && !taskId) {
-    console.error("Usage: npm run benchmark -- T01|T02|T03|T04");
-    console.error("   or: npm run benchmark:all");
+    console.error(
+      "Usage: npm run benchmark -- T01|T02|T03|T04 [--baseline|--variant]",
+    );
+    console.error("   or: npm run benchmark:all [--baseline|--variant]");
+    console.error("   or: npm run benchmark:experiment");
     process.exit(1);
   }
 
@@ -164,7 +268,7 @@ async function main(): Promise<void> {
   const results: HarnessRunResult[] = [];
 
   for (const id of ids) {
-    const result = await runBenchmark(id);
+    const result = await runBenchmark(id, contextMode);
     results.push(result);
   }
 
@@ -172,9 +276,11 @@ async function main(): Promise<void> {
     console.log("\n=== Benchmark Summary ===");
     for (const [index, result] of results.entries()) {
       const id = ids[index];
-      const expected = isExpectedV1Outcome(id, result) ? "expected" : "UNEXPECTED";
+      const expected = isExpectedV1Outcome(id, result)
+        ? "expected"
+        : "UNEXPECTED";
       console.log(
-        `${id}: ${result.workflowStatus} | spec=${result.specDecision?.status ?? "none"} | impl=${result.implementationStarted ? "yes" : "no"} | tests=${result.implementationStarted ? (result.finalVerificationPassed ? "PASS" : "FAIL") : "skipped"} | ${expected} | ${path.basename(result.tracePath)}`,
+        `${id}: ${result.workflowStatus} | mode=${result.contextMode} | spec=${result.specDecision?.status ?? "none"} | impl=${result.implementationStarted ? "yes" : "no"} | tests=${result.implementationStarted ? (result.finalVerificationPassed ? "PASS" : "FAIL") : "skipped"} | ${expected} | ${path.basename(result.tracePath)}`,
       );
     }
   }

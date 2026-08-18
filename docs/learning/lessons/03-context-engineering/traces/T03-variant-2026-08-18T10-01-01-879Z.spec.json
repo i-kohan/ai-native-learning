@@ -1,0 +1,63 @@
+{
+  "task": "# T03 — Filter tasks by status\n\n`GET /tasks` should support:\n\n- `?status=pending`\n- `?status=completed`\n\nWhen `status` is provided, return only matching tasks.\nWithout `status`, preserve existing behavior (return all tasks).\n\nImplement the missing behavior and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Implement status-based filtering for GET /tasks while preserving the existing unfiltered list behavior, and verify it with automated tests.",
+    "requirements": [
+      "GET /tasks?status=pending returns only tasks whose status is \"pending\".",
+      "GET /tasks?status=completed returns only tasks whose status is \"completed\".",
+      "GET /tasks without a status query parameter returns all tasks, including both pending and completed tasks.",
+      "Use the existing TaskStatus values and route/service structure; the route already accepts the two supported status values and passes the optional status to TaskService.list."
+    ],
+    "constraints": [
+      "Do not change task creation, completion, reopening, or individual-task endpoint behavior.",
+      "Preserve the existing response shape: HTTP 200 with an array of Task objects for valid list requests.",
+      "Preserve the existing handling of unsupported status values as a 400 response with { error: \"invalid_status\" }.",
+      "Implement the filtering in the existing task-listing path without introducing a new persistence or routing mechanism."
+    ],
+    "nonGoals": [
+      "Adding additional status values.",
+      "Changing behavior for omitted, empty, or invalid status query parameters beyond the repository's existing behavior.",
+      "Changing task ordering or Task object fields.",
+      "Adding pagination, sorting, or filtering by other fields."
+    ],
+    "acceptance": [
+      "A pending task and a completed task can coexist, and status=pending returns exactly the pending task(s).",
+      "A pending task and a completed task can coexist, and status=completed returns exactly the completed task(s).",
+      "A request without status returns both tasks.",
+      "The existing tests continue to pass.",
+      "New or updated tests cover both supported status filters and the omitted-status behavior."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Confirm the status-filter test creates pending and completed tasks, requests both supported query values, and asserts only matching tasks are returned.",
+      "Confirm the unfiltered test asserts that all created tasks are returned."
+    ],
+    "ambiguities": [
+      {
+        "question": "Where should status filtering be applied?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Apply it through TaskService.list's existing optional status parameter; task-routes.ts already validates the query value and passes it to service.list.",
+        "basis": "src/tasks/task-routes.ts reads status, rejects values other than pending/completed, and calls service.list(status ?? undefined); src/tasks/task-service.ts exposes list(_status?: TaskStatus) but currently ignores the parameter."
+      },
+      {
+        "question": "What should happen when status is omitted?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return all stored tasks unchanged.",
+        "basis": "The task explicitly requires preserving existing behavior, and the existing list path calls service.list with undefined when the query parameter is absent; tests/tasks.test.ts includes an omitted-status case expecting all tasks."
+      },
+      {
+        "question": "What test coverage is needed?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Cover pending filtering, completed filtering, and the no-status all-tasks behavior in tests/tasks.test.ts.",
+        "basis": "tests/tasks.test.ts already contains a GET /tasks status filter suite with those scenarios, establishing the repository's intended verification shape."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

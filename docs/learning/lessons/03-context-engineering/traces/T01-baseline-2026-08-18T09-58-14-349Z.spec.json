@@ -1,0 +1,52 @@
+{
+  "task": "# T01 — Missing task returns wrong status\n\nRequesting a task that does not exist currently returns HTTP 500.\n\nExpected: HTTP 404 with a clear not-found error body.\n\nFind the bug, fix it, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Fix GET /tasks/:id so requests for nonexistent tasks return HTTP 404 instead of HTTP 500, while preserving the existing not-found error body.",
+    "requirements": [
+      "In the GET task route, when TaskService.get(id) returns undefined, return status 404 with body { error: \"task_not_found\" }.",
+      "Do not change the successful GET response or other task-route behavior.",
+      "Verify the missing-task case with the existing test covering GET /tasks/missing."
+    ],
+    "constraints": [
+      "The route layer uses HttpResponse with numeric status and arbitrary body.",
+      "TaskService.get returns undefined for an unknown ID; the route must translate that result into the HTTP response.",
+      "Use the repository's existing TypeScript test setup and conventions."
+    ],
+    "nonGoals": [
+      "No changes to task storage, task creation, completion, reopening, or list filtering.",
+      "No changes to the not-found behavior of complete or reopen routes.",
+      "No new API error format beyond the existing task_not_found body."
+    ],
+    "acceptance": [
+      "GET /tasks/missing returns status 404.",
+      "The response body is exactly { error: \"task_not_found\" }.",
+      "GET for an existing task continues to return status 200 and the task.",
+      "The test suite passes, including the missing-task regression test."
+    ],
+    "verification": [
+      "Run the repository test command: npm test.",
+      "Confirm the test named \"returns 404 when the task does not exist\" passes and confirms both status and body.",
+      "Confirm the existing-task GET test also passes to guard the success path."
+    ],
+    "ambiguities": [
+      {
+        "question": "What status and error body should GET /tasks/:id use when the task is missing?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 404 with exactly { error: \"task_not_found\" }.",
+        "basis": "The raw task requires HTTP 404 with a clear not-found body, and tests/tasks.test.ts explicitly asserts status 404 and deep equality with { error: \"task_not_found\" }."
+      },
+      {
+        "question": "Where is the defect?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "The getTask handler currently returns status 500 for a falsy service.get result; change only that status to 404.",
+        "basis": "src/tasks/task-routes.ts getTask() returns { status: 500, body: { error: \"task_not_found\" } } when the service returns no task, while completeTask() and reopenTask() already use 404 for the same condition."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

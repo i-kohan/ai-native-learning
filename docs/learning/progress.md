@@ -85,6 +85,57 @@ Target after Module 03: **V1 + minimal targeted context layer** (do not advance 
 
 ---
 
+## Module: 03 — Context Engineering
+
+**Status:** 🔄 IN PROGRESS — implementation + experiment complete; Topic Chat review pending (not marked complete).
+
+Practical notes + traces: `docs/learning/lessons/03-context-engineering/`  
+`theory.md` is intentionally absent until Topic Chat writes it after review.
+
+### Built
+
+- `harness/src/context.ts` — deterministic `buildRepositoryMap`, hint formatting, `DiscoveryTracker`, path overlap + token aggregation helpers
+- Spec phase receives compact repo map (variant only); captures successful `read_file` / `list_files` paths
+- Implementation phase receives reusable context (repo map + spec inspected paths) while keeping full `list_files` / `read_file` / `write_file` tools
+- `contextMode: baseline | variant` on `runV1Harness` and benchmark runner
+- Structured `contextMetrics` on `HarnessRunResult` + trace events (`context_prepared`, discovery by phase)
+- `npm run benchmark:experiment` — T01–T04 baseline then variant per task, fixture restored each run
+- `harness/tests/context.test.ts` — deterministic map, hint semantics, tool availability, overlap tracking
+
+### Important design decisions
+
+- Context categories stay explicit: spec = authoritative intent; map = orientation; inspected paths = non-exhaustive starting hints
+- No model call, embeddings, vector search, or full-file dump for map building — bounded filesystem walk only
+- Baseline preserves prior V1 behavior (`contextMode=baseline` default)
+- Variant adds preparation + injection at spec and implementation boundaries only; SDD gate unchanged
+- Repeated `read_file` on a known path before edit is not classified as waste in harness metrics
+- Context prep cost recorded (`contextMetrics.preparation.durationMs`, `pathsScanned`) so overhead is visible
+
+### Experiment results (2026-08-18)
+
+All 8 runs **expected**. Evidence: `docs/learning/lessons/03-context-engineering/traces/`
+
+|         | Baseline                      | Variant                       |
+| ------- | ----------------------------- | ----------------------------- |
+| T01–T03 | executable → PASS             | executable → PASS             |
+| T04     | needs_human_judgment, no impl | needs_human_judgment, no impl |
+
+Key deltas (variant vs baseline):
+
+- Spec `list_files`: **4 → 0** every task
+- Spec model calls: **5 → 2** every task
+- Impl `list_files` (T01–T03): **1–3 → 0**
+- Impl nav before first write (T02/T03): **8 → 5**
+- Wall time T01–T03: **−23% to −48%**
+- Total input tokens T01–T03: **−13% to −33%**
+- Context prep: **~0 ms**
+
+Conclusion: minimal targeted context **helps** — reduces blind discovery and end-to-end cost without correctness or T04 regressions. See `docs/learning/experiments.md` § Module 03.
+
+Current harness: **V1 Spec-Driven + optional context layer** (`contextMode=variant`).
+
+---
+
 ## Module: 01 — Agent Loop & Harness
 
 **Status:** ✅ COMPLETED — formally closed by Master on 2026-08-13

@@ -1,0 +1,81 @@
+{
+  "task": "# T04 — Ambiguity probe\n\nMake the task list less cluttered by hiding completed tasks when appropriate.",
+  "decision": "needs_human_judgment",
+  "spec": {
+    "goal": "Reduce clutter in the task list by hiding completed tasks under a defined, user-visible rule.",
+    "requirements": [
+      "The task-list behavior must change so that completed tasks can be hidden when the chosen rule says they should be hidden.",
+      "The behavior must preserve the existing task model and status values: tasks are either pending or completed, and completion is represented by status \"completed\" with a non-null completedAt.",
+      "The existing GET /tasks status filter accepts status=pending or status=completed and rejects other status values with HTTP 400 invalid_status."
+    ],
+    "constraints": [
+      "The repository is a small TypeScript HTTP-style app with GET /tasks handled by task-routes.ts and filtering delegated to TaskService.list().",
+      "Current behavior returns all tasks when status is omitted, and returns only matching tasks when status is provided; existing tests explicitly cover this contract.",
+      "No UI layer or persistence layer is present in the repository.",
+      "Do not infer a default hiding rule, trigger, or endpoint contract without product clarification."
+    ],
+    "nonGoals": [
+      "Changing task creation, completion, reopening, task fields, or completion timestamp semantics.",
+      "Removing support for explicitly filtering by status.",
+      "Introducing a UI, persistence mechanism, or unrelated task-list features."
+    ],
+    "acceptance": [
+      "A clarified product rule specifies when completed tasks are hidden and how callers request or observe that behavior.",
+      "Under that rule, GET /tasks produces the expected pending/completed results for mixtures of pending and completed tasks.",
+      "The behavior for status=pending, status=completed, invalid status values, and task completion/reopening is explicitly verified and remains compatible unless the clarified rule intentionally changes it."
+    ],
+    "verification": [
+      "Add or update route/service tests covering the clarified default or opt-in behavior with both pending and completed tasks.",
+      "Verify explicit status filtering, omitted parameters, and any newly specified query parameter or endpoint semantics.",
+      "Run the existing TypeScript test suite and confirm existing completion/reopen behavior still passes."
+    ],
+    "ambiguities": [
+      {
+        "question": "Should completed tasks be hidden by default when GET /tasks omits status, or should hiding be opt-in via a new query parameter/endpoint or another mechanism?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "The task says \"when appropriate\" but does not define the trigger. Existing code and tests establish that omitted status currently returns all tasks, while status=pending already provides an explicit way to list only pending tasks; existing behavior is not authority for a new behavior change."
+      },
+      {
+        "question": "If hiding is conditional, what condition controls it (for example, a caller-selected filter, age of completion, user preference, or another rule)?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "No UI, preference, completion-age policy, documentation, or alternate API contract exists in the repository. These choices produce materially different externally observable results."
+      },
+      {
+        "question": "What should happen to the existing status filter when the new hiding behavior is active, especially for status=completed and status=pending?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "The current route explicitly supports both filters and tests require each to return matching tasks, but the requested change does not say whether the new rule applies only to the unfiltered list or overrides/changing explicit completed-task requests."
+      }
+    ]
+  },
+  "unresolvedQuestions": [
+    {
+      "question": "Should completed tasks be hidden by default when GET /tasks omits status, or should hiding be opt-in via a new query parameter/endpoint or another mechanism?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "The task says \"when appropriate\" but does not define the trigger. Existing code and tests establish that omitted status currently returns all tasks, while status=pending already provides an explicit way to list only pending tasks; existing behavior is not authority for a new behavior change."
+    },
+    {
+      "question": "If hiding is conditional, what condition controls it (for example, a caller-selected filter, age of completion, user preference, or another rule)?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "No UI, preference, completion-age policy, documentation, or alternate API contract exists in the repository. These choices produce materially different externally observable results."
+    },
+    {
+      "question": "What should happen to the existing status filter when the new hiding behavior is active, especially for status=completed and status=pending?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "The current route explicitly supports both filters and tests require each to return matching tasks, but the requested change does not say whether the new rule applies only to the unfiltered list or overrides/changing explicit completed-task requests."
+    }
+  ],
+  "implementationStarted": false,
+  "workflowStatus": "needs_human_judgment"
+}

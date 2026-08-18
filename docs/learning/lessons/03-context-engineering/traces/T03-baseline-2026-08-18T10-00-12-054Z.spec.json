@@ -1,0 +1,61 @@
+{
+  "task": "# T03 — Filter tasks by status\n\n`GET /tasks` should support:\n\n- `?status=pending`\n- `?status=completed`\n\nWhen `status` is provided, return only matching tasks.\nWithout `status`, preserve existing behavior (return all tasks).\n\nImplement the missing behavior and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Implement status-based filtering for GET /tasks while preserving the existing unfiltered listing behavior, and verify it with automated tests.",
+    "requirements": [
+      "When GET /tasks includes status=pending, return HTTP 200 with only tasks whose status is pending.",
+      "When GET /tasks includes status=completed, return HTTP 200 with only tasks whose status is completed.",
+      "When GET /tasks omits the status query parameter, return HTTP 200 with all tasks, preserving the existing listing behavior and order.",
+      "Use the existing route/query contract and TaskStatus type; the route already passes the optional status to TaskService.list.",
+      "Add or retain tests covering both supported filters and the no-status case, including a mixture of pending and completed tasks."
+    ],
+    "constraints": [
+      "Do not change task creation, completion, reopening, task representation, or unrelated routes.",
+      "Filtering should be applied to the service listing result rather than mutating stored tasks.",
+      "Preserve the existing insertion order among returned tasks; TaskService currently stores tasks in a Map and the unfiltered list returns Map value order.",
+      "Preserve the existing route behavior for unsupported status values (the current route returns 400 with {error:\"invalid_status\"}); no new invalid-status semantics are required by this task."
+    ],
+    "nonGoals": [
+      "No pagination, sorting, search, or additional status values.",
+      "No changes to task lifecycle transitions or completedAt handling.",
+      "No changes to GET /tasks/:id or POST endpoints."
+    ],
+    "acceptance": [
+      "The pending filter returns exactly the pending tasks and excludes completed tasks.",
+      "The completed filter returns exactly the completed tasks and excludes pending tasks.",
+      "An omitted status returns both pending and completed tasks.",
+      "Existing tests continue to pass, and the status-filter tests pass."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Confirm the status-filter test creates pending and completed tasks, completes one task, checks each supported query value, and checks that GET /tasks without a query returns all tasks."
+    ],
+    "ambiguities": [
+      {
+        "question": "How should GET /tasks behave for status values other than pending or completed?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Retain the existing route behavior: return HTTP 400 with {error:\"invalid_status\"}.",
+        "basis": "src/tasks/task-routes.ts explicitly validates status and returns this response before calling the service."
+      },
+      {
+        "question": "What should the ordering be for filtered results?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Preserve insertion order, as produced by filtering the Map-backed task collection.",
+        "basis": "src/tasks/task-service.ts stores tasks in a Map and currently returns [...this.tasks.values()]; the task asks to preserve existing behavior when unfiltered."
+      },
+      {
+        "question": "Where should the missing filtering behavior be implemented?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Implement the optional-status filtering in TaskService.list, which already accepts a TaskStatus parameter and is called by the GET /tasks route.",
+        "basis": "src/tasks/task-routes.ts calls service.list(status ?? undefined), while src/tasks/task-service.ts currently ignores its _status parameter and contains an explicit feature-gap comment."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

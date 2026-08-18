@@ -1,0 +1,55 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion lifecycle behavior so completed tasks receive a timestamp in completedAt and reopening a completed task clears completedAt.",
+    "requirements": [
+      "When the task service completes an existing task, set its status to \"completed\" and set completedAt to a non-empty timestamp string.",
+      "When the task service reopens an existing completed task, set its status to \"pending\" and set completedAt to null.",
+      "Preserve the existing task routes and response behavior, including returning the updated task for successful complete/reopen requests and 404 for unknown task IDs.",
+      "Keep newly created tasks initialized with status \"pending\" and completedAt null."
+    ],
+    "constraints": [
+      "Use the existing Task.completedAt field, whose type is string | null.",
+      "The change belongs in the existing TaskService complete/reopen lifecycle methods; routes already delegate to those methods and return the task.",
+      "Do not alter unrelated task creation, listing, filtering, or error semantics.",
+      "A timestamp representation compatible with the existing string field and tests is sufficient; ISO 8601 via Date.toISOString() is the natural implementation choice."
+    ],
+    "nonGoals": [
+      "No change to the HTTP endpoint paths, methods, status codes, or response shapes.",
+      "No persistence, clock injection, or broader task lifecycle redesign.",
+      "No requirement to change behavior for missing task IDs or task titles."
+    ],
+    "acceptance": [
+      "Completing a newly created task through POST /tasks/:id/complete returns status 200, status \"completed\", and completedAt as a non-empty string.",
+      "Reopening a completed task through POST /tasks/:id/reopen returns status 200, status \"pending\", and completedAt equal to null.",
+      "The existing tests in tests/tasks.test.ts for complete and reopen pass, along with the rest of the test suite.",
+      "Unknown-task complete/reopen requests continue to return 404 with { error: \"task_not_found\" }."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Confirm the complete lifecycle test observes a string completedAt after POST /tasks/:id/complete.",
+      "Confirm the reopen lifecycle test observes null completedAt after POST /tasks/:id/reopen.",
+      "Review the diff to ensure only the completion/reopen timestamp behavior and any directly associated tests are changed."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp string format should be used when completing a task?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a current timestamp string, preferably Date.toISOString(), since completedAt is typed as string | null and the task only requires a timestamp.",
+        "basis": "src/tasks/types.ts defines completedAt as string | null; tests/tasks.test.ts requires a non-empty string but imposes no narrower format."
+      },
+      {
+        "question": "What should repeated complete requests on an already completed task do to completedAt?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "The requirement applies when the task becomes completed; preserve the existing lifecycle semantics and ensure the completed state has a timestamp. No additional repeated-request behavior is required by this task.",
+        "basis": "The task is specifically about the completed transition and reopen transition; repository routes expose complete/reopen but provide no separate idempotency contract. Existing tests cover the required pending-to-completed and completed-to-pending transitions."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

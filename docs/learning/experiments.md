@@ -135,3 +135,131 @@ Hypothesis supported.
 - Remaining leverage is still elsewhere: discovery/context cost; repair after verify fail; terminal-response ≠ done is unchanged inside the V0 loop.
 
 Do not treat Module 02 as formally closed until Topic Chat review.
+
+---
+
+## Module 03 — Context Engineering (minimal targeted context)
+
+### Hypothesis
+
+A small amount of deliberately prepared and reused repository context can reduce repeated repository discovery between the spec and implementation phases while preserving V1 correctness and T04 escalation behavior.
+
+### Baseline
+
+V1 Spec-Driven unchanged: `contextMode=baseline` (default). No repo map injection; no spec→impl path reuse.
+
+```text
+raw task → spec phase → gate → implementation (spec contract only)
+```
+
+### Variant
+
+V1 + minimal context layer: `contextMode=variant`.
+
+```text
+raw task
+→ buildRepositoryMap (deterministic, bounded, no model)
+→ spec phase (+ map orientation; on-demand tools; capture inspected paths)
+→ gate (unchanged)
+→ implementation (+ map + spec inspected paths as hints; on-demand tools retained)
+→ final verification
+```
+
+Same model, task text, fixture, tool permissions, verification, and repository state as baseline.
+
+Run:
+
+```bash
+cd harness && npm run benchmark:experiment
+# or single task/mode:
+npm run benchmark -- T01 --baseline
+npm run benchmark -- T01 --variant
+```
+
+### Metrics captured
+
+Per run in trace `run_completed.contextMetrics` and harness stdout:
+
+- total / spec / impl model calls; total / spec tool calls
+- spec & impl `list_files` / `read_file` counts and paths
+- read/list path overlap (spec ∩ impl)
+- impl repository navigation calls before first `write_file`
+- context prep duration + paths scanned
+- token usage when Responses API returns `usage` (not fabricated if absent)
+- wall time
+
+### Results
+
+Evidence traces (2026-08-18 run, GitHub copies): `docs/learning/lessons/03-context-engineering/traces/`  
+(local originals under `traces/` are gitignored.)
+
+| Task | Mode     | Spec                 | Impl | Tests | Model (spec) | Tools (spec) | list (spec) | read (spec) | list (impl) | read (impl) | overlap (read)                                   | nav before write | prep ms | wall ms | Tokens in/out (total) |
+| ---- | -------- | -------------------- | ---- | ----- | ------------ | ------------ | ----------- | ----------- | ----------- | ----------- | ------------------------------------------------ | ---------------- | ------- | ------- | --------------------- |
+| T01  | baseline | executable           | yes  | PASS  | 9 (5)        | 17 (12)      | 4           | 7           | 1           | 2           | task-routes, tasks.test                          | 3                | 0       | 27263   | 20440 / 1842          |
+| T01  | variant  | executable           | yes  | PASS  | 6 (2)        | 13 (8)       | 0           | 7           | 0           | 3           | task-routes, task-service, tests.test            | 3                | 0       | 20858   | 17737 / 1830          |
+| T02  | baseline | executable           | yes  | PASS  | 11 (5)       | 22 (12)      | 4           | 7           | 3           | 5           | app, routes, service, types, tests.test          | 8                | 0       | 41851   | 26489 / 1940          |
+| T02  | variant  | executable           | yes  | PASS  | 6 (2)        | 14 (7)       | 0           | 6           | 0           | 5           | app, routes, service, types, tests.test          | 5                | 0       | 26215   | 17783 / 1809          |
+| T03  | baseline | executable           | yes  | PASS  | 10 (5)       | 22 (12)      | 4           | 7           | 3           | 5           | app, routes, service, types, tests.test          | 8                | 0       | 49446   | 23638 / 1786          |
+| T03  | variant  | executable           | yes  | PASS  | 6 (2)        | 14 (7)       | 0           | 6           | 0           | 5           | package.json, routes, service, types, tests.test | 5                | 1       | 25489   | 17458 / 1473          |
+| T04  | baseline | needs_human_judgment | no   | skip  | 5 (5)        | 11 (11)      | 4           | 6           | n/a         | n/a         | (none)                                           | n/a              | 0       | 80279   | 9003 / 1034           |
+| T04  | variant  | needs_human_judgment | no   | skip  | 2 (2)        | 7 (7)        | 0           | 6           | n/a         | n/a         | (none)                                           | n/a              | 0       | 14942   | 4444 / 971            |
+
+Clear-task regression: **0 / 3** in both modes. T04 escalation preserved in both modes.
+
+### Repeated-discovery observations
+
+- **Spec `list_files` eliminated in variant (4 → 0)** on every task — the deterministic map replaced blind directory listing during spec generation.
+- **Spec model calls dropped 5 → 2** on all tasks — fewer spec-phase turns after initial orientation.
+- **Implementation `list_files` dropped to 0** on T01–T03 variant — impl started from known paths instead of re-listing the tree.
+- **Read overlap is high on T01–T03** — variant impl re-read paths already inspected in spec (expected: fresh content before edit, not blind re-discovery).
+- **Impl nav before first write:** T02/T03 improved 8 → 5; T01 unchanged at 3 (already minimal).
+- **Spec still performs on-demand `read_file`** (6–7 calls) — map orients but does not replace evidence gathering for spec authority.
+- T04 variant did **not** launder ambiguity into executable — same gate outcome with fewer discovery turns.
+
+### T04 safety
+
+Both modes: `needs_human_judgment`, implementation not started, no changed files. Variant did not weaken escalation despite supplying repository map and spec inspected paths.
+
+### Token data
+
+From Responses API `usage` aggregated in traces (reliable on this run):
+
+| Task | Mode     | Spec in/out | Impl in/out  | Total in/out | Δ total in |
+| ---- | -------- | ----------- | ------------ | ------------ | ---------- |
+| T01  | baseline | 9349 / 843  | 11091 / 999  | 20440 / 1842 | —          |
+| T01  | variant  | 4610 / 829  | 13127 / 1001 | 17737 / 1830 | **−13%**   |
+| T02  | baseline | 9514 / 1260 | 16975 / 680  | 26489 / 1940 | —          |
+| T02  | variant  | 4515 / 1230 | 13268 / 579  | 17783 / 1809 | **−33%**   |
+| T03  | baseline | 9538 / 1104 | 14100 / 682  | 23638 / 1786 | —          |
+| T03  | variant  | 4512 / 878  | 12946 / 595  | 17458 / 1473 | **−26%**   |
+| T04  | baseline | 9003 / 1034 | —            | 9003 / 1034  | —          |
+| T04  | variant  | 4444 / 971  | —            | 4444 / 971   | **−51%**   |
+
+Spec-phase input tokens roughly halved. T01 variant impl input is slightly higher (+18%) — likely from larger initial hint block — but end-to-end total input still decreased.
+
+### Context preparation cost
+
+`prep_ms = 0` on all runs (sub-millisecond deterministic walk; rounded in summary table). Overhead is not hiding work elsewhere.
+
+### Failures / unexpected behavior
+
+- None against correctness guardrails.
+- T04 baseline wall time (~80s) is an outlier vs prior V1 T04 (~18s) — likely model latency/reasoning on that run, not harness regression; variant T04 ~15s.
+- Variant does not eliminate spec-phase `read_file` — by design; map is orientation only.
+
+### Conclusion
+
+**Hypothesis supported** under the predefined decision rule:
+
+1. T01–T03: zero correctness regressions (executable → PASS).
+2. T04: escalation preserved; no implementation side effects.
+3. Blind repository discovery materially reduced on all T01–T03 tasks (`list_files` in spec and impl → 0; spec model calls 5 → 2; high read overlap).
+4. Context preparation overhead negligible (`prep_ms ≈ 0`).
+5. End-to-end improvement: wall time −23% to −48% on T01–T03; total input tokens −13% to −33%; model calls reduced 9–11 → 6 on clear tasks.
+
+The minimal context layer is **useful for this harness** — not merely cleaner architecture. It reuses orientation and spec-inspected paths without restricting tools or weakening the SDD gate.
+
+Lesson copies: `docs/learning/lessons/03-context-engineering/traces/` (8 runs × jsonl + spec.json).  
+`notes.md` is in the same folder. `theory.md` is for Topic Chat after review.
+
+Module 03 experiment complete; formal module closure still pending Topic Chat review.

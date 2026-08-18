@@ -1,0 +1,80 @@
+{
+  "task": "# T04 — Ambiguity probe\n\nMake the task list less cluttered by hiding completed tasks when appropriate.",
+  "decision": "needs_human_judgment",
+  "spec": {
+    "goal": "Reduce clutter in the task list by conditionally hiding completed tasks, while preserving the existing task-list API unless the product rule says otherwise.",
+    "requirements": [
+      "The app currently exposes GET /tasks with an optional status query parameter: status=pending returns pending tasks, status=completed returns completed tasks, and an omitted status returns all tasks.",
+      "The app currently represents completion with status=\"completed\" and reopening with status=\"pending\"; completedAt is populated/cleared accordingly.",
+      "The requested change concerns task-list visibility; no change to task creation, completion, reopening, task representation, or single-task retrieval is specified."
+    ],
+    "constraints": [
+      "Only status values pending and completed are currently accepted by GET /tasks; other values return 400 with error invalid_status.",
+      "The implementation should remain consistent with the existing TypeScript task service and route structure.",
+      "No repository evidence defines what “when appropriate” means or establishes a UI-specific preference/settings mechanism."
+    ],
+    "nonGoals": [
+      "Do not change task lifecycle transitions or completedAt behavior.",
+      "Do not change task object fields or GET /tasks/:id behavior.",
+      "Do not invent a persistence layer, user preference, authentication rule, or time-based archival policy."
+    ],
+    "acceptance": [
+      "Pending human decision on the rule that determines when completed tasks are hidden.",
+      "Once the rule is decided, acceptance should verify the corresponding GET /tasks response for mixed pending/completed data, explicit status filters, and the empty/completed-only cases as applicable.",
+      "Existing behavior for task creation, completion, reopening, invalid status values, and single-task lookup should remain passing unless the decided rule explicitly changes one of them."
+    ],
+    "verification": [
+      "Add or update focused route/service tests for the decided default visibility rule and any newly specified opt-in/opt-out control.",
+      "Run the existing test suite and verify status filtering and lifecycle tests remain green.",
+      "Verify that completed tasks are not deleted and remain retrievable through any explicitly supported completed-task view."
+    ],
+    "ambiguities": [
+      {
+        "question": "What exactly does “when appropriate” mean: should GET /tasks with no status parameter hide completed tasks by default, or should hiding require an explicit query parameter, user preference, or another condition?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "The raw task only says to hide completed tasks “when appropriate.” Existing code has no preference/settings concept and currently returns all tasks when status is omitted, but existing behavior cannot authorize a new product default."
+      },
+      {
+        "question": "If completed tasks are hidden by default, how should a caller request/show completed tasks?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "The repository already supports status=completed and status=pending, so preserving status=completed is plausible, but the task does not explicitly say whether that existing filter is the intended way to reveal hidden tasks or whether a new visibility parameter is required."
+      },
+      {
+        "question": "Should the existing behavior of GET /tasks without status (currently returning both pending and completed tasks) change, and should explicit status=pending or status=completed semantics change?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "Changing omitted-status behavior is externally observable. Existing tests document current behavior, but tests are not authority for the intended new behavior absent a precise rule; the task does not specify the treatment of explicit filters."
+      }
+    ]
+  },
+  "unresolvedQuestions": [
+    {
+      "question": "What exactly does “when appropriate” mean: should GET /tasks with no status parameter hide completed tasks by default, or should hiding require an explicit query parameter, user preference, or another condition?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "The raw task only says to hide completed tasks “when appropriate.” Existing code has no preference/settings concept and currently returns all tasks when status is omitted, but existing behavior cannot authorize a new product default."
+    },
+    {
+      "question": "If completed tasks are hidden by default, how should a caller request/show completed tasks?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "The repository already supports status=completed and status=pending, so preserving status=completed is plausible, but the task does not explicitly say whether that existing filter is the intended way to reveal hidden tasks or whether a new visibility parameter is required."
+    },
+    {
+      "question": "Should the existing behavior of GET /tasks without status (currently returning both pending and completed tasks) change, and should explicit status=pending or status=completed semantics change?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "Changing omitted-status behavior is externally observable. Existing tests document current behavior, but tests are not authority for the intended new behavior absent a precise rule; the task does not specify the treatment of explicit filters."
+    }
+  ],
+  "implementationStarted": false,
+  "workflowStatus": "needs_human_judgment"
+}

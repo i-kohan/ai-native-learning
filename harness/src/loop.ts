@@ -2,6 +2,13 @@ import OpenAI from "openai";
 import type { HarnessConfig } from "./config.ts";
 import { AGENT_INSTRUCTIONS } from "./instructions.ts";
 import type { Spec } from "./spec.ts";
+import {
+  DiscoveryTracker,
+  formatImplementationHints,
+  mergeTokenUsage,
+  type ReusableContext,
+  type TokenUsageSummary,
+} from "./context.ts";
 import { TOOL_DEFINITIONS, executeTool } from "./tools.ts";
 import { Tracer } from "./trace.ts";
 import { runFinalVerification, type VerificationResult } from "./verify.ts";
@@ -36,6 +43,9 @@ export type AgentRunResult = {
   unifiedDiff: string;
   tracePath: string;
   durationMs: number;
+  discovery: ReturnType<DiscoveryTracker["toMetrics"]>;
+  implNavCallsBeforeFirstWrite: number | null;
+  tokenUsage: TokenUsageSummary | null;
 };
 
 type FunctionCallItem = {
@@ -52,21 +62,28 @@ export async function runAgentLoop(options: {
   beforeSnapshot?: FileSnapshot;
   spec?: Spec;
   tracer?: Tracer;
+  reusableContext?: ReusableContext;
 }): Promise<AgentRunResult> {
-  const { config, task, runId, spec } = options;
+  const { config, task, runId, spec, reusableContext } = options;
   const startedAt = Date.now();
   const nested = Boolean(options.tracer);
   const tracer = options.tracer ?? new Tracer(config.tracesDir, runId);
   const beforeSnapshot =
     options.beforeSnapshot ?? snapshotDirectory(config.targetSrcRoot);
+  const discovery = new DiscoveryTracker();
+  let tokenUsage: TokenUsageSummary | null = null;
 
   const client = new OpenAI({ apiKey: config.apiKey });
+
+  const taskContent = reusableContext
+    ? `${formatImplementationHints(reusableContext)}\n\n${task}`
+    : task;
 
   // Conversation input for the Responses API. Tool results are appended here.
   let input: Array<Record<string, unknown>> = [
     {
       role: "user",
-      content: task,
+      content: taskContent,
     },
   ];
 
@@ -88,6 +105,7 @@ export async function runAgentLoop(options: {
     tracer.record("implementation_started", {
       specGoal: spec?.goal ?? null,
       requirementCount: spec?.requirements.length ?? 0,
+      reusableContextProvided: Boolean(reusableContext),
     });
   }
 
@@ -109,6 +127,7 @@ export async function runAgentLoop(options: {
 
       const durationMs = Date.now() - callStarted;
       const usage = extractUsage(response);
+      tokenUsage = mergeTokenUsage(tokenUsage, usage, "implementation");
 
       tracer.record(
         "model_call_completed",
@@ -163,6 +182,12 @@ export async function runAgentLoop(options: {
         );
 
         const result = executeTool(config, call.name, call.arguments);
+        if (
+          result.ok &&
+          (call.name === "list_files" || call.name === "read_file")
+        ) {
+          discovery.record(call.name, call.arguments, "implementation");
+        }
 
         tracer.record(
           "tool_result",
@@ -242,6 +267,8 @@ export async function runAgentLoop(options: {
     failureReason = "final_verification_failed";
   }
 
+  const implDiscovery = discovery.toMetrics();
+
   const result: AgentRunResult = {
     task,
     status,
@@ -257,6 +284,9 @@ export async function runAgentLoop(options: {
     unifiedDiff,
     tracePath: tracer.tracePath,
     durationMs: Date.now() - startedAt,
+    discovery: implDiscovery,
+    implNavCallsBeforeFirstWrite: discovery.getImplNavCallsBeforeFirstWrite(),
+    tokenUsage,
   };
 
   if (!nested) {
@@ -270,6 +300,9 @@ export async function runAgentLoop(options: {
       finalVerificationPassed: result.finalVerificationPassed,
       changedFiles: result.changedFiles,
       durationMs: result.durationMs,
+      implDiscovery,
+      implNavCallsBeforeFirstWrite: result.implNavCallsBeforeFirstWrite,
+      tokenUsage,
     });
     await tracer.close();
   }

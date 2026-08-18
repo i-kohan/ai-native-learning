@@ -1,4 +1,15 @@
 import type { HarnessConfig } from "./config.ts";
+import {
+  buildRepositoryMap,
+  computePathOverlap,
+  type ContextMode,
+  type ContextPreparation,
+  type ContextRunMetrics,
+  type InspectedPaths,
+  type PhaseDiscoveryMetrics,
+  type ReusableContext,
+  type TokenUsageSummary,
+} from "./context.ts";
 import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
 import { runAgentLoop, type AgentRunResult } from "./loop.ts";
 import { buildSpec } from "./spec-phase.ts";
@@ -37,6 +48,8 @@ export type HarnessRunResult = {
   tracePath: string;
   specPath: string;
   durationMs: number;
+  contextMode: ContextMode;
+  contextMetrics: ContextRunMetrics;
 };
 
 export async function runV1Harness(options: {
@@ -44,21 +57,44 @@ export async function runV1Harness(options: {
   task: string;
   runId: string;
   beforeSnapshot?: FileSnapshot;
+  contextMode?: ContextMode;
 }): Promise<HarnessRunResult> {
   const { config, task, runId } = options;
+  const contextMode = options.contextMode ?? "baseline";
   const startedAt = Date.now();
   const tracer = new Tracer(config.tracesDir, runId);
   const beforeSnapshot =
     options.beforeSnapshot ?? snapshotDirectory(config.targetSrcRoot);
+
+  let contextPreparation: ContextPreparation | null = null;
+  let repositoryMap: ReusableContext["repositoryMap"] | undefined;
+
+  if (contextMode === "variant") {
+    contextPreparation = buildRepositoryMap(config);
+    repositoryMap = contextPreparation.map;
+    tracer.record("context_prepared", {
+      contextMode,
+      durationMs: contextPreparation.durationMs,
+      pathsScanned: contextPreparation.pathsScanned,
+      mapEntryCount: contextPreparation.map.entries.length,
+    });
+  }
 
   tracer.record("run_started", {
     version: "v1",
     task,
     model: config.model,
     maxTurns: config.maxTurns,
+    contextMode,
   });
 
-  const specPhase = await buildSpec({ config, task, tracer });
+  const specPhase = await buildSpec({
+    config,
+    task,
+    tracer,
+    contextMode,
+    repositoryMap,
+  });
 
   if (!specPhase.decision) {
     const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
@@ -75,6 +111,8 @@ export async function runV1Harness(options: {
       implementationStarted: false,
       implementation: null,
       specPhase,
+      contextMode,
+      contextPreparation,
       receivedTerminalResponse: false,
       finalVerificationPassed: false,
       finalVerification: null,
@@ -113,6 +151,8 @@ export async function runV1Harness(options: {
       implementationStarted: false,
       implementation: null,
       specPhase,
+      contextMode,
+      contextPreparation,
       receivedTerminalResponse: false,
       finalVerificationPassed: false,
       finalVerification: null,
@@ -131,6 +171,14 @@ export async function runV1Harness(options: {
     implementationStarted: true,
   });
 
+  const reusableContext: ReusableContext | undefined =
+    contextMode === "variant" && repositoryMap
+      ? {
+          repositoryMap,
+          specInspectedPaths: specPhase.inspectedPaths,
+        }
+      : undefined;
+
   const implementation = await runAgentLoop({
     config,
     task: formatSpecContract(task, decision.spec),
@@ -138,6 +186,7 @@ export async function runV1Harness(options: {
     beforeSnapshot,
     spec: decision.spec,
     tracer,
+    reusableContext,
   });
 
   const result = baseResult({
@@ -149,6 +198,8 @@ export async function runV1Harness(options: {
     implementationStarted: true,
     implementation,
     specPhase,
+    contextMode,
+    contextPreparation,
     receivedTerminalResponse: implementation.receivedTerminalResponse,
     finalVerificationPassed: implementation.finalVerificationPassed,
     finalVerification: implementation.finalVerification,
@@ -243,7 +294,36 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(`trace: ${result.tracePath}`);
   console.log(`spec: ${result.specPath}`);
   console.log(`duration_ms: ${result.durationMs}`);
+  console.log(`context_mode: ${result.contextMode}`);
+  printContextMetrics(result.contextMetrics);
   console.log(`model_final_response:\n${result.modelFinalResponse}`);
+}
+
+function printContextMetrics(metrics: ContextRunMetrics): void {
+  if (metrics.preparation) {
+    console.log(
+      `context_prep: ${metrics.preparation.durationMs}ms scanned=${metrics.preparation.pathsScanned} entries=${metrics.preparation.map.entries.length}`,
+    );
+  }
+  console.log(
+    `spec_repo_tools: list_files=${metrics.specDiscovery.listFilesCalls} read_file=${metrics.specDiscovery.readFileCalls}`,
+  );
+  if (metrics.implDiscovery) {
+    console.log(
+      `impl_repo_tools: list_files=${metrics.implDiscovery.listFilesCalls} read_file=${metrics.implDiscovery.readFileCalls} nav_before_first_write=${metrics.implNavCallsBeforeFirstWrite ?? "n/a"}`,
+    );
+  }
+  if (metrics.pathOverlap) {
+    console.log(
+      `path_overlap: read_file=${metrics.pathOverlap.readFileOverlap.join(", ") || "(none)"} list_files=${metrics.pathOverlap.listedPathOverlap.join(", ") || "(none)"}`,
+    );
+  }
+  if (metrics.tokenUsage) {
+    const usage = metrics.tokenUsage;
+    console.log(
+      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"})`,
+    );
+  }
 }
 
 function formatEscalationMessage(
@@ -270,7 +350,12 @@ function baseResult(fields: {
     turns: number;
     modelCalls: number;
     toolCalls: number;
+    inspectedPaths: InspectedPaths;
+    discovery: PhaseDiscoveryMetrics;
+    tokenUsage: TokenUsageSummary | null;
   };
+  contextMode: ContextMode;
+  contextPreparation: ContextPreparation | null;
   receivedTerminalResponse: boolean;
   finalVerificationPassed: boolean;
   finalVerification: VerificationResult | null;
@@ -281,6 +366,29 @@ function baseResult(fields: {
   durationMs: number;
 }): HarnessRunResult {
   const implementation = fields.implementation;
+  const implDiscovery = implementation?.discovery ?? null;
+  const pathOverlap =
+    implDiscovery !== null
+      ? computePathOverlap(fields.specPhase.inspectedPaths, {
+          readFiles: implDiscovery.readFilePaths,
+          listedPaths: implDiscovery.listedPaths,
+        })
+      : null;
+
+  const contextMetrics: ContextRunMetrics = {
+    mode: fields.contextMode,
+    preparation: fields.contextPreparation,
+    specDiscovery: fields.specPhase.discovery,
+    implDiscovery,
+    pathOverlap,
+    implNavCallsBeforeFirstWrite:
+      implementation?.implNavCallsBeforeFirstWrite ?? null,
+    tokenUsage: combineTokenUsage(
+      fields.specPhase.tokenUsage,
+      implementation?.tokenUsage ?? null,
+    ),
+  };
+
   return {
     task: fields.task,
     workflowStatus: fields.workflowStatus,
@@ -304,7 +412,39 @@ function baseResult(fields: {
     tracePath: fields.tracePath,
     specPath: "",
     durationMs: fields.durationMs,
+    contextMode: fields.contextMode,
+    contextMetrics,
   };
+}
+
+function combineTokenUsage(
+  specUsage: TokenUsageSummary | null,
+  implUsage: TokenUsageSummary | null,
+): TokenUsageSummary | null {
+  if (!specUsage && !implUsage) {
+    return null;
+  }
+  return {
+    totalInputTokens: addNullable(
+      specUsage?.totalInputTokens ?? null,
+      implUsage?.totalInputTokens ?? null,
+    ),
+    totalOutputTokens: addNullable(
+      specUsage?.totalOutputTokens ?? null,
+      implUsage?.totalOutputTokens ?? null,
+    ),
+    specInputTokens: specUsage?.specInputTokens ?? null,
+    specOutputTokens: specUsage?.specOutputTokens ?? null,
+    implInputTokens: implUsage?.implInputTokens ?? null,
+    implOutputTokens: implUsage?.implOutputTokens ?? null,
+  };
+}
+
+function addNullable(left: number | null, right: number | null): number | null {
+  if (left === null && right === null) {
+    return null;
+  }
+  return (left ?? 0) + (right ?? 0);
 }
 
 async function finishRun(
@@ -337,6 +477,8 @@ async function finishRun(
     finalVerificationPassed: result.finalVerificationPassed,
     changedFiles: result.changedFiles,
     durationMs: result.durationMs,
+    contextMode: result.contextMode,
+    contextMetrics: result.contextMetrics,
   });
   await tracer.close();
 }

@@ -1,0 +1,54 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Fix task completion lifecycle metadata so completing a task records a timestamp in `completedAt`, and reopening a completed task clears it to `null`. Do not implement outside the existing task service behavior and its tests.",
+    "requirements": [
+      "Update `TaskService.complete` so a successfully completed task has `status: \"completed\"` and a non-empty timestamp string in `completedAt` (an ISO timestamp generated at completion is appropriate).",
+      "Update `TaskService.reopen` so a successfully reopened task has `status: \"pending\"` and `completedAt: null`.",
+      "Preserve existing not-found behavior and route/API response shapes for complete and reopen operations.",
+      "Ensure the lifecycle metadata is observable consistently through the returned task and subsequent task reads/lists."
+    ],
+    "constraints": [
+      "Use the existing `Task.completedAt: string | null` type and existing complete/reopen routes.",
+      "Do not alter unrelated task creation, filtering, validation, or routing behavior.",
+      "The repository is TypeScript with strict checking and tests run via the `npm test` script."
+    ],
+    "nonGoals": [
+      "No changes to task persistence, IDs, titles, status-filter semantics, or HTTP endpoints.",
+      "No new timestamp format contract beyond requiring a timestamp string; ISO format is a safe implementation choice."
+    ],
+    "acceptance": [
+      "POST `/tasks/:id/complete` for an existing pending task returns 200 with `status` equal to `completed` and `completedAt` as a non-empty timestamp string.",
+      "After completion, GET `/tasks/:id` and task listings expose the recorded `completedAt` value.",
+      "POST `/tasks/:id/reopen` for an existing completed task returns 200 with `status` equal to `pending` and `completedAt` equal to `null`.",
+      "After reopening, GET `/tasks/:id` and task listings expose `completedAt: null`.",
+      "Unknown task IDs for complete/reopen continue to return 404 with `{ error: \"task_not_found\" }`.",
+      "Existing tests continue to pass, including the lifecycle tests already present in `tests/tasks.test.ts`; add or retain coverage for persistence/readback if needed."
+    ],
+    "verification": [
+      "Run `npm test` from `target-app/`; the existing completion and reopen tests should pass.",
+      "Run the TypeScript compiler in no-emit mode (for example, `npx tsc --noEmit`) to verify strict typing.",
+      "Review the complete/reopen service methods and lifecycle tests to confirm the timestamp is assigned on completion and explicitly cleared on reopen."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp representation should `completedAt` use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Generate a current timestamp as an ISO string (for example, `new Date().toISOString()`), which satisfies the declared `string | null` type and the task's timestamp requirement.",
+        "basis": "The task requires a timestamp string in behavior, `Task.completedAt` is typed as `string | null`, and the existing tests assert a non-empty string but impose no narrower format."
+      },
+      {
+        "question": "What should happen if complete is called on a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Keep the task completed and ensure `completedAt` remains a valid timestamp; assigning the current timestamp on the complete operation is acceptable because the explicit contract only requires the completed state to contain a timestamp.",
+        "basis": "The repository exposes a direct complete operation but defines no separate idempotency or timestamp-preservation contract. This does not affect the requested pending-to-completed and completed-to-pending lifecycle behavior."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}
