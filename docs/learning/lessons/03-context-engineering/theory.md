@@ -213,6 +213,61 @@ reasonable fresh read:
 
 Цель — уменьшить повторное **figuring out where to look**, а не добиться нулевого числа повторных reads.
 
+## Deterministic vs LLM-driven context selection
+
+ContextBuilder не обязан быть только deterministic (детерминированным). В реальных больших проектах часто используют hybrid approach (гибридный подход): обычный код добывает факты, а LLM делает semantic judgment (смысловую оценку), когда нужно решить, **что искать и что из найденного релевантно задаче**.
+
+Пример production flow:
+
+```text
+task
+  ↓
+LLM proposes search hypotheses / queries
+  ↓
+deterministic search / symbols / references / code graph
+  ↓
+candidate files and facts
+  ↓
+LLM ranks relevance or decides what to inspect next
+  ↓
+small task-specific context
+  ↓
+main agent keeps on-demand search/read tools
+```
+
+Полезное правило:
+
+```text
+FACT / lookup      → deterministic software/tool
+JUDGMENT / relevance → LLM can be useful
+```
+
+Например:
+
+- "какие файлы существуют?" → filesystem/index;
+- "где definition `calculateVat`?" → symbol/code search;
+- "какие из этих 30 файлов вероятнее относятся к VAT bug?" → LLM judgment;
+- "что искать дальше?" → LLM/agentic retrieval;
+- "как сжать найденное для следующей phase?" → LLM distillation может быть полезна.
+
+**Agentic retrieval (агентный поиск контекста)** — когда сама модель в loop выбирает search/read actions, смотрит результаты и решает, что искать дальше. Это может происходить без отдельного Context Agent.
+
+Отдельный Context Agent тоже возможен:
+
+```text
+task
+  ↓
+context agent (search/read only)
+  ↓
+ContextPackage: relevant paths / facts / provenance
+  ↓
+spec / implementation
+```
+
+Но дополнительный LLM phase добавляет model calls, latency, tokens и новый failure mode. Поэтому его стоит добавлять только если eval показывает пользу, а не потому что архитектура выглядит sophisticated (сложной).
+
+Наш Module 03 намеренно проверял более простую гипотезу: cheap deterministic orientation + reuse. Это не означает, что production Context Engineering должен быть только deterministic.
+
 ## Context budget и tool overhead
 
 Context budget (бюджет контекста) расходуют не только source files:
@@ -316,7 +371,10 @@ Context layer не бесплатен концептуально:
 - **over-filtering** — слишком сильное отсечение потенциально нужной информации;
 - **provenance** — происхождение / источник информации;
 - **authority** — основание считать source разрешающим конкретное решение;
-- **escape hatch** — возможность выйти за первоначально выбранный context и исследовать дальше.
+- **escape hatch** — возможность выйти за первоначально выбранный context и исследовать дальше;
+- **LLM-driven context selection** — использование модели для смыслового выбора релевантного контекста;
+- **agentic retrieval** — когда agent сам итеративно ищет/читает context через tools;
+- **distillation** — выжимка найденной информации в более компактный reusable context.
 
 ## Главное запомнить
 
@@ -326,4 +384,5 @@ Context layer не бесплатен концептуально:
 4. Хороший default — **small eager orientation + progressive disclosure + escape hatch**.
 5. Context hints не должны превращаться в plan или source of product authority.
 6. Reuse должен уменьшать повторное "где смотреть", а не запрещать полезные fresh reads.
-7. ContextBuilder нужен только если measured experiment показывает пользу; в нашем harness минимальный variant её показал.
+7. В production часто полезен hybrid: deterministic tools добывают facts, LLM делает relevance/search judgment там, где это действительно нужно.
+8. ContextBuilder нужен только если measured experiment показывает пользу; в нашем harness минимальный variant её показал.
