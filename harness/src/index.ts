@@ -19,7 +19,12 @@ async function main(): Promise<void> {
 
   const config = loadConfig();
   const runId = `manual-${timestamp()}`;
-  const result = await runV1Harness({ config, task, runId });
+  const result = await runV1Harness({
+    config,
+    task,
+    runId,
+    contextMode: "variant",
+  });
   printHarnessResult(result);
   process.exit(result.workflowStatus === "failure" ? 1 : 0);
 }
