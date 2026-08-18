@@ -184,7 +184,9 @@ export async function runAgentLoop(options: {
         const result = executeTool(config, call.name, call.arguments);
         if (
           result.ok &&
-          (call.name === "list_files" || call.name === "read_file")
+          (call.name === "list_files" ||
+            call.name === "read_file" ||
+            call.name === "write_file")
         ) {
           discovery.record(call.name, call.arguments, "implementation");
         }
