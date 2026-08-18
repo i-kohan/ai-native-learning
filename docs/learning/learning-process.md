@@ -78,6 +78,37 @@ Each major module gets one Topic Chat when needed.
 
 Topic Chat works in this sequence:
 
+### Language / terminology convention
+
+The teaching language can remain primarily Russian, but important industry vocabulary should stay recognizable in English.
+
+When a non-obvious English technical term is introduced for the first meaningful time in a module/section, write it as:
+
+```text
+English term (короткий русский перевод / понятный смысл)
+```
+
+Examples:
+
+```text
+progressive disclosure (постепенное раскрытие контекста)
+escape hatch (запасной путь / возможность выйти за первоначальный выбор)
+provenance (происхождение / источник информации)
+eager context (контекст, который даём заранее)
+on-demand discovery (поиск информации по мере необходимости)
+```
+
+Rules:
+
+- preserve the English term so it becomes familiar for documentation, interviews, papers, and tooling;
+- give a short Russian translation or plain-language meaning on first use when the term may not be obvious;
+- if a literal translation is awkward or misleading, explain the practical meaning instead of forcing a word-for-word translation;
+- after a term has been established, it does not need parentheses on every repetition;
+- do not translate code identifiers, API names, product names, or trivial common programming words just for the sake of translation;
+- lesson `theory.md` files should preserve the key English vocabulary and may include a compact vocabulary section when several new terms matter to the module.
+
+The goal is to understand the concept in Russian **and** become comfortable recognizing and using the standard English terminology.
+
 ### Stage 1 — Understand
 
 Explain:
