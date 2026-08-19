@@ -62,6 +62,8 @@ export type TokenUsageSummary = {
   specOutputTokens: number | null;
   implInputTokens: number | null;
   implOutputTokens: number | null;
+  repairInputTokens: number | null;
+  repairOutputTokens: number | null;
 };
 
 const DEFAULT_MAX_ENTRIES = 64;
@@ -220,7 +222,7 @@ export class DiscoveryTracker {
 export function mergeTokenUsage(
   current: TokenUsageSummary | null,
   usage: Record<string, unknown> | null,
-  phase: "spec" | "implementation",
+  phase: "spec" | "implementation" | "repair",
 ): TokenUsageSummary | null {
   if (!usage) {
     return current;
@@ -232,19 +234,14 @@ export function mergeTokenUsage(
     return current;
   }
 
-  const base: TokenUsageSummary = current ?? {
-    totalInputTokens: null,
-    totalOutputTokens: null,
-    specInputTokens: null,
-    specOutputTokens: null,
-    implInputTokens: null,
-    implOutputTokens: null,
-  };
+  const base: TokenUsageSummary = current ?? emptyTokenUsage();
 
   if (input !== null) {
     base.totalInputTokens = addNullable(base.totalInputTokens, input);
     if (phase === "spec") {
       base.specInputTokens = addNullable(base.specInputTokens, input);
+    } else if (phase === "repair") {
+      base.repairInputTokens = addNullable(base.repairInputTokens, input);
     } else {
       base.implInputTokens = addNullable(base.implInputTokens, input);
     }
@@ -253,12 +250,83 @@ export function mergeTokenUsage(
     base.totalOutputTokens = addNullable(base.totalOutputTokens, output);
     if (phase === "spec") {
       base.specOutputTokens = addNullable(base.specOutputTokens, output);
+    } else if (phase === "repair") {
+      base.repairOutputTokens = addNullable(base.repairOutputTokens, output);
     } else {
       base.implOutputTokens = addNullable(base.implOutputTokens, output);
     }
   }
 
   return base;
+}
+
+export function emptyTokenUsage(): TokenUsageSummary {
+  return {
+    totalInputTokens: null,
+    totalOutputTokens: null,
+    specInputTokens: null,
+    specOutputTokens: null,
+    implInputTokens: null,
+    implOutputTokens: null,
+    repairInputTokens: null,
+    repairOutputTokens: null,
+  };
+}
+
+export function combineTokenUsage(
+  ...parts: Array<TokenUsageSummary | null | undefined>
+): TokenUsageSummary | null {
+  const present = parts.filter((part): part is TokenUsageSummary =>
+    Boolean(part),
+  );
+  if (!present.length) {
+    return null;
+  }
+
+  return present.reduce((merged, part) => ({
+    totalInputTokens: addNullableTokens(
+      merged.totalInputTokens,
+      part.totalInputTokens,
+    ),
+    totalOutputTokens: addNullableTokens(
+      merged.totalOutputTokens,
+      part.totalOutputTokens,
+    ),
+    specInputTokens: addNullableTokens(
+      merged.specInputTokens,
+      part.specInputTokens,
+    ),
+    specOutputTokens: addNullableTokens(
+      merged.specOutputTokens,
+      part.specOutputTokens,
+    ),
+    implInputTokens: addNullableTokens(
+      merged.implInputTokens,
+      part.implInputTokens,
+    ),
+    implOutputTokens: addNullableTokens(
+      merged.implOutputTokens,
+      part.implOutputTokens,
+    ),
+    repairInputTokens: addNullableTokens(
+      merged.repairInputTokens,
+      part.repairInputTokens,
+    ),
+    repairOutputTokens: addNullableTokens(
+      merged.repairOutputTokens,
+      part.repairOutputTokens,
+    ),
+  }));
+}
+
+function addNullableTokens(
+  left: number | null,
+  right: number | null,
+): number | null {
+  if (left === null && right === null) {
+    return null;
+  }
+  return (left ?? 0) + (right ?? 0);
 }
 
 function walkDirectory(

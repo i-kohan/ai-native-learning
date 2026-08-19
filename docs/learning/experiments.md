@@ -263,3 +263,94 @@ Lesson copies: `docs/learning/lessons/03-context-engineering/traces/` (8 runs ×
 `notes.md` is in the same folder. `theory.md` is for Topic Chat after review.
 
 Module 03 experiment complete; formal module closure still pending Topic Chat review.
+
+---
+
+## Module 04 — Verification + bounded Repair (R01 controlled probe)
+
+### Hypothesis
+
+An explicit bounded VERIFY → REPAIR → VERIFY loop, with deterministic tests as completion authority and compact factual failure evidence for repair, can recover a repairable implementation defect without treating the model's terminal response as verified success.
+
+### What this experiment is
+
+A **controlled repair probe**, not a spontaneous-error benchmark.
+
+R01:
+
+1. starts from the green benchmark fixture;
+2. runs normal spec + implementation (task already satisfied by the fixture);
+3. injects one deterministic missing-task `404 → 500` defect into application source;
+4. runs the harness verifier (must FAIL);
+5. gives V2 repair the resolved spec + normalized failure evidence;
+6. verifies again (must PASS).
+
+Fault injection exists only in benchmark/probe code, runs once, and is not production harness behavior.
+
+### What this experiment is not
+
+- Not a T01–T04 regression suite
+- Not a V1 vs V2 baseline comparison
+- Not a measurement of how often the model spontaneously ships a wrong implementation
+- Not a generic grader / reviewer / multi-agent study
+
+### Variant
+
+```text
+spec gate → implementation episode (terminal ≠ done)
+→ [R01] inject getTask 404→500 once
+→ harness npm test
+   FAIL → normalizeFailure → repair episode (max 2) → npm test
+   PASS → verified success
+```
+
+Model: same family as prior modules (`gpt-5.6-luna`). Context mode: `variant`.
+
+```bash
+cd harness && npm run benchmark:r01
+```
+
+### Results
+
+Evidence: `docs/learning/lessons/04-verification-repair/traces/R01-repair-2026-08-18T12-45-24-448Z.jsonl` (+ `.spec.json`)
+
+| Field              | Value                                                     |
+| ------------------ | --------------------------------------------------------- |
+| spec               | executable                                                |
+| impl started       | yes (no source change on green fixture)                   |
+| first verify       | **FAIL** exit 1                                           |
+| normalized         | `returns 404 when the task does not exist`; `500 !== 404` |
+| repairAttempts     | **1**                                                     |
+| repair model/tools | 4 / 6                                                     |
+| repair write       | `tasks/task-routes.ts` only                               |
+| second verify      | **PASS** exit 0                                           |
+| workflow           | **verified success**                                      |
+| repeatedFailure    | false                                                     |
+| wall               | ~94s                                                      |
+| tokens in/out      | 25383 / 2034 (repair 14118 / 1028)                        |
+| outcome            | **expected**                                              |
+
+Repair prompt included the resolved spec and factual failure evidence (`repair_started.promptIncludesSpec`, `promptIncludesFailureEvidence`). Tests/spec/verifier were not modified; `write_file` stayed under `target-app/src/`.
+
+Final workflow `changed_files` is empty because the injected defect was reverted to the original fixture. That is expected for this probe; the repair episode diff is the evidence that repair changed source.
+
+### Failures / unexpected behavior
+
+None against the R01 success criteria.
+
+### Conclusion
+
+Hypothesis supported **for this controlled defect**:
+
+```text
+external deterministic verification FAIL
+→ failure evidence reaches repair
+→ repair modifies implementation
+→ external verification runs again
+→ PASS
+→ harness-owned verified success
+```
+
+This does **not** prove that V2 will recover naturally occurring agent mistakes, or that T01–T04 remain unchanged.
+
+Module 04 experiment recorded; formal module closure still pending Topic Chat review.

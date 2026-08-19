@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { HarnessConfig } from "./config.ts";
-import { AGENT_INSTRUCTIONS } from "./instructions.ts";
+import { AGENT_INSTRUCTIONS, REPAIR_INSTRUCTIONS } from "./instructions.ts";
 import type { Spec } from "./spec.ts";
 import {
   DiscoveryTracker,
@@ -11,33 +11,32 @@ import {
 } from "./context.ts";
 import { TOOL_DEFINITIONS, executeTool } from "./tools.ts";
 import { Tracer } from "./trace.ts";
-import { runFinalVerification, type VerificationResult } from "./verify.ts";
 import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
 import {
   ResponseOutputItem,
   ResponseUsage,
 } from "openai/resources/responses/responses.js";
 
+export type EpisodePhase = "implementation" | "repair";
 export type RunStatus = "success" | "failure";
 
 export type AgentRunResult = {
   task: string;
+  phase: EpisodePhase;
+  /**
+   * Episode stop status only. "success" means a terminal model response.
+   * Verified workflow completion is owned by the outer harness, not this loop.
+   */
   status: RunStatus;
-  failureReason?:
-    | "max_turns_exceeded"
-    | "final_verification_failed"
-    | "model_error";
+  failureReason?: "max_turns_exceeded" | "model_error";
   turns: number;
   modelCalls: number;
   toolCalls: number;
   /**
-   * V0 stop signal only: model returned a non-tool (terminal) message.
-   * This is NOT the same as "task is done" — clarification / blocked /
-   * "please confirm" also end here. Distinguishing those is out of scope for V0.
+   * Model returned a non-tool (terminal) message.
+   * This means the agent episode stopped — not that the workflow is verified.
    */
   receivedTerminalResponse: boolean;
-  finalVerificationPassed: boolean;
-  finalVerification: VerificationResult | null;
   modelFinalResponse: string;
   changedFiles: string[];
   unifiedDiff: string;
@@ -63,8 +62,10 @@ export async function runAgentLoop(options: {
   spec?: Spec;
   tracer?: Tracer;
   reusableContext?: ReusableContext;
+  phase?: EpisodePhase;
 }): Promise<AgentRunResult> {
   const { config, task, runId, spec, reusableContext } = options;
+  const phase: EpisodePhase = options.phase ?? "implementation";
   const startedAt = Date.now();
   const nested = Boolean(options.tracer);
   const tracer = options.tracer ?? new Tracer(config.tracesDir, runId);
@@ -74,6 +75,8 @@ export async function runAgentLoop(options: {
   let tokenUsage: TokenUsageSummary | null = null;
 
   const client = new OpenAI({ apiKey: config.apiKey });
+  const instructions =
+    phase === "repair" ? REPAIR_INSTRUCTIONS : AGENT_INSTRUCTIONS;
 
   const taskContent = reusableContext
     ? `${formatImplementationHints(reusableContext)}\n\n${task}`
@@ -99,9 +102,10 @@ export async function runAgentLoop(options: {
       task,
       model: config.model,
       maxTurns: config.maxTurns,
+      phase,
       ...(spec ? { specStatus: "provided" } : {}),
     });
-  } else {
+  } else if (phase === "implementation") {
     tracer.record("implementation_started", {
       specGoal: spec?.goal ?? null,
       requirementCount: spec?.requirements.length ?? 0,
@@ -115,19 +119,23 @@ export async function runAgentLoop(options: {
       turns += 1;
       modelCalls += 1;
 
-      tracer.record("model_call_started", { model: config.model }, turns);
+      tracer.record(
+        "model_call_started",
+        { model: config.model, phase },
+        turns,
+      );
       const callStarted = Date.now();
 
       const response = await client.responses.create({
         model: config.model,
-        instructions: AGENT_INSTRUCTIONS,
+        instructions,
         input: input as never,
         tools: TOOL_DEFINITIONS as never,
       });
 
       const durationMs = Date.now() - callStarted;
       const usage = extractUsage(response);
-      tokenUsage = mergeTokenUsage(tokenUsage, usage, "implementation");
+      tokenUsage = mergeTokenUsage(tokenUsage, usage, phase);
 
       tracer.record(
         "model_call_completed",
@@ -147,17 +155,16 @@ export async function runAgentLoop(options: {
         (item): item is FunctionCallItem => item.type === "function_call",
       );
 
-      // No tool calls → terminal text response. Stop the loop.
-      // V0 limitation: "done" and "need clarification" look the same here.
+      // No tool calls → this agent episode stopped. Not verified completion.
       if (functionCalls.length === 0) {
         modelFinalResponse = extractText(response) || "(empty final response)";
         receivedTerminalResponse = true;
         tracer.record(
           "model_final",
           {
+            phase,
             response: modelFinalResponse,
             receivedTerminalResponse: true,
-            // Kept for older trace readers; not a true completion claim.
             modelClaimedDone: true,
           },
           turns,
@@ -174,6 +181,7 @@ export async function runAgentLoop(options: {
         tracer.record(
           "tool_call",
           {
+            phase,
             tool: call.name,
             callId: call.call_id,
             arguments: argsPreview,
@@ -218,6 +226,7 @@ export async function runAgentLoop(options: {
       modelFinalResponse =
         modelFinalResponse || "Agent stopped: max_turns_exceeded";
       tracer.record("model_final", {
+        phase,
         response: modelFinalResponse,
         receivedTerminalResponse: false,
         modelClaimedDone: false,
@@ -229,25 +238,9 @@ export async function runAgentLoop(options: {
     modelFinalResponse = error instanceof Error ? error.message : String(error);
     tracer.record(
       "model_error",
-      { message: modelFinalResponse },
+      { phase, message: modelFinalResponse },
       turns || undefined,
     );
-  }
-
-  // Independent final verification — tests are truth; terminal text is not.
-  const finalVerification = runFinalVerification(config);
-  tracer.record("final_verification", {
-    passed: finalVerification.passed,
-    exitCode: finalVerification.exitCode,
-    durationMs: finalVerification.durationMs,
-    outputPreview: truncate(finalVerification.output, 4000),
-    receivedTerminalResponse,
-  });
-
-  if (receivedTerminalResponse && !finalVerification.passed) {
-    failureReason = "final_verification_failed";
-  } else if (!receivedTerminalResponse && failureReason === undefined) {
-    failureReason = "max_turns_exceeded";
   }
 
   const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
@@ -256,31 +249,26 @@ export async function runAgentLoop(options: {
     afterSnapshot,
   );
 
-  // V0 success = loop ended with a terminal message AND tests pass.
-  // A clarification-only terminal on a green fixture would still look like success.
   const status: RunStatus =
-    receivedTerminalResponse &&
-    finalVerification.passed &&
-    failureReason === undefined
+    receivedTerminalResponse && failureReason === undefined
       ? "success"
       : "failure";
 
   if (status === "failure" && failureReason === undefined) {
-    failureReason = "final_verification_failed";
+    failureReason = "max_turns_exceeded";
   }
 
   const implDiscovery = discovery.toMetrics();
 
   const result: AgentRunResult = {
     task,
+    phase,
     status,
     failureReason,
     turns,
     modelCalls,
     toolCalls,
     receivedTerminalResponse,
-    finalVerificationPassed: finalVerification.passed,
-    finalVerification,
     modelFinalResponse,
     changedFiles,
     unifiedDiff,
@@ -293,13 +281,13 @@ export async function runAgentLoop(options: {
 
   if (!nested) {
     tracer.record("run_completed", {
+      phase,
       status: result.status,
       failureReason: result.failureReason ?? null,
       turns: result.turns,
       modelCalls: result.modelCalls,
       toolCalls: result.toolCalls,
       receivedTerminalResponse: result.receivedTerminalResponse,
-      finalVerificationPassed: result.finalVerificationPassed,
       changedFiles: result.changedFiles,
       durationMs: result.durationMs,
       implDiscovery,
@@ -312,21 +300,16 @@ export async function runAgentLoop(options: {
 }
 
 export function printRunResult(result: AgentRunResult): void {
-  console.log("\n=== V0 Harness Result ===");
+  console.log("\n=== Agent Episode Result ===");
   console.log(`task: ${truncate(result.task, 200)}`);
-  console.log(`status: ${result.status}`);
+  console.log(`phase: ${result.phase}`);
+  console.log(`episode_status: ${result.status}`);
   if (result.failureReason) {
     console.log(`failure_reason: ${result.failureReason}`);
   }
   console.log(`turns/model_calls: ${result.turns}/${result.modelCalls}`);
   console.log(`tool_calls: ${result.toolCalls}`);
-  console.log(
-    `final_tests: ${result.finalVerificationPassed ? "PASS" : "FAIL"} (exit ${result.finalVerification?.exitCode ?? "n/a"})`,
-  );
   console.log(`received_terminal_response: ${result.receivedTerminalResponse}`);
-  console.log(
-    `terminal_and_tests_pass: ${result.receivedTerminalResponse && result.finalVerificationPassed}`,
-  );
   console.log(
     `changed_files: ${result.changedFiles.length ? result.changedFiles.join(", ") : "(none)"}`,
   );

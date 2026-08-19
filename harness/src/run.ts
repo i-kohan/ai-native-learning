@@ -1,6 +1,7 @@
 import type { HarnessConfig } from "./config.ts";
 import {
   buildRepositoryMap,
+  combineTokenUsage,
   computePathOverlap,
   type ContextMode,
   type ContextPreparation,
@@ -11,24 +12,51 @@ import {
   type TokenUsageSummary,
 } from "./context.ts";
 import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
+import { normalizeFailure, type NormalizedFailure } from "./failure.ts";
 import { runAgentLoop, type AgentRunResult } from "./loop.ts";
+import { formatRepairContract, nextRepairDecision } from "./repair.ts";
 import { buildSpec } from "./spec-phase.ts";
 import {
   formatSpecContract,
   summarizeAmbiguities,
   writeSpecArtifact,
   type Ambiguity,
+  type Spec,
   type SpecDecision,
 } from "./spec.ts";
 import { Tracer } from "./trace.ts";
-import type { VerificationResult } from "./verify.ts";
+import { runFinalVerification, type VerificationResult } from "./verify.ts";
 
 export type WorkflowStatus = "success" | "failure" | "needs_human_judgment";
+
+export type WorkflowFailureReason =
+  | AgentRunResult["failureReason"]
+  | "spec_phase_failed"
+  | "final_verification_failed";
+
+export type VerificationAttempt = {
+  attempt: number;
+  passed: boolean;
+  exitCode: number;
+  durationMs: number;
+  normalizedFailure: NormalizedFailure | null;
+};
+
+export type RepairAttemptSummary = {
+  attempt: number;
+  modelCalls: number;
+  toolCalls: number;
+  turns: number;
+  receivedTerminalResponse: boolean;
+  changedFiles: string[];
+  durationMs: number;
+  tokenUsage: TokenUsageSummary | null;
+};
 
 export type HarnessRunResult = {
   task: string;
   workflowStatus: WorkflowStatus;
-  failureReason?: AgentRunResult["failureReason"] | "spec_phase_failed";
+  failureReason?: WorkflowFailureReason;
   specDecision: SpecDecision | null;
   unresolvedQuestions: Ambiguity[];
   implementationStarted: boolean;
@@ -40,6 +68,11 @@ export type HarnessRunResult = {
   modelCalls: number;
   toolCalls: number;
   receivedTerminalResponse: boolean;
+  verificationAttempts: number;
+  repairAttempts: number;
+  repeatedFailure: boolean;
+  verifications: VerificationAttempt[];
+  repairs: RepairAttemptSummary[];
   finalVerificationPassed: boolean;
   finalVerification: VerificationResult | null;
   modelFinalResponse: string;
@@ -58,6 +91,8 @@ export async function runV1Harness(options: {
   runId: string;
   beforeSnapshot?: FileSnapshot;
   contextMode?: ContextMode;
+  /** Benchmark-only hook. Production runs must not pass this. */
+  afterImplementationEpisode?: () => void;
 }): Promise<HarnessRunResult> {
   const { config, task, runId } = options;
   const contextMode = options.contextMode ?? "baseline";
@@ -81,10 +116,11 @@ export async function runV1Harness(options: {
   }
 
   tracer.record("run_started", {
-    version: "v1",
+    version: "v2",
     task,
     model: config.model,
     maxTurns: config.maxTurns,
+    maxRepairAttempts: config.maxRepairAttempts,
     contextMode,
   });
 
@@ -114,6 +150,11 @@ export async function runV1Harness(options: {
       contextMode,
       contextPreparation,
       receivedTerminalResponse: false,
+      verificationAttempts: 0,
+      repairAttempts: 0,
+      repeatedFailure: false,
+      verifications: [],
+      repairs: [],
       finalVerificationPassed: false,
       finalVerification: null,
       modelFinalResponse: specPhase.modelFinalResponse,
@@ -154,6 +195,11 @@ export async function runV1Harness(options: {
       contextMode,
       contextPreparation,
       receivedTerminalResponse: false,
+      verificationAttempts: 0,
+      repairAttempts: 0,
+      repeatedFailure: false,
+      verifications: [],
+      repairs: [],
       finalVerificationPassed: false,
       finalVerification: null,
       modelFinalResponse: formatEscalationMessage(decision),
@@ -187,12 +233,42 @@ export async function runV1Harness(options: {
     spec: decision.spec,
     tracer,
     reusableContext,
+    phase: "implementation",
   });
+
+  tracer.record("implementation_completed", {
+    episodeStatus: implementation.status,
+    receivedTerminalResponse: implementation.receivedTerminalResponse,
+    modelCalls: implementation.modelCalls,
+    toolCalls: implementation.toolCalls,
+    changedFiles: implementation.changedFiles,
+    durationMs: implementation.durationMs,
+  });
+
+  if (options.afterImplementationEpisode) {
+    options.afterImplementationEpisode();
+  }
+
+  const verified = await runVerifyRepairLoop({
+    config,
+    task,
+    spec: decision.spec,
+    tracer,
+    reusableContext,
+    runId,
+    implementation,
+  });
+
+  const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
+  const { changedFiles, unifiedDiff } = diffSnapshots(
+    beforeSnapshot,
+    afterSnapshot,
+  );
 
   const result = baseResult({
     task,
-    workflowStatus: implementation.status === "success" ? "success" : "failure",
-    failureReason: implementation.failureReason,
+    workflowStatus: verified.workflowStatus,
+    failureReason: verified.failureReason,
     specDecision: decision,
     unresolvedQuestions: [],
     implementationStarted: true,
@@ -201,11 +277,16 @@ export async function runV1Harness(options: {
     contextMode,
     contextPreparation,
     receivedTerminalResponse: implementation.receivedTerminalResponse,
-    finalVerificationPassed: implementation.finalVerificationPassed,
-    finalVerification: implementation.finalVerification,
-    modelFinalResponse: implementation.modelFinalResponse,
-    changedFiles: implementation.changedFiles,
-    unifiedDiff: implementation.unifiedDiff,
+    verificationAttempts: verified.verificationAttempts,
+    repairAttempts: verified.repairAttempts,
+    repeatedFailure: verified.repeatedFailure,
+    verifications: verified.verifications,
+    repairs: verified.repairs,
+    finalVerificationPassed: verified.finalVerificationPassed,
+    finalVerification: verified.finalVerification,
+    modelFinalResponse: verified.modelFinalResponse,
+    changedFiles,
+    unifiedDiff,
     tracePath: tracer.tracePath,
     durationMs: Date.now() - startedAt,
   });
@@ -214,7 +295,7 @@ export async function runV1Harness(options: {
 }
 
 export function printHarnessResult(result: HarnessRunResult): void {
-  console.log("\n=== V1 Harness Result ===");
+  console.log("\n=== V2 Harness Result ===");
   console.log(`task: ${truncate(result.task, 200)}`);
   console.log(`workflow_status: ${result.workflowStatus}`);
   console.log(`spec_decision: ${result.specDecision?.status ?? "(none)"}`);
@@ -273,6 +354,19 @@ export function printHarnessResult(result: HarnessRunResult): void {
     `turns/model_calls: ${result.turns}/${result.modelCalls} (spec ${result.specTurns}/${result.specModelCalls})`,
   );
   console.log(`tool_calls: ${result.toolCalls} (spec ${result.specToolCalls})`);
+  console.log(
+    `verification_attempts: ${result.verificationAttempts} | repair_attempts: ${result.repairAttempts} | repeated_failure: ${result.repeatedFailure}`,
+  );
+  if (result.verifications.length) {
+    console.log(
+      `verifications: ${result.verifications
+        .map(
+          (item) =>
+            `#${item.attempt}=${item.passed ? "PASS" : "FAIL"}(exit ${item.exitCode})`,
+        )
+        .join(", ")}`,
+    );
+  }
   if (result.implementationStarted) {
     console.log(
       `final_tests: ${result.finalVerificationPassed ? "PASS" : "FAIL"} (exit ${result.finalVerification?.exitCode ?? "n/a"})`,
@@ -321,7 +415,7 @@ function printContextMetrics(metrics: ContextRunMetrics): void {
   if (metrics.tokenUsage) {
     const usage = metrics.tokenUsage;
     console.log(
-      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"})`,
+      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"}; repair in=${usage.repairInputTokens ?? "n/a"} out=${usage.repairOutputTokens ?? "n/a"})`,
     );
   }
 }
@@ -336,6 +430,224 @@ function formatEscalationMessage(
     "Escalated: needs_human_judgment. Implementation loop was not started.",
     questions || "- (unresolved product question not listed in ambiguities)",
   ].join("\n");
+}
+
+async function runVerifyRepairLoop(options: {
+  config: HarnessConfig;
+  task: string;
+  spec: Spec;
+  tracer: Tracer;
+  reusableContext: ReusableContext | undefined;
+  runId: string;
+  implementation: AgentRunResult;
+}): Promise<{
+  workflowStatus: WorkflowStatus;
+  failureReason?: WorkflowFailureReason;
+  verificationAttempts: number;
+  repairAttempts: number;
+  repeatedFailure: boolean;
+  verifications: VerificationAttempt[];
+  repairs: RepairAttemptSummary[];
+  finalVerificationPassed: boolean;
+  finalVerification: VerificationResult | null;
+  modelFinalResponse: string;
+}> {
+  const { config, task, spec, tracer, reusableContext, runId, implementation } =
+    options;
+
+  const verifications: VerificationAttempt[] = [];
+  const repairs: RepairAttemptSummary[] = [];
+  let repairAttempts = 0;
+  let repeatedFailure = false;
+  let previousSignature: string | null = null;
+  let lastRepairChangedFiles = false;
+  let lastVerification: VerificationResult | null = null;
+  let modelFinalResponse = implementation.modelFinalResponse;
+  let failureReason: WorkflowFailureReason | undefined =
+    implementation.failureReason;
+
+  if (implementation.failureReason === "model_error") {
+    tracer.record("workflow_outcome", {
+      status: "failure",
+      reason: "model_error",
+      verificationAttempts: 0,
+      repairAttempts: 0,
+    });
+    return {
+      workflowStatus: "failure",
+      failureReason: "model_error",
+      verificationAttempts: 0,
+      repairAttempts: 0,
+      repeatedFailure: false,
+      verifications,
+      repairs,
+      finalVerificationPassed: false,
+      finalVerification: null,
+      modelFinalResponse,
+    };
+  }
+
+  while (true) {
+    const verification = runFinalVerification(config);
+    lastVerification = verification;
+    const attempt = verifications.length + 1;
+    const normalized = verification.passed
+      ? null
+      : normalizeFailure(verification);
+    verifications.push({
+      attempt,
+      passed: verification.passed,
+      exitCode: verification.exitCode,
+      durationMs: verification.durationMs,
+      normalizedFailure: normalized,
+    });
+
+    tracer.record("verification_attempt", {
+      attempt,
+      passed: verification.passed,
+      exitCode: verification.exitCode,
+      durationMs: verification.durationMs,
+      outputPreview: truncate(verification.output, 4000),
+    });
+
+    if (normalized) {
+      tracer.record("failure_normalized", {
+        attempt,
+        failedTests: normalized.failedTests,
+        locations: normalized.locations,
+        assertionMessages: normalized.assertionMessages,
+        summary: normalized.summary,
+        signature: normalized.signature,
+      });
+    }
+
+    const decision = nextRepairDecision({
+      verificationPassed: verification.passed,
+      repairAttemptsUsed: repairAttempts,
+      maxRepairAttempts: config.maxRepairAttempts,
+      currentFailureSignature: normalized?.signature ?? null,
+      previousFailureSignature: previousSignature,
+      lastRepairChangedFiles,
+    });
+
+    if (decision.action === "verified_success") {
+      tracer.record("workflow_outcome", {
+        status: "success",
+        reason: "verified_success",
+        verificationAttempts: attempt,
+        repairAttempts,
+      });
+      return {
+        workflowStatus: "success",
+        verificationAttempts: attempt,
+        repairAttempts,
+        repeatedFailure: false,
+        verifications,
+        repairs,
+        finalVerificationPassed: true,
+        finalVerification: verification,
+        modelFinalResponse,
+      };
+    }
+
+    if (decision.action === "stop") {
+      repeatedFailure = decision.repeatedFailure;
+      failureReason = "final_verification_failed";
+      tracer.record("workflow_outcome", {
+        status: "failure",
+        reason: decision.reason,
+        verificationAttempts: attempt,
+        repairAttempts,
+        repeatedFailure,
+      });
+      return {
+        workflowStatus: "failure",
+        failureReason,
+        verificationAttempts: attempt,
+        repairAttempts,
+        repeatedFailure,
+        verifications,
+        repairs,
+        finalVerificationPassed: false,
+        finalVerification: verification,
+        modelFinalResponse,
+      };
+    }
+
+    repairAttempts = decision.attempt;
+    previousSignature = normalized?.signature ?? null;
+    const repairBefore = snapshotDirectory(config.targetSrcRoot);
+
+    tracer.record("repair_started", {
+      attempt: repairAttempts,
+      maxRepairAttempts: config.maxRepairAttempts,
+      specGoal: spec.goal,
+      failedTests: normalized?.failedTests ?? [],
+      failureSignature: normalized?.signature ?? null,
+      promptIncludesSpec: true,
+      promptIncludesFailureEvidence: Boolean(normalized),
+      promptPreview: truncate(
+        formatRepairContract(task, spec, normalized!),
+        2000,
+      ),
+    });
+
+    const repair = await runAgentLoop({
+      config,
+      task: formatRepairContract(task, spec, normalized!),
+      runId,
+      beforeSnapshot: repairBefore,
+      spec,
+      tracer,
+      reusableContext,
+      phase: "repair",
+    });
+
+    lastRepairChangedFiles = repair.changedFiles.length > 0;
+    modelFinalResponse = repair.modelFinalResponse;
+    repairs.push({
+      attempt: repairAttempts,
+      modelCalls: repair.modelCalls,
+      toolCalls: repair.toolCalls,
+      turns: repair.turns,
+      receivedTerminalResponse: repair.receivedTerminalResponse,
+      changedFiles: repair.changedFiles,
+      durationMs: repair.durationMs,
+      tokenUsage: repair.tokenUsage,
+    });
+
+    tracer.record("repair_completed", {
+      attempt: repairAttempts,
+      episodeStatus: repair.status,
+      receivedTerminalResponse: repair.receivedTerminalResponse,
+      modelCalls: repair.modelCalls,
+      toolCalls: repair.toolCalls,
+      changedFiles: repair.changedFiles,
+      durationMs: repair.durationMs,
+      tokenUsage: repair.tokenUsage,
+    });
+
+    if (repair.failureReason === "model_error") {
+      tracer.record("workflow_outcome", {
+        status: "failure",
+        reason: "model_error",
+        verificationAttempts: attempt,
+        repairAttempts,
+      });
+      return {
+        workflowStatus: "failure",
+        failureReason: "model_error",
+        verificationAttempts: attempt,
+        repairAttempts,
+        repeatedFailure: false,
+        verifications,
+        repairs,
+        finalVerificationPassed: false,
+        finalVerification: lastVerification,
+        modelFinalResponse,
+      };
+    }
+  }
 }
 
 function baseResult(fields: {
@@ -357,6 +669,11 @@ function baseResult(fields: {
   contextMode: ContextMode;
   contextPreparation: ContextPreparation | null;
   receivedTerminalResponse: boolean;
+  verificationAttempts: number;
+  repairAttempts: number;
+  repeatedFailure: boolean;
+  verifications: VerificationAttempt[];
+  repairs: RepairAttemptSummary[];
   finalVerificationPassed: boolean;
   finalVerification: VerificationResult | null;
   modelFinalResponse: string;
@@ -375,6 +692,8 @@ function baseResult(fields: {
         })
       : null;
 
+  const repairTokenUsage = fields.repairs.map((item) => item.tokenUsage);
+
   const contextMetrics: ContextRunMetrics = {
     mode: fields.contextMode,
     preparation: fields.contextPreparation,
@@ -386,8 +705,19 @@ function baseResult(fields: {
     tokenUsage: combineTokenUsage(
       fields.specPhase.tokenUsage,
       implementation?.tokenUsage ?? null,
+      ...repairTokenUsage,
     ),
   };
+
+  const repairTurns = fields.repairs.reduce((sum, item) => sum + item.turns, 0);
+  const repairModelCalls = fields.repairs.reduce(
+    (sum, item) => sum + item.modelCalls,
+    0,
+  );
+  const repairToolCalls = fields.repairs.reduce(
+    (sum, item) => sum + item.toolCalls,
+    0,
+  );
 
   return {
     task: fields.task,
@@ -400,10 +730,21 @@ function baseResult(fields: {
     specTurns: fields.specPhase.turns,
     specModelCalls: fields.specPhase.modelCalls,
     specToolCalls: fields.specPhase.toolCalls,
-    turns: fields.specPhase.turns + (implementation?.turns ?? 0),
-    modelCalls: fields.specPhase.modelCalls + (implementation?.modelCalls ?? 0),
-    toolCalls: fields.specPhase.toolCalls + (implementation?.toolCalls ?? 0),
+    turns: fields.specPhase.turns + (implementation?.turns ?? 0) + repairTurns,
+    modelCalls:
+      fields.specPhase.modelCalls +
+      (implementation?.modelCalls ?? 0) +
+      repairModelCalls,
+    toolCalls:
+      fields.specPhase.toolCalls +
+      (implementation?.toolCalls ?? 0) +
+      repairToolCalls,
     receivedTerminalResponse: fields.receivedTerminalResponse,
+    verificationAttempts: fields.verificationAttempts,
+    repairAttempts: fields.repairAttempts,
+    repeatedFailure: fields.repeatedFailure,
+    verifications: fields.verifications,
+    repairs: fields.repairs,
     finalVerificationPassed: fields.finalVerificationPassed,
     finalVerification: fields.finalVerification,
     modelFinalResponse: fields.modelFinalResponse,
@@ -415,36 +756,6 @@ function baseResult(fields: {
     contextMode: fields.contextMode,
     contextMetrics,
   };
-}
-
-function combineTokenUsage(
-  specUsage: TokenUsageSummary | null,
-  implUsage: TokenUsageSummary | null,
-): TokenUsageSummary | null {
-  if (!specUsage && !implUsage) {
-    return null;
-  }
-  return {
-    totalInputTokens: addNullable(
-      specUsage?.totalInputTokens ?? null,
-      implUsage?.totalInputTokens ?? null,
-    ),
-    totalOutputTokens: addNullable(
-      specUsage?.totalOutputTokens ?? null,
-      implUsage?.totalOutputTokens ?? null,
-    ),
-    specInputTokens: specUsage?.specInputTokens ?? null,
-    specOutputTokens: specUsage?.specOutputTokens ?? null,
-    implInputTokens: implUsage?.implInputTokens ?? null,
-    implOutputTokens: implUsage?.implOutputTokens ?? null,
-  };
-}
-
-function addNullable(left: number | null, right: number | null): number | null {
-  if (left === null && right === null) {
-    return null;
-  }
-  return (left ?? 0) + (right ?? 0);
 }
 
 async function finishRun(
@@ -460,7 +771,7 @@ async function finishRun(
     workflowStatus: result.workflowStatus,
   });
   tracer.record("run_completed", {
-    version: "v1",
+    version: "v2",
     workflowStatus: result.workflowStatus,
     specDecision: result.specDecision?.status ?? null,
     spec: result.specDecision?.spec ?? null,
@@ -474,6 +785,18 @@ async function finishRun(
     specModelCalls: result.specModelCalls,
     specToolCalls: result.specToolCalls,
     receivedTerminalResponse: result.receivedTerminalResponse,
+    verificationAttempts: result.verificationAttempts,
+    repairAttempts: result.repairAttempts,
+    repeatedFailure: result.repeatedFailure,
+    verifications: result.verifications.map((item) => ({
+      attempt: item.attempt,
+      passed: item.passed,
+      exitCode: item.exitCode,
+      durationMs: item.durationMs,
+      failedTests: item.normalizedFailure?.failedTests ?? [],
+      signature: item.normalizedFailure?.signature ?? null,
+    })),
+    repairs: result.repairs,
     finalVerificationPassed: result.finalVerificationPassed,
     changedFiles: result.changedFiles,
     durationMs: result.durationMs,

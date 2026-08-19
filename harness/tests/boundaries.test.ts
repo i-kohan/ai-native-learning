@@ -14,11 +14,15 @@ function tempConfig(): HarnessConfig {
   const targetAppRoot = path.join(root, "target-app");
   const targetSrcRoot = path.join(targetAppRoot, "src");
   fs.mkdirSync(path.join(targetSrcRoot, "tasks"), { recursive: true });
-  fs.writeFileSync(path.join(targetSrcRoot, "app.ts"), "export const ok = true;\n");
+  fs.writeFileSync(
+    path.join(targetSrcRoot, "app.ts"),
+    "export const ok = true;\n",
+  );
   return {
     apiKey: "test",
     model: "test",
     maxTurns: 20,
+    maxRepairAttempts: 2,
     repoRoot: root,
     targetAppRoot,
     targetSrcRoot,
@@ -30,7 +34,10 @@ describe("path boundaries", () => {
   it("rejects path traversal", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "paths-"));
     assert.throws(() => resolveWithin(root, "../secret"), PathAccessError);
-    assert.throws(() => resolveWithin(root, "foo/../../secret"), PathAccessError);
+    assert.throws(
+      () => resolveWithin(root, "foo/../../secret"),
+      PathAccessError,
+    );
   });
 
   it("allows nested paths inside the root", () => {
@@ -99,6 +106,9 @@ describe("benchmark setup", { concurrency: false }, () => {
       "utf8",
     );
     assert.match(routes, /status: 404, body: \{ error: "task_not_found" \}/);
-    assert.doesNotMatch(routes, /status: 500, body: \{ error: "task_not_found" \}/);
+    assert.doesNotMatch(
+      routes,
+      /status: 500, body: \{ error: "task_not_found" \}/,
+    );
   });
 });

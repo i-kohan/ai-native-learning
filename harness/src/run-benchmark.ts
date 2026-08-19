@@ -9,6 +9,7 @@ import {
   runV1Harness,
   type HarnessRunResult,
 } from "./run.ts";
+import { injectMissingTask500Fault } from "./r01-fault.ts";
 import { runFinalVerification } from "./verify.ts";
 
 const BENCHMARKS_ROOT = path.join(REPO_ROOT, "benchmarks");
@@ -49,6 +50,7 @@ export function prepareBenchmark(taskId: TaskId): BenchmarkPrepResult {
     apiKey: "unused",
     model: "unused",
     maxTurns: 0,
+    maxRepairAttempts: 2,
     repoRoot: REPO_ROOT,
     targetAppRoot: path.join(REPO_ROOT, "target-app"),
     targetSrcRoot: TARGET_SRC,
@@ -130,6 +132,133 @@ export function isExpectedV1Outcome(
     result.implementationStarted === true &&
     result.finalVerificationPassed
   );
+}
+
+export async function runRepairProbe(): Promise<HarnessRunResult> {
+  restoreFixture();
+
+  const taskPath = path.join(BENCHMARKS_ROOT, "R01", "task.md");
+  if (!fs.existsSync(taskPath)) {
+    throw new Error(`Missing R01 task file: ${taskPath}`);
+  }
+  const task = fs.readFileSync(taskPath, "utf8").trim();
+
+  const initial = runFinalVerification({
+    apiKey: "unused",
+    model: "unused",
+    maxTurns: 0,
+    maxRepairAttempts: 2,
+    repoRoot: REPO_ROOT,
+    targetAppRoot: path.join(REPO_ROOT, "target-app"),
+    targetSrcRoot: TARGET_SRC,
+    tracesDir: path.join(REPO_ROOT, "traces"),
+  });
+  if (!initial.passed) {
+    throw new Error(
+      `R01: expected green fixture tests to PASS before the probe, but they failed.\n${initial.output}`,
+    );
+  }
+
+  console.log("\n=== Preparing R01 (controlled repair probe) ===");
+  console.log(
+    "initial_tests: PASS (green fixture; defect injected after implementation)",
+  );
+
+  const config = loadConfig();
+  const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+  const runId = `R01-repair-${timestamp()}`;
+  let injected = false;
+
+  const result = await runV1Harness({
+    config,
+    task,
+    runId,
+    beforeSnapshot,
+    contextMode: "variant",
+    afterImplementationEpisode: () => {
+      if (injected) {
+        throw new Error("R01 fault injection ran more than once.");
+      }
+      injectMissingTask500Fault(config.targetSrcRoot);
+      injected = true;
+      console.log(
+        "R01: injected getTask missing-task 404 → 500 after implementation",
+      );
+    },
+  });
+
+  if (!injected) {
+    throw new Error(
+      "R01: implementation episode finished without fault injection (spec likely did not start implementation).",
+    );
+  }
+
+  printHarnessResult(result);
+  printRepairProbeSummary(result);
+  return result;
+}
+
+export function isExpectedR01Outcome(result: HarnessRunResult): boolean {
+  const first = result.verifications[0];
+  const second = result.verifications[1];
+  const repair = result.repairs[0];
+  const repairChangedOnlySource =
+    Boolean(repair) &&
+    repair.changedFiles.length > 0 &&
+    repair.changedFiles.every((file) => isAllowedRepairPath(file));
+  const finalChangedOnlySource = result.changedFiles.every((file) =>
+    isAllowedRepairPath(file),
+  );
+
+  return (
+    result.workflowStatus === "success" &&
+    result.specDecision?.status === "executable" &&
+    result.implementationStarted === true &&
+    result.verificationAttempts === 2 &&
+    result.repairAttempts === 1 &&
+    result.repeatedFailure === false &&
+    first?.passed === false &&
+    first.normalizedFailure !== null &&
+    second?.passed === true &&
+    result.finalVerificationPassed === true &&
+    Boolean(repair) &&
+    repair.receivedTerminalResponse === true &&
+    repairChangedOnlySource &&
+    finalChangedOnlySource
+  );
+}
+
+function isAllowedRepairPath(file: string): boolean {
+  const normalized = file.replace(/\\/g, "/");
+  if (
+    normalized.includes("test") ||
+    normalized.includes("spec") ||
+    normalized.includes("verify") ||
+    normalized.includes("harness/")
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function printRepairProbeSummary(result: HarnessRunResult): void {
+  const expected = isExpectedR01Outcome(result) ? "expected" : "UNEXPECTED";
+  const first = result.verifications[0];
+  const second = result.verifications[1];
+  console.log("\n=== R01 Repair Probe Summary ===");
+  console.log(
+    `first_verify: ${first ? (first.passed ? "PASS" : "FAIL") : "missing"}`,
+  );
+  console.log(`normalized_failure: ${first?.normalizedFailure ? "yes" : "no"}`);
+  console.log(`repair_attempts: ${result.repairAttempts}`);
+  console.log(
+    `second_verify: ${second ? (second.passed ? "PASS" : "FAIL") : "missing"}`,
+  );
+  console.log(`workflow_status: ${result.workflowStatus}`);
+  console.log(
+    `repair_changed_files: ${result.repairs[0]?.changedFiles.join(", ") || "(none)"}`,
+  );
+  console.log(`outcome: ${expected}`);
 }
 
 export function printExperimentSummary(
@@ -217,6 +346,7 @@ function timestamp(): string {
 type CliOptions = {
   all: boolean;
   experiment: boolean;
+  repairProbe: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
 };
@@ -227,24 +357,39 @@ function parseArgs(argv: string[]): CliOptions {
     : "baseline";
 
   if (argv.includes("--experiment")) {
-    return { all: false, experiment: true, contextMode };
+    return { all: false, experiment: true, repairProbe: false, contextMode };
+  }
+  if (argv.includes("R01") || argv.includes("--repair-probe")) {
+    return { all: false, experiment: false, repairProbe: true, contextMode };
   }
   if (argv.includes("--all")) {
-    return { all: true, experiment: false, contextMode };
+    return { all: true, experiment: false, repairProbe: false, contextMode };
   }
   const taskId = argv.find((arg) => TASK_IDS.includes(arg as TaskId)) as
     | TaskId
     | undefined;
   if (!taskId) {
-    return { all: false, experiment: false, contextMode };
+    return { all: false, experiment: false, repairProbe: false, contextMode };
   }
-  return { all: false, experiment: false, taskId, contextMode };
+  return {
+    all: false,
+    experiment: false,
+    repairProbe: false,
+    taskId,
+    contextMode,
+  };
 }
 
 async function main(): Promise<void> {
-  const { all, experiment, taskId, contextMode } = parseArgs(
+  const { all, experiment, repairProbe, taskId, contextMode } = parseArgs(
     process.argv.slice(2),
   );
+
+  if (repairProbe) {
+    const result = await runRepairProbe();
+    process.exit(isExpectedR01Outcome(result) ? 0 : 1);
+    return;
+  }
 
   if (experiment) {
     const runs = await runContextExperiment();
@@ -261,6 +406,7 @@ async function main(): Promise<void> {
     );
     console.error("   or: npm run benchmark:all [--baseline|--variant]");
     console.error("   or: npm run benchmark:experiment");
+    console.error("   or: npm run benchmark -- R01");
     process.exit(1);
   }
 

@@ -125,6 +125,57 @@ Known remaining SDD limitation: spec laundering is probabilistically possible if
 
 ---
 
+## Module: 04 — Verification + bounded Repair
+
+**Status:** 🔄 IN PROGRESS — implementation + R01 probe complete; Topic Chat review pending (not marked complete).
+
+Practical notes + traces: `docs/learning/lessons/04-verification-repair/`  
+`theory.md` is intentionally absent until Topic Chat writes it after review.
+
+### Built
+
+- Outer V2 loop: implementation episode → harness `npm test` → normalize FAIL → bounded repair → verify again
+- `runAgentLoop` is an episode only: terminal response ≠ verified success
+- `normalizeFailure` — compact factual evidence (what failed), not a diagnosis or prescribed fix
+- Harness-owned policy: `maxRepairAttempts = 2`, plus deterministic stop on repeated signature with no source change
+- Repair episode gets resolved spec + failure evidence + existing context hints; same `target-app/src/` write boundary
+- R01 controlled repair probe (fault injection after implementation, benchmark-only)
+- Deterministic tests for policy, normalization, write boundary, and R01 outcome shape
+
+### Important design decisions
+
+- `npm test` stays ordinary deterministic software; the LLM does not decide pass/fail
+- Agent-controlled `run_command` (`npm test`) remains an observation tool; harness verification is completion authority
+- Repair does not restart from the raw task alone
+- Fault injection is not production harness behavior; it runs once via `afterImplementationEpisode` and fails loudly if preconditions are missing
+- No reviewer, planner, skills, routing, worktrees, MCP, or generic grader framework
+
+### Experiment
+
+R01 only. T01–T04 were **not** rerun. No V1 baseline comparison.
+
+Evidence: `docs/learning/lessons/04-verification-repair/traces/R01-repair-2026-08-18T12-45-24-448Z.jsonl`
+
+| Check                                   | Result                                                          |
+| --------------------------------------- | --------------------------------------------------------------- |
+| first external verification             | FAIL (exit 1)                                                   |
+| failure normalized                      | yes (`returns 404 when the task does not exist`, `500 !== 404`) |
+| repairAttempts                          | 1                                                               |
+| repair received spec + failure evidence | yes (`repair_started.promptIncludesSpec/FailureEvidence`)       |
+| second external verification            | PASS                                                            |
+| workflow status                         | verified success                                                |
+| repair write                            | `tasks/task-routes.ts` only                                     |
+
+### Current results
+
+V2 loop works on this controlled probe. Final workflow diff empty because implementation was a no-op on a green fixture and repair undid the injected 500.
+
+Module 04 is **not** complete until Topic Chat reviews the learning-critical code and R01 evidence.
+
+Current harness: **V2 Spec-Driven + context layer + bounded verify/repair**.
+
+---
+
 ## Module: 01 — Agent Loop & Harness
 
 **Status:** ✅ COMPLETED — formally closed by Master on 2026-08-13.
