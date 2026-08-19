@@ -21,7 +21,10 @@ import {
 } from "../src/review.ts";
 import { injectArch01CompleteTaskFault } from "../src/rev01-fault.ts";
 import { isExpectedREV01Outcome } from "../src/run-benchmark.ts";
-import type { HarnessRunResult } from "../src/run.ts";
+import {
+  shouldVerifyAfterReviewRepair,
+  type HarnessRunResult,
+} from "../src/run.ts";
 import type { Spec } from "../src/spec.ts";
 import { executeTool } from "../src/tools.ts";
 import { runFinalVerification } from "../src/verify.ts";
@@ -251,6 +254,23 @@ describe("structured review parsing", () => {
     const parsed = parseReviewPayload({ status: "findings", findings: [] });
     assert.equal(parsed.ok, false);
   });
+
+  it("rejects pass status when findings are present", () => {
+    const parsed = parseReviewPayload({
+      status: "pass",
+      findings: [sampleFinding()],
+    });
+    assert.equal(parsed.ok, false);
+  });
+
+  it("accepts pass status only with an empty findings array", () => {
+    const parsed = parseReviewPayload({ status: "pass", findings: [] });
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) {
+      assert.equal(parsed.value.status, "pass");
+      assert.equal(parsed.value.findings.length, 0);
+    }
+  });
 });
 
 describe("finding acceptance policy", () => {
@@ -269,21 +289,27 @@ describe("finding acceptance policy", () => {
     assert.equal(decided.reason, "low_severity");
   });
 
-  it("does not let correctness findings replace a passed verifier", () => {
+  it("may treat an uncovered high-confidence correctness finding as blocking after PASS", () => {
     const decided = decideFinding(
-      sampleFinding({
-        findingKey: "completion-does-not-use-existing-taskservice-contract",
+      {
+        findingKey: "untested-complete-path-drops-title",
         category: "correctness",
-        severity: "medium",
+        severity: "high",
+        confidence: "high",
+        description:
+          "tasks/task-routes.ts completeTask returns a body without title on a branch that npm test does not cover.",
+        evidence: [
+          "In the completeTask success path in tasks/task-routes.ts, the HTTP body is assembled without copying task.title.",
+        ],
         relatedAuthority: {
           type: "spec_requirement",
           id: "POST /tasks/:id/complete marks an existing task completed and sets completedAt",
         },
-      }),
+      },
       sampleContext(),
     );
-    assert.equal(decided.decision, "accepted_non_blocking");
-    assert.equal(decided.reason, "verifier_authoritative");
+    assert.equal(sampleContext().verificationEvidence.passed, true);
+    assert.equal(decided.decision, "accepted_blocking");
   });
 
   it("does not treat a rejected finding as a repair blocker", () => {
@@ -387,6 +413,12 @@ describe("review repair policy", () => {
   it("starts the reviewer only after deterministic PASS", () => {
     assert.equal(shouldStartReview(true), true);
     assert.equal(shouldStartReview(false), false);
+  });
+
+  it("does not hide a review-repair model_error before re-verification", () => {
+    assert.equal(shouldVerifyAfterReviewRepair("model_error"), false);
+    assert.equal(shouldVerifyAfterReviewRepair(undefined), true);
+    assert.equal(shouldVerifyAfterReviewRepair("max_turns_exceeded"), true);
   });
 });
 

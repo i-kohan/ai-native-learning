@@ -242,6 +242,13 @@ export function parseReviewPayload(value: unknown): ParseReviewResult {
     };
   }
 
+  if (status === "pass" && findings.length > 0) {
+    return {
+      ok: false,
+      error: 'status "pass" requires findings to be empty.',
+    };
+  }
+
   return { ok: true, value: { status, findings } };
 }
 
@@ -281,13 +288,6 @@ export function decideFinding(
 
   if (finding.severity === "low") {
     return record(finding, "accepted_non_blocking", "low_severity");
-  }
-
-  if (
-    finding.category === "correctness" &&
-    context.verificationEvidence.passed
-  ) {
-    return record(finding, "accepted_non_blocking", "verifier_authoritative");
   }
 
   return record(finding, "accepted_blocking", "blocking");

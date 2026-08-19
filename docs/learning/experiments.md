@@ -435,33 +435,35 @@ cd harness && npm run benchmark:rev01
 
 ### Results
 
-Primary evidence: `docs/learning/lessons/05-independent-review/traces/REV01-review-2026-08-19T15-34-43-433Z.jsonl` (+ `.spec.json`)
+Primary evidence after Topic Chat correction: `docs/learning/lessons/05-independent-review/traces/REV01-review-2026-08-19T17-24-41-220Z.jsonl` (+ `.spec.json`)
 
-| Field | Value |
-| --- | --- |
-| spec | executable |
-| impl started | yes (no source change on green fixture) |
-| first verify | **PASS** exit 0 |
-| reviewAttempts | **2** |
-| REVIEW #1 findings | 1 |
-| intendedFindingDetected | **true** (`ARCH-01-route-mutates-task-state`) |
-| category / authority | architecture / ARCH-01 |
-| evidence | `completeTask` changed from `service.complete(id)` to `service.get(id)`; then `task.status = "completed"` and `task.completedAt = new Date().toISOString()` |
-| acceptedBlockingFindings | 1 |
-| acceptedNonBlockingFindings | 0 |
-| rejectedFindings | 0 |
-| blockingFalsePositives | **0** |
-| reviewRepairAttempts | **1** |
-| review-repair changed files | `tasks/task-routes.ts` only |
-| repeatedFinding | false |
-| verify after repair | **PASS** exit 0 |
-| REVIEW #2 | pass, 0 findings |
-| finalReviewerOutcome | pass |
-| workflow | **success** |
-| model calls / tools | 11 / 20 |
-| tokens in/out | 26367 / 2473 (review 3409/287; review_repair 11623/1008) |
-| wall | ~36s |
-| outcome | **expected** |
+Earlier expected run under the later-removed correctness blanket: `REV01-review-2026-08-19T15-34-43-433Z.jsonl`
+
+| Field                       | Value                                                                                                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| spec                        | executable                                                                                                                                                  |
+| impl started                | yes (no source change on green fixture)                                                                                                                     |
+| first verify                | **PASS** exit 0                                                                                                                                             |
+| reviewAttempts              | **2**                                                                                                                                                       |
+| REVIEW #1 findings          | 1                                                                                                                                                           |
+| intendedFindingDetected     | **true** (`complete-route-bypasses-task-service-transition`)                                                                                                |
+| category / authority        | architecture / ARCH-01                                                                                                                                      |
+| evidence                    | `completeTask` changed from `service.complete(id)` to `service.get(id)`; then `task.status = "completed"` and `task.completedAt = new Date().toISOString()` |
+| acceptedBlockingFindings    | 1                                                                                                                                                           |
+| acceptedNonBlockingFindings | 0                                                                                                                                                           |
+| rejectedFindings            | 0                                                                                                                                                           |
+| blockingFalsePositives      | **0**                                                                                                                                                       |
+| reviewRepairAttempts        | **1**                                                                                                                                                       |
+| review-repair changed files | `tasks/task-routes.ts` only                                                                                                                                 |
+| repeatedFinding             | false                                                                                                                                                       |
+| verify after repair         | **PASS** exit 0                                                                                                                                             |
+| REVIEW #2                   | pass, 0 findings                                                                                                                                            |
+| finalReviewerOutcome        | pass                                                                                                                                                        |
+| workflow                    | **success**                                                                                                                                                 |
+| model calls / tools         | 11 / 21                                                                                                                                                     |
+| tokens in/out               | 28782 / 2684 (review 3515/286; review_repair 11874/1011)                                                                                                    |
+| wall                        | ~43s                                                                                                                                                        |
+| outcome                     | **expected**                                                                                                                                                |
 
 Reviewer context included spec, diff, ARCH-01, and compact passed-verification evidence. It did not include implementer conversation. Tests/spec/verifier/harness were not modified.
 
@@ -471,9 +473,16 @@ Final workflow `changed_files` is empty because the injected layering defect was
 
 First probe (`REV01-review-2026-08-19T15-31-34-772Z`): REVIEW #1 detected ARCH-01 **and** restated the same defect as `correctness` / spec_requirement. Harness accepted both as blockers (`blocking_fp=1`) → decision rule UNEXPECTED, even though repair still succeeded.
 
-Harness policy was then made explicit: after deterministic PASS, `correctness` findings are recorded as non-blocking (`verifier_authoritative`). This follows “reviewer never replaces tests”; it is not semantic finding deduplication.
+That run is useful evidence of duplicate/misclassified reviewer output. It does **not** justify demoting every correctness finding after deterministic PASS.
 
-The recorded expected run is after that rule.
+Corrected policy after Topic Chat:
+
+- deterministic verification is authoritative only for the checks it actually encodes;
+- reviewer findings must not merely contradict passed deterministic evidence without new evidence;
+- reviewer may still identify uncovered correctness problems;
+- architecture/layering issues must not be restated as correctness/spec violations (reviewer instruction, not a category blanket).
+
+REV01 was rerun with that policy (`REV01-review-2026-08-19T17-24-41-220Z`): one architecture blocker, zero blocking FPs, decision rule **expected**.
 
 ### Failures / unexpected behavior
 

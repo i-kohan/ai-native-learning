@@ -51,6 +51,12 @@ export type WorkflowFailureReason =
   | "review_parse_failed"
   | "review_unresolved_blocker";
 
+export function shouldVerifyAfterReviewRepair(
+  failureReason: AgentRunResult["failureReason"],
+): boolean {
+  return failureReason !== "model_error";
+}
+
 export type VerificationAttempt = {
   attempt: number;
   passed: boolean;
@@ -1002,7 +1008,14 @@ async function runIndependentReviewLoop(options: {
     modelCalls: repair.modelCalls,
     toolCalls: repair.toolCalls,
     durationMs: repair.durationMs,
+    failureReason: repair.failureReason ?? null,
   });
+
+  if (!shouldVerifyAfterReviewRepair(repair.failureReason)) {
+    return finish("failure", "findings_unresolved", {
+      failureReason: "model_error",
+    });
+  }
 
   const postRepair = await runVerifyRepairLoop({
     config,
@@ -1011,7 +1024,7 @@ async function runIndependentReviewLoop(options: {
     tracer,
     reusableContext,
     runId,
-    implementation: { ...repair, failureReason: undefined },
+    implementation: repair,
     emitSuccessOutcome: false,
   });
 

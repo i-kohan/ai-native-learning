@@ -60,7 +60,10 @@ Practical notes + traces: `docs/learning/lessons/05-independent-review/`
 ### Important design decisions
 
 - reviewer does not receive implementer conversation, reasoning, or justification;
-- deterministic verifier remains authoritative; correctness findings after PASS are recorded as non-blocking (`verifier_authoritative`);
+- deterministic verification is authoritative only for the checks it actually encodes;
+- reviewer findings must not merely contradict passed deterministic evidence without new evidence;
+- reviewer may still identify uncovered correctness problems (high/medium confidence and severity, concrete, in-scope, actionable);
+- architecture/layering issues must not be restated as correctness/spec violations;
 - reviewer reports WHAT/WHERE/WHY + related authority, not a prescribed fix;
 - no reviewer OFF/ON baseline; REV01 is a controlled probe like R01;
 - no generic multi-agent framework, finding embeddings, or eval aggregation platform.
@@ -69,21 +72,23 @@ Practical notes + traces: `docs/learning/lessons/05-independent-review/`
 
 REV01 only. T01–T04 were **not** rerun. No reviewer-OFF comparison.
 
-Evidence: `docs/learning/lessons/05-independent-review/traces/REV01-review-2026-08-19T15-34-43-433Z.jsonl`
+Evidence: `docs/learning/lessons/05-independent-review/traces/REV01-review-2026-08-19T17-24-41-220Z.jsonl`
 
-| Check | Result |
-| --- | --- |
-| controlled ARCH-01 injected | yes (`completeTask` mutates status/completedAt in the route) |
-| first deterministic verification | PASS |
-| REVIEW #1 intended finding | yes (`ARCH-01-route-mutates-task-state`, category architecture, evidence names `completeTask` / `task.status` / `task.completedAt`, relatedAuthority ARCH-01) |
-| accepted blocking FPs | 0 |
-| reviewRepairAttempts | 1 |
-| review repair write | `tasks/task-routes.ts` only |
-| verify after repair | PASS |
-| REVIEW #2 accepted blocker | none |
-| workflow | success |
+| Check                            | Result                                                                                                                                                                       |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| controlled ARCH-01 injected      | yes (`completeTask` mutates status/completedAt in the route)                                                                                                                 |
+| first deterministic verification | PASS                                                                                                                                                                         |
+| REVIEW #1 intended finding       | yes (`complete-route-bypasses-task-service-transition`, category architecture, evidence names `completeTask` / `task.status` / `task.completedAt`, relatedAuthority ARCH-01) |
+| accepted blocking FPs            | 0                                                                                                                                                                            |
+| reviewRepairAttempts             | 1                                                                                                                                                                            |
+| review repair write              | `tasks/task-routes.ts` only                                                                                                                                                  |
+| verify after repair              | PASS                                                                                                                                                                         |
+| REVIEW #2 accepted blocker       | none                                                                                                                                                                         |
+| workflow                         | success                                                                                                                                                                      |
 
-A prior probe (`REV01-review-2026-08-19T15-31-34-772Z`) caught ARCH-01 but also accepted a correctness restatement as a second blocker. That motivated the `verifier_authoritative` rule; the recorded expected run is after that policy.
+A prior probe (`REV01-review-2026-08-19T15-31-34-772Z`) caught ARCH-01 but also accepted a correctness restatement of the same layering defect as a second blocker. That is useful evidence of duplicate/misclassified reviewer output, not a reason to demote every correctness finding after PASS.
+
+The corrected-policy rerun still satisfies the predefined REV01 decision rule without a correctness blanket.
 
 ### Current results
 
