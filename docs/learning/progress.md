@@ -7,10 +7,7 @@ Completed modules:
 1. ✅ 01 — Agent Loop & Harness
 2. ✅ 02 — Spec-Driven Development
 3. ✅ 03 — Context Engineering
-
-Current module:
-
-4. 🟡 04 — Verification + bounded Repair — implementation, R01 experiment, theory recap, and Topic Chat review complete; ready for Master closure.
+4. ✅ 04 — Verification + bounded Repair
 
 Current harness: **V2 Spec-Driven + targeted context + bounded verify/repair**.
 
@@ -35,89 +32,93 @@ raw task
 
 Detailed evidence lives in `docs/learning/experiments.md` and the corresponding `docs/learning/lessons/*` folders.
 
-## Next step
+## Next module
 
-**Master should formally close Module 04 and choose the next roadmap module from `docs/learning/master-learning-plan.md`.**
+**05 — Independent Review → Repair**
 
-Topic Chat does not select/implement the next module automatically.
+Why now:
+
+- deterministic verification/repair is now a working external feedback loop;
+- deterministic checks only validate properties they actually encode, so a green verifier can still miss semantic, architectural, or review-quality defects;
+- the roadmap places independent review immediately after Test → Fix;
+- this is the first intentionally small multi-agent pattern: a reviewer with clean context evaluates the verified diff independently, then bounded repair handles actionable findings;
+- tracing/evals already exist at a basic level and should be deepened after the review loop exists so they can measure reviewer value, false positives, repeated findings, and cost.
+
+Target after Module 05: **V3 — Independent Review + bounded Review Repair**.
 
 ---
 
 ## Module: 04 — Verification + bounded Repair
 
-**Status:** 🟡 READY FOR MASTER CLOSURE — Topic Chat review completed on 2026-08-19.
+**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-19.
 
 Theory recap: `docs/learning/lessons/04-verification-repair/theory.md`  
 Practical notes + traces: `docs/learning/lessons/04-verification-repair/`
 
 ### Built
 
-- outer V2 loop: implementation episode → harness `npm test` → normalize FAIL → bounded repair → verify again;
-- `runAgentLoop` is an episode only: terminal response ≠ verified success;
-- `normalizeFailure` — compact factual evidence (what failed), not diagnosis or prescribed fix;
-- harness-owned policy: `maxRepairAttempts = 2`, plus deterministic early stop on repeated signature when repair made no source change;
-- repair episode gets resolved spec + failure evidence + existing context hints; same `target-app/src/` write boundary;
-- R01 controlled repair probe (fault injection after implementation, benchmark-only);
-- deterministic tests for policy, normalization, write boundary, and R01 outcome shape.
+- outer V2 loop: implementation episode → harness verification → normalized FAIL → bounded repair → verify again;
+- `runAgentLoop` is an agent episode only; terminal response is not workflow completion authority;
+- `normalizeFailure` produces compact factual failure evidence rather than diagnosis/prescribed fixes;
+- harness-owned retry policy with `maxRepairAttempts = 2` and deterministic repeated-failure stop;
+- repair receives resolved spec + failure evidence + existing context hints with the same source-only capability boundary;
+- controlled R01 repair probe with benchmark-only one-shot fault injection;
+- deterministic tests for policy, normalization, capability boundaries, and R01 result shape.
 
-### Important design decisions
+### R01 evidence
 
-- `npm test` stays ordinary deterministic software; the LLM does not decide PASS/FAIL;
-- agent-controlled `run_command("npm test")` remains development feedback; harness verification is completion authority;
-- repair does not restart from raw task alone;
-- fault injection is benchmark-only and runs once via `afterImplementationEpisode`;
-- no reviewer, planner, skills, routing, worktrees, MCP, lifecycle state machine, or generic grader framework.
+Observed trace:
 
-### Experiment
+```text
+implementation episode
+→ benchmark-only 404→500 fault
+→ external verification #1 FAIL (`500 !== 404`)
+→ normalized factual evidence
+→ repair #1 receives resolved spec + failure evidence
+→ repair writes `tasks/task-routes.ts` only
+→ external verification #2 PASS
+→ workflow = verified success
+```
 
-R01 only. T01–T04 were intentionally **not** rerun. No V1 baseline comparison.
+Recorded outcome:
 
-Evidence: `docs/learning/lessons/04-verification-repair/traces/R01-repair-2026-08-18T12-45-24-448Z.jsonl`
+- verification attempts: **2**;
+- repair attempts: **1**;
+- repeated failure: **false**;
+- tests/spec/verifier were not modified;
+- final success was decided by the outer harness verifier.
 
-| Check                                   | Result                                                          |
-| --------------------------------------- | --------------------------------------------------------------- |
-| first external verification             | FAIL (exit 1)                                                   |
-| failure normalized                      | yes (`returns 404 when the task does not exist`, `500 !== 404`) |
-| repairAttempts                          | 1                                                               |
-| repair received spec + failure evidence | yes                                                             |
-| repair write                            | `tasks/task-routes.ts` only                                     |
-| second external verification            | PASS                                                            |
-| workflow status                         | verified success                                                |
-| repeatedFailure                         | false                                                           |
+### Important conclusions
 
-### Topic Chat review
-
-No blocking implementation issue found.
-
-Learning-critical boundaries are explicit:
-
-1. `harness/src/run.ts` → `runVerifyRepairLoop`: verification/retry/completion authority;
-2. `harness/src/failure.ts` → `normalizeFailure`: factual failure normalization;
-3. `harness/src/repair.ts` → `nextRepairDecision` / `formatRepairContract`: retry policy and repair context;
-4. `harness/src/loop.ts` → `runAgentLoop`: episode termination separated from verified workflow completion;
-5. `harness/src/tools.ts`: physical source-only write boundary and bounded test command.
+- **Agent owns the attempt; verifier owns the evidence; harness owns the consequence.**
+- agent-controlled `npm test` is development feedback; harness-controlled verification is completion authority;
+- deterministic operations remain ordinary software; LLM reasoning is used for diagnosis/repair judgment;
+- failure normalization answers **what failed**, leaving **why/how to fix** to the repair model;
+- retries must be bounded and harness-owned;
+- verifier quality/coverage still bounds what “verified” can mean.
 
 ### Known non-blocking limits
 
 1. `runV1Harness` is historical naming debt; actual behavior/trace is V2.
-2. Current no-progress detector catches only same failure signature + no source change; richer oscillation detection is deferred.
-3. Rich terminal/lifecycle semantics (`completed / blocked / needs_input / resume`) remain deferred to orchestration/lifecycle work.
-4. R01 proves the repair mechanism on one controlled defect, not broad natural-error recovery rates or verifier quality.
-5. Spec laundering remains a prior known limitation and was not part of Module 04.
+2. No-progress detection is intentionally minimal and does not catch all oscillation/useless-change patterns.
+3. Rich lifecycle terminal semantics (`completed / blocked / needs_input / resume`) remain deferred.
+4. R01 validates the repair mechanism on one controlled defect, not natural-error recovery rates or broad verifier quality.
+5. Deterministic verification can still miss properties not encoded by its graders.
+6. No independent reviewer exists yet.
+7. Spec laundering remains a prior known limitation.
 
-### Module 04 conclusion
+### Master closure
 
-The roadmap goal is satisfied at Topic Chat level:
+Module 04 satisfies the roadmap Verification + Test→Fix goal:
 
-```text
-external deterministic FAIL
-→ normalized evidence
-→ bounded repair
-→ external re-verification
-→ verified success
-```
+- completion authority is external to model prose;
+- verification failure becomes structured evidence rather than an immediate dead end;
+- repair is a bounded new reasoning episode conditioned on resolved spec + fresh evidence;
+- re-verification is mandatory before workflow success;
+- capability boundaries prevent the repair agent from modifying tests/spec/verifier;
+- R01 trace directly demonstrates the intended FAIL → evidence → repair → PASS lifecycle.
 
-Harness, not model prose, owns completion and retry consequence. Topic Chat recommends formal Module 04 closure without adding more repair machinery now.
+No additional repair machinery is required before moving on.
 
 ---
 
@@ -125,50 +126,15 @@ Harness, not model prose, owns completion and retry consequence. Topic Chat reco
 
 **Status:** ✅ COMPLETED — formally closed by Master on 2026-08-18.
 
-Theory recap: `docs/learning/lessons/03-context-engineering/theory.md`  
-Practical notes + traces: `docs/learning/lessons/03-context-engineering/`
+Key outcome:
 
-### Built
+- targeted repo orientation + spec→implementation path reuse reduced blind discovery;
+- T01–T03 correctness regression: 0/3;
+- T04 escalation preserved;
+- spec model calls 5→2; input tokens/wall time materially reduced;
+- progressive disclosure keeps on-demand tools as an escape hatch.
 
-- deterministic compact repository map;
-- explicit context formatting for spec and implementation phases;
-- capture/reuse of paths inspected during spec generation;
-- baseline/variant context mode;
-- discovery/context metrics in traces;
-- reproducible T01–T04 baseline vs targeted-context experiment.
-
-### Practical result
-
-Correctness / safety preserved:
-
-- T01–T03: `executable → PASS` in baseline and variant;
-- clear-task regression: **0 / 3**;
-- T04: `needs_human_judgment` in both modes, no implementation, no source changes.
-
-Measured context improvements in the variant:
-
-- spec `list_files`: **4 → 0** on every task;
-- spec model calls: **5 → 2** on every task;
-- implementation `list_files`: **1–3 → 0** on T01–T03;
-- T01–T03 wall time: approximately **−23% to −48%**;
-- T01–T03 total input tokens: approximately **−13% to −33%**;
-- T04 total input tokens: approximately **−51%**;
-- deterministic context preparation cost: negligible on this repository.
-
-### Important conclusions
-
-- context engineering is broader than prompt wording: it controls what information reaches each inference and when;
-- a small eager orientation + on-demand tools is better here than either blind discovery or a full repository dump;
-- progressive disclosure must preserve an escape hatch: hints are starting points, not an exhaustive scope;
-- repository evidence/relevance does not create authority for new product semantics;
-- repeated fresh `read_file` on a known path before edit is not the same as repeated blind discovery;
-- deterministic software is appropriate for factual orientation; LLM judgment may become useful later for semantic relevance on larger repositories.
-
-### Known limits after Module 03
-
-1. Spec laundering remains possible.
-2. Context selection is still simple/static; no need for embeddings/vector memory yet.
-3. No independent reviewer yet.
+Theory: `docs/learning/lessons/03-context-engineering/theory.md`.
 
 ---
 
@@ -176,24 +142,22 @@ Measured context improvements in the variant:
 
 **Status:** ✅ COMPLETED — formally closed by Master on 2026-08-17.
 
-Theory recap: `docs/learning/lessons/02-spec-driven-development/theory.md`
-
 Key outcome:
 
-- raw task now passes through a physically read-only structured spec phase;
+- raw task passes through a physically read-only structured spec phase;
 - `SpecDecision = executable | needs_human_judgment` gates implementation;
-- T01–T03 remain autonomous and correct;
-- T04 escalates before coding with no source changes, preventing the measured V0 product-invention failure.
+- T01–T03 remain autonomous/correct;
+- T04 escalates before coding with no source changes.
 
-Known remaining SDD limitation: spec laundering is probabilistically possible if an invented requirement is incorrectly represented as already resolved.
+Known limit: spec laundering remains probabilistically possible.
+
+Theory: `docs/learning/lessons/02-spec-driven-development/theory.md`.
 
 ---
 
 ## Module: 01 — Agent Loop & Harness
 
 **Status:** ✅ COMPLETED — formally closed by Master on 2026-08-13.
-
-Theory recap: `docs/learning/lessons/01-agent-loop-harness/theory.md`
 
 Key outcome:
 
@@ -202,3 +166,5 @@ Key outcome:
 - T01–T03 PASS;
 - T04 exposed ambiguity/product-invention failure;
 - terminal model text is not trusted as completion truth.
+
+Theory: `docs/learning/lessons/01-agent-loop-harness/theory.md`.
