@@ -1,6 +1,6 @@
 # 05 — Independent Review + bounded Review Repair
 
-Практический журнал. V3 reviewer path + REV01 controlled probe прогнаны; Topic Chat review ещё не закрывал модуль. `theory.md` пишет Topic Chat после review.
+Практический журнал. V3 reviewer path + REV01 controlled probe прогнаны; Topic Chat review завершён. Модуль готов к формальному закрытию Master.
 
 ## Что это за урок одной фразой
 
@@ -89,8 +89,15 @@ Corrected-policy rerun (`REV01-review-2026-08-19T17-24-41-220Z`), decision rule 
 
 Первый прогон (`REV01-review-2026-08-19T15-31-34-772Z`): intended detected, но correctness restatement стал вторым blocker. Остаётся evidence misclassification, не аргумент для blanket demotion.
 
-## Open questions для Topic Chat
+## Topic Chat conclusion
 
-- Достаточно ли V3 на одном REV01, или нужен natural architecture miss без injection?
-- Нужно ли нормализовать findingKey, если один и тот же дефект называется по-разному между прогонами?
-- Как отличать misclassified architecture-as-correctness от настоящего uncovered correctness без blanket demotion?
+V3 implementation и corrected REV01 evidence приняты. Дополнительный natural/baseline experiment перед закрытием не нужен: цель Module 05 — показать механизм independent review → bounded repair после deterministic PASS — доказана на контролируемом probe.
+
+Не блокирующие будущие вопросы:
+
+- semantic normalization `findingKey` для одинаковых findings с разными формулировками;
+- distinction misclassified architecture-as-correctness vs real uncovered correctness;
+- накопление findings и recurring-pattern analytics;
+- promotion подтверждённых recurring rules в deterministic checks.
+
+Эти пункты не расширяются в Module 05 и передаются последующим tracing/eval/orchestration этапам по roadmap.
