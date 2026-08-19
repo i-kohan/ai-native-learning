@@ -34,18 +34,22 @@ raw task
 
 Detailed evidence lives in `docs/learning/experiments.md` and the corresponding `docs/learning/lessons/*` folders.
 
-## Next module
+## Next step
 
-**05 — Independent Review → Repair** is implemented and awaiting Topic Chat review. Do not start planner/worker, routing, worktrees, MCP, or generic multi-agent work until that review lands.
+**Module 05 — Independent Review → Repair is complete at Topic Chat level and ready for formal Master closure.**
+
+Master should read the latest `progress.md`, `experiments.md`, Module 05 `theory.md` / `notes.md`, and REV01 evidence, formally close Module 05 if it agrees, then choose the next module from `master-learning-plan.md`.
+
+Topic Chat does not choose the next module automatically.
 
 ---
 
 ## Module: 05 — Independent Review + bounded Review Repair
 
-**Status:** 🔄 IN PROGRESS — implementation + REV01 probe complete; Topic Chat review pending (not marked complete).
+**Status:** 🟡 READY FOR MASTER CLOSURE — Topic Chat review completed on 2026-08-19.
 
-Practical notes + traces: `docs/learning/lessons/05-independent-review/`  
-`theory.md` is intentionally absent until Topic Chat writes it after review.
+Theory recap: `docs/learning/lessons/05-independent-review/theory.md`  
+Practical notes + traces: `docs/learning/lessons/05-independent-review/`
 
 ### Built
 
@@ -62,41 +66,78 @@ Practical notes + traces: `docs/learning/lessons/05-independent-review/`
 - reviewer does not receive implementer conversation, reasoning, or justification;
 - deterministic verification is authoritative only for the checks it actually encodes;
 - reviewer findings must not merely contradict passed deterministic evidence without new evidence;
-- reviewer may still identify uncovered correctness problems (high/medium confidence and severity, concrete, in-scope, actionable);
+- reviewer may still identify uncovered correctness problems when concrete, in-scope, actionable, and sufficiently high-confidence/severity;
 - architecture/layering issues must not be restated as correctness/spec violations;
 - reviewer reports WHAT/WHERE/WHY + related authority, not a prescribed fix;
-- no reviewer OFF/ON baseline; REV01 is a controlled probe like R01;
+- harness owns whether a finding is blocking and whether repair/reverify/rereview/stop occurs;
+- no reviewer OFF/ON baseline; REV01 is a controlled mechanism probe like R01;
 - no generic multi-agent framework, finding embeddings, or eval aggregation platform.
 
-### Experiment
-
-REV01 only. T01–T04 were **not** rerun. No reviewer-OFF comparison.
+### REV01 evidence
 
 Evidence: `docs/learning/lessons/05-independent-review/traces/REV01-review-2026-08-19T17-24-41-220Z.jsonl`
 
-| Check                            | Result                                                                                                                                                                       |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| controlled ARCH-01 injected      | yes (`completeTask` mutates status/completedAt in the route)                                                                                                                 |
-| first deterministic verification | PASS                                                                                                                                                                         |
-| REVIEW #1 intended finding       | yes (`complete-route-bypasses-task-service-transition`, category architecture, evidence names `completeTask` / `task.status` / `task.completedAt`, relatedAuthority ARCH-01) |
-| accepted blocking FPs            | 0                                                                                                                                                                            |
-| reviewRepairAttempts             | 1                                                                                                                                                                            |
-| review repair write              | `tasks/task-routes.ts` only                                                                                                                                                  |
-| verify after repair              | PASS                                                                                                                                                                         |
-| REVIEW #2 accepted blocker       | none                                                                                                                                                                         |
-| workflow                         | success                                                                                                                                                                      |
+```text
+controlled ARCH-01 defect injected after implementation
+→ deterministic VERIFY PASS
+→ REVIEW #1: exactly one grounded architecture blocker
+→ review repair #1 changes tasks/task-routes.ts only
+→ deterministic VERIFY PASS
+→ REVIEW #2: pass
+→ workflow success
+```
 
-A prior probe (`REV01-review-2026-08-19T15-31-34-772Z`) caught ARCH-01 but also accepted a correctness restatement of the same layering defect as a second blocker. That is useful evidence of duplicate/misclassified reviewer output, not a reason to demote every correctness finding after PASS.
+Recorded outcome:
 
-The corrected-policy rerun still satisfies the predefined REV01 decision rule without a correctness blanket.
+- intended finding detected: **true**;
+- review attempts: **2**;
+- review repair attempts: **1**;
+- blocking false positives: **0**;
+- repeated finding: **false**;
+- final reviewer outcome: **pass**;
+- final deterministic verification: **PASS**.
 
-### Current results
+A prior REV01 run produced the same defect twice under different categories (architecture + correctness). Topic Chat rejected the resulting blanket `correctness + PASS → non-blocking` policy: deterministic PASS only proves encoded checks. The corrected policy preserves possible uncovered correctness blockers, and the rerun still passed the predefined REV01 decision rule.
 
-V3 loop works on this controlled probe. Final workflow diff is empty because implementation was a no-op on a green fixture and review repair undid the injected layering defect.
+### Topic Chat review
 
-Module 05 is **not** complete until Topic Chat reviews the learning-critical code and REV01 evidence.
+No blocking implementation issue remains after the correction pass.
 
-Current harness: **V3 Spec-Driven + context layer + bounded verify/repair + independent review**.
+Learning-critical boundaries are explicit:
+
+1. verifier vs reviewer answer different questions;
+2. reviewer is a fresh artifact-focused episode, not implementer self-review;
+3. findings are structured, grounded candidate judgments rather than direct lifecycle authority;
+4. harness owns finding acceptance, blocking policy, repair budget, re-verification, re-review, and stop;
+5. review repair changes source state, so deterministic re-verification is mandatory;
+6. repeated validated reviewer concerns are candidates for promotion into deterministic checks rather than permanent LLM review cost.
+
+### Known non-blocking limits
+
+1. REV01 proves the mechanism on one controlled explicit ARCH-01 violation, not broad natural reviewer quality.
+2. `findingKey` repeat detection is literal; semantic deduplication across differently worded keys is deferred.
+3. Finding/spec-conflict and in-scope checks are intentionally simple, not general semantic judges.
+4. Reviewer quality without explicit architecture constraints is not demonstrated.
+5. T01–T04 were intentionally not rerun in this module.
+6. Finding aggregation/recurring-pattern analytics is deferred to tracing/evals; structured findings were retained so it can be added later.
+7. Stable recurring rules should eventually be promoted to deterministic tests/linters when practical.
+
+### Module 05 conclusion
+
+The roadmap goal is satisfied at Topic Chat level:
+
+```text
+deterministic PASS
+→ independent grounded review
+→ harness-owned blocker decision
+→ bounded review repair
+→ deterministic re-verification
+→ independent final re-review
+```
+
+The controlled evidence demonstrates that V3 can prevent acceptance of a deterministic-green engineering defect that the verifier does not encode, without giving the probabilistic reviewer direct lifecycle or write authority.
+
+Topic Chat recommends formal Module 05 closure without adding more review machinery now.
 
 ---
 
