@@ -8,6 +8,7 @@ import { normalizeFailure } from "../src/failure.ts";
 import { injectMissingTask500Fault } from "../src/r01-fault.ts";
 import { formatRepairContract, nextRepairDecision } from "../src/repair.ts";
 import { executeTool } from "../src/tools.ts";
+import { emptyReviewRunState } from "../src/review.ts";
 import { isExpectedR01Outcome } from "../src/run-benchmark.ts";
 import type { HarnessRunResult } from "../src/run.ts";
 import type { Spec } from "../src/spec.ts";
@@ -74,6 +75,7 @@ function tempConfig(): HarnessConfig {
     model: "test",
     maxTurns: 20,
     maxRepairAttempts: 2,
+    maxReviewRepairAttempts: 1,
     repoRoot: root,
     targetAppRoot,
     targetSrcRoot,
@@ -331,6 +333,7 @@ describe("R01 expected outcome", () => {
           tokenUsage: null,
         },
       ],
+      ...emptyReviewRunState(),
       finalVerificationPassed: true,
       finalVerification: null,
       modelFinalResponse: "repaired",

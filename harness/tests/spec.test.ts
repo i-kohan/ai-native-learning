@@ -12,6 +12,7 @@ import {
 } from "../src/tools.ts";
 import type { HarnessConfig } from "../src/config.ts";
 import { isExpectedV1Outcome } from "../src/run-benchmark.ts";
+import { emptyReviewRunState } from "../src/review.ts";
 import type { HarnessRunResult } from "../src/run.ts";
 import fs from "node:fs";
 import os from "node:os";
@@ -44,6 +45,7 @@ function tempConfig(): HarnessConfig {
     model: "test",
     maxTurns: 20,
     maxRepairAttempts: 2,
+    maxReviewRepairAttempts: 1,
     repoRoot: root,
     targetAppRoot,
     targetSrcRoot,
@@ -210,6 +212,7 @@ describe("V1 expected outcomes", () => {
         },
       ],
       repairs: [],
+      ...emptyReviewRunState(),
       finalVerificationPassed: true,
       finalVerification: null,
       modelFinalResponse: "done",

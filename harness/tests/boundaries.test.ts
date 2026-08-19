@@ -23,6 +23,7 @@ function tempConfig(): HarnessConfig {
     model: "test",
     maxTurns: 20,
     maxRepairAttempts: 2,
+    maxReviewRepairAttempts: 1,
     repoRoot: root,
     targetAppRoot,
     targetSrcRoot,

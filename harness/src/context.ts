@@ -55,6 +55,13 @@ export type ContextRunMetrics = {
   tokenUsage: TokenUsageSummary | null;
 };
 
+export type TokenUsagePhase =
+  | "spec"
+  | "implementation"
+  | "repair"
+  | "review"
+  | "review_repair";
+
 export type TokenUsageSummary = {
   totalInputTokens: number | null;
   totalOutputTokens: number | null;
@@ -64,6 +71,10 @@ export type TokenUsageSummary = {
   implOutputTokens: number | null;
   repairInputTokens: number | null;
   repairOutputTokens: number | null;
+  reviewInputTokens: number | null;
+  reviewOutputTokens: number | null;
+  reviewRepairInputTokens: number | null;
+  reviewRepairOutputTokens: number | null;
 };
 
 const DEFAULT_MAX_ENTRIES = 64;
@@ -222,7 +233,7 @@ export class DiscoveryTracker {
 export function mergeTokenUsage(
   current: TokenUsageSummary | null,
   usage: Record<string, unknown> | null,
-  phase: "spec" | "implementation" | "repair",
+  phase: TokenUsagePhase,
 ): TokenUsageSummary | null {
   if (!usage) {
     return current;
@@ -238,23 +249,11 @@ export function mergeTokenUsage(
 
   if (input !== null) {
     base.totalInputTokens = addNullable(base.totalInputTokens, input);
-    if (phase === "spec") {
-      base.specInputTokens = addNullable(base.specInputTokens, input);
-    } else if (phase === "repair") {
-      base.repairInputTokens = addNullable(base.repairInputTokens, input);
-    } else {
-      base.implInputTokens = addNullable(base.implInputTokens, input);
-    }
+    addPhaseInput(base, phase, input);
   }
   if (output !== null) {
     base.totalOutputTokens = addNullable(base.totalOutputTokens, output);
-    if (phase === "spec") {
-      base.specOutputTokens = addNullable(base.specOutputTokens, output);
-    } else if (phase === "repair") {
-      base.repairOutputTokens = addNullable(base.repairOutputTokens, output);
-    } else {
-      base.implOutputTokens = addNullable(base.implOutputTokens, output);
-    }
+    addPhaseOutput(base, phase, output);
   }
 
   return base;
@@ -270,6 +269,10 @@ export function emptyTokenUsage(): TokenUsageSummary {
     implOutputTokens: null,
     repairInputTokens: null,
     repairOutputTokens: null,
+    reviewInputTokens: null,
+    reviewOutputTokens: null,
+    reviewRepairInputTokens: null,
+    reviewRepairOutputTokens: null,
   };
 }
 
@@ -316,7 +319,65 @@ export function combineTokenUsage(
       merged.repairOutputTokens,
       part.repairOutputTokens,
     ),
+    reviewInputTokens: addNullableTokens(
+      merged.reviewInputTokens,
+      part.reviewInputTokens,
+    ),
+    reviewOutputTokens: addNullableTokens(
+      merged.reviewOutputTokens,
+      part.reviewOutputTokens,
+    ),
+    reviewRepairInputTokens: addNullableTokens(
+      merged.reviewRepairInputTokens,
+      part.reviewRepairInputTokens,
+    ),
+    reviewRepairOutputTokens: addNullableTokens(
+      merged.reviewRepairOutputTokens,
+      part.reviewRepairOutputTokens,
+    ),
   }));
+}
+
+function addPhaseInput(
+  base: TokenUsageSummary,
+  phase: TokenUsagePhase,
+  input: number,
+): void {
+  if (phase === "spec") {
+    base.specInputTokens = addNullable(base.specInputTokens, input);
+  } else if (phase === "repair") {
+    base.repairInputTokens = addNullable(base.repairInputTokens, input);
+  } else if (phase === "review") {
+    base.reviewInputTokens = addNullable(base.reviewInputTokens, input);
+  } else if (phase === "review_repair") {
+    base.reviewRepairInputTokens = addNullable(
+      base.reviewRepairInputTokens,
+      input,
+    );
+  } else {
+    base.implInputTokens = addNullable(base.implInputTokens, input);
+  }
+}
+
+function addPhaseOutput(
+  base: TokenUsageSummary,
+  phase: TokenUsagePhase,
+  output: number,
+): void {
+  if (phase === "spec") {
+    base.specOutputTokens = addNullable(base.specOutputTokens, output);
+  } else if (phase === "repair") {
+    base.repairOutputTokens = addNullable(base.repairOutputTokens, output);
+  } else if (phase === "review") {
+    base.reviewOutputTokens = addNullable(base.reviewOutputTokens, output);
+  } else if (phase === "review_repair") {
+    base.reviewRepairOutputTokens = addNullable(
+      base.reviewRepairOutputTokens,
+      output,
+    );
+  } else {
+    base.implOutputTokens = addNullable(base.implOutputTokens, output);
+  }
 }
 
 function addNullableTokens(

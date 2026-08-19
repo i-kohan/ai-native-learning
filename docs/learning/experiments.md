@@ -354,3 +354,145 @@ external deterministic verification FAIL
 This does **not** prove that V2 will recover naturally occurring agent mistakes, or that T01–T04 remain unchanged.
 
 Module 04 experiment recorded; formal module closure still pending Topic Chat review.
+
+---
+
+## Module 05 — Independent Review + bounded Review Repair (REV01 controlled probe)
+
+### Hypothesis
+
+An independent reviewer with a clean, purpose-built context (resolved spec + current diff + explicit architecture constraints + compact verification evidence) can detect an architectural defect that deterministic tests already accepted, and a single harness-bounded review repair can restore the constraint without a second automatic repair.
+
+### What this experiment is
+
+A **controlled review probe**, not a spontaneous-error benchmark and not a reviewer OFF vs ON comparison.
+
+REV01:
+
+1. starts from the green benchmark fixture;
+2. runs normal spec + implementation (complete-task behavior already satisfied);
+3. injects one deterministic ARCH-01 defect: `completeTask` in `task-routes.ts` uses `service.get(id)` and directly mutates `Task.status` / `Task.completedAt`;
+4. first harness `npm test` must PASS (V2 completion condition would have accepted this state);
+5. REVIEW #1 must report the intended architecture violation with concrete evidence and ARCH-01;
+6. harness accepts exactly that finding as the blocking repair signal;
+7. one review repair runs, then deterministic verification, then REVIEW #2 with no accepted blocker.
+
+Fault injection exists only in benchmark/probe code, runs once, and is not production harness behavior.
+
+### Why there is no baseline
+
+The probe is designed so the previous V2 completion condition is already satisfied after injection (`npm test` PASS). A separate reviewer-OFF run would only restate that fact. The evidence that V2 would have accepted the defect is the first deterministic PASS on the injected state.
+
+### Predefined ground truth
+
+True-positive blocker:
+
+- conceptual findingKey: `task-state-transition-outside-service` (exact string not required);
+- category: `architecture`;
+- problem: `task-routes.ts` directly owns/mutates `Task.status` and/or `Task.completedAt`, violating ARCH-01;
+- evidence is sufficient only if the reviewer identifies the concrete `completeTask` / route mutation and connects it to ARCH-01.
+
+Any other accepted blocking finding is a blocking false positive unless independently justified by this ground truth.
+
+### Decision rule
+
+REV01 demonstrates reviewer value only if all are true:
+
+1. controlled ARCH-01 violation is injected;
+2. first deterministic verification is PASS;
+3. REVIEW #1 detects the intended ARCH-01 violation;
+4. the finding contains concrete evidence and references ARCH-01;
+5. harness accepts it as an actionable blocker;
+6. zero other accepted blocking false positives;
+7. exactly one review repair runs;
+8. review repair changes application source only;
+9. deterministic verification after repair is PASS;
+10. REVIEW #2 has no unresolved accepted blocking finding;
+11. workflow finishes successfully.
+
+If the reviewer misses ARCH-01: mechanism not demonstrated.  
+If it catches ARCH-01 but accepts blocking false-positive noise: review signal exists, but current reviewer/policy is not useful enough.
+
+### Variant
+
+```text
+spec gate → implementation episode
+→ [REV01] inject route-owned completeTask state transition once
+→ harness npm test PASS
+→ REVIEW #1
+→ accepted ARCH-01 blocker
+→ review repair #1 (source only)
+→ npm test PASS
+→ REVIEW #2 (no accepted blocker)
+→ success
+```
+
+Model: same family as prior modules (`gpt-5.6-luna`). Context mode: `variant`. Architecture constraint supplied only for this probe: ARCH-01.
+
+```bash
+cd harness && npm run benchmark:rev01
+```
+
+### Results
+
+Primary evidence: `docs/learning/lessons/05-independent-review/traces/REV01-review-2026-08-19T15-34-43-433Z.jsonl` (+ `.spec.json`)
+
+| Field | Value |
+| --- | --- |
+| spec | executable |
+| impl started | yes (no source change on green fixture) |
+| first verify | **PASS** exit 0 |
+| reviewAttempts | **2** |
+| REVIEW #1 findings | 1 |
+| intendedFindingDetected | **true** (`ARCH-01-route-mutates-task-state`) |
+| category / authority | architecture / ARCH-01 |
+| evidence | `completeTask` changed from `service.complete(id)` to `service.get(id)`; then `task.status = "completed"` and `task.completedAt = new Date().toISOString()` |
+| acceptedBlockingFindings | 1 |
+| acceptedNonBlockingFindings | 0 |
+| rejectedFindings | 0 |
+| blockingFalsePositives | **0** |
+| reviewRepairAttempts | **1** |
+| review-repair changed files | `tasks/task-routes.ts` only |
+| repeatedFinding | false |
+| verify after repair | **PASS** exit 0 |
+| REVIEW #2 | pass, 0 findings |
+| finalReviewerOutcome | pass |
+| workflow | **success** |
+| model calls / tools | 11 / 20 |
+| tokens in/out | 26367 / 2473 (review 3409/287; review_repair 11623/1008) |
+| wall | ~36s |
+| outcome | **expected** |
+
+Reviewer context included spec, diff, ARCH-01, and compact passed-verification evidence. It did not include implementer conversation. Tests/spec/verifier/harness were not modified.
+
+Final workflow `changed_files` is empty because the injected layering defect was reverted to the original fixture. That is expected; the review-repair episode diff is the evidence that review repair changed source.
+
+### Policy iteration (not a second experiment)
+
+First probe (`REV01-review-2026-08-19T15-31-34-772Z`): REVIEW #1 detected ARCH-01 **and** restated the same defect as `correctness` / spec_requirement. Harness accepted both as blockers (`blocking_fp=1`) → decision rule UNEXPECTED, even though repair still succeeded.
+
+Harness policy was then made explicit: after deterministic PASS, `correctness` findings are recorded as non-blocking (`verifier_authoritative`). This follows “reviewer never replaces tests”; it is not semantic finding deduplication.
+
+The recorded expected run is after that rule.
+
+### Failures / unexpected behavior
+
+None against the REV01 success criteria on the recorded expected run.
+
+### Conclusion
+
+Hypothesis supported **for this controlled defect**:
+
+```text
+deterministic PASS on an architectural defect tests do not encode
+→ independent REVIEW #1 detects ARCH-01 with concrete evidence
+→ harness accepts exactly one blocker
+→ one review repair of application source
+→ deterministic PASS
+→ REVIEW #2 clean
+→ workflow success
+```
+
+This does **not** prove that V3 will catch naturally occurring architecture misses, that T01–T04 remain unchanged, or that a reviewer without an explicit ARCH-01 constraint would find the same defect.
+
+Module 05 experiment recorded; formal module closure still pending Topic Chat review.

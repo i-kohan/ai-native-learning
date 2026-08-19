@@ -8,6 +8,7 @@
     "benchmark:all": "tsx src/run-benchmark.ts --all",
     "benchmark:experiment": "tsx src/run-benchmark.ts --experiment",
     "benchmark:r01": "tsx src/run-benchmark.ts R01",
+    "benchmark:rev01": "tsx src/run-benchmark.ts REV01",
     "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },
   "dependencies": {

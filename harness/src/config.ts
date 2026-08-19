@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { DEFAULT_MAX_REPAIR_ATTEMPTS } from "./repair.ts";
+import { DEFAULT_MAX_REVIEW_REPAIR_ATTEMPTS } from "./review.ts";
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(harnessDir, "../..");
@@ -13,6 +14,7 @@ export type HarnessConfig = {
   model: string;
   maxTurns: number;
   maxRepairAttempts: number;
+  maxReviewRepairAttempts: number;
   repoRoot: string;
   targetAppRoot: string;
   targetSrcRoot: string;
@@ -41,6 +43,7 @@ export function loadConfig(): HarnessConfig {
     model,
     maxTurns: 20,
     maxRepairAttempts: DEFAULT_MAX_REPAIR_ATTEMPTS,
+    maxReviewRepairAttempts: DEFAULT_MAX_REVIEW_REPAIR_ATTEMPTS,
     repoRoot: REPO_ROOT,
     targetAppRoot,
     targetSrcRoot: path.join(targetAppRoot, "src"),

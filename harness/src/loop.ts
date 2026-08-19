@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { HarnessConfig } from "./config.ts";
 import { AGENT_INSTRUCTIONS, REPAIR_INSTRUCTIONS } from "./instructions.ts";
+import { REVIEW_REPAIR_INSTRUCTIONS } from "./review-instructions.ts";
 import type { Spec } from "./spec.ts";
 import {
   DiscoveryTracker,
@@ -17,7 +18,7 @@ import {
   ResponseUsage,
 } from "openai/resources/responses/responses.js";
 
-export type EpisodePhase = "implementation" | "repair";
+export type EpisodePhase = "implementation" | "repair" | "review_repair";
 export type RunStatus = "success" | "failure";
 
 export type AgentRunResult = {
@@ -76,7 +77,11 @@ export async function runAgentLoop(options: {
 
   const client = new OpenAI({ apiKey: config.apiKey });
   const instructions =
-    phase === "repair" ? REPAIR_INSTRUCTIONS : AGENT_INSTRUCTIONS;
+    phase === "repair"
+      ? REPAIR_INSTRUCTIONS
+      : phase === "review_repair"
+        ? REVIEW_REPAIR_INSTRUCTIONS
+        : AGENT_INSTRUCTIONS;
 
   const taskContent = reusableContext
     ? `${formatImplementationHints(reusableContext)}\n\n${task}`
@@ -135,7 +140,11 @@ export async function runAgentLoop(options: {
 
       const durationMs = Date.now() - callStarted;
       const usage = extractUsage(response);
-      tokenUsage = mergeTokenUsage(tokenUsage, usage, phase);
+      tokenUsage = mergeTokenUsage(
+        tokenUsage,
+        usage,
+        phase === "review_repair" ? "review_repair" : phase,
+      );
 
       tracer.record(
         "model_call_completed",

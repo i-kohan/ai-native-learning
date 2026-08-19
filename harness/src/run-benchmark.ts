@@ -10,6 +10,11 @@ import {
   type HarnessRunResult,
 } from "./run.ts";
 import { injectMissingTask500Fault } from "./r01-fault.ts";
+import { injectArch01CompleteTaskFault } from "./rev01-fault.ts";
+import {
+  ARCH_01,
+  isIntendedArch01Finding,
+} from "./review.ts";
 import { runFinalVerification } from "./verify.ts";
 
 const BENCHMARKS_ROOT = path.join(REPO_ROOT, "benchmarks");
@@ -51,6 +56,7 @@ export function prepareBenchmark(taskId: TaskId): BenchmarkPrepResult {
     model: "unused",
     maxTurns: 0,
     maxRepairAttempts: 2,
+    maxReviewRepairAttempts: 1,
     repoRoot: REPO_ROOT,
     targetAppRoot: path.join(REPO_ROOT, "target-app"),
     targetSrcRoot: TARGET_SRC,
@@ -148,6 +154,7 @@ export async function runRepairProbe(): Promise<HarnessRunResult> {
     model: "unused",
     maxTurns: 0,
     maxRepairAttempts: 2,
+    maxReviewRepairAttempts: 1,
     repoRoot: REPO_ROOT,
     targetAppRoot: path.join(REPO_ROOT, "target-app"),
     targetSrcRoot: TARGET_SRC,
@@ -261,6 +268,139 @@ function printRepairProbeSummary(result: HarnessRunResult): void {
   console.log(`outcome: ${expected}`);
 }
 
+export async function runReviewProbe(): Promise<HarnessRunResult> {
+  restoreFixture();
+
+  const taskPath = path.join(BENCHMARKS_ROOT, "REV01", "task.md");
+  if (!fs.existsSync(taskPath)) {
+    throw new Error(`Missing REV01 task file: ${taskPath}`);
+  }
+  const task = fs.readFileSync(taskPath, "utf8").trim();
+
+  const initial = runFinalVerification({
+    apiKey: "unused",
+    model: "unused",
+    maxTurns: 0,
+    maxRepairAttempts: 2,
+    maxReviewRepairAttempts: 1,
+    repoRoot: REPO_ROOT,
+    targetAppRoot: path.join(REPO_ROOT, "target-app"),
+    targetSrcRoot: TARGET_SRC,
+    tracesDir: path.join(REPO_ROOT, "traces"),
+  });
+  if (!initial.passed) {
+    throw new Error(
+      `REV01: expected green fixture tests to PASS before the probe, but they failed.\n${initial.output}`,
+    );
+  }
+
+  console.log("\n=== Preparing REV01 (controlled independent review probe) ===");
+  console.log(
+    "initial_tests: PASS (green fixture; ARCH-01 defect injected after implementation)",
+  );
+
+  const config = loadConfig();
+  const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+  const runId = `REV01-review-${timestamp()}`;
+  let injected = false;
+
+  const result = await runV1Harness({
+    config,
+    task,
+    runId,
+    beforeSnapshot,
+    contextMode: "variant",
+    architectureConstraints: [ARCH_01],
+    afterImplementationEpisode: () => {
+      if (injected) {
+        throw new Error("REV01 fault injection ran more than once.");
+      }
+      injectArch01CompleteTaskFault(config.targetSrcRoot);
+      injected = true;
+      console.log(
+        "REV01: injected completeTask route-owned status/completedAt mutation after implementation",
+      );
+    },
+  });
+
+  if (!injected) {
+    throw new Error(
+      "REV01: implementation episode finished without fault injection (spec likely did not start implementation).",
+    );
+  }
+
+  printHarnessResult(result);
+  printReviewProbeSummary(result);
+  return result;
+}
+
+export function isExpectedREV01Outcome(result: HarnessRunResult): boolean {
+  const first = result.verifications[0];
+  const review1 = result.reviews[0];
+  const review2 = result.reviews[1];
+  const reviewRepair = result.reviewRepairs[0];
+  const reviewRepairChangedOnlySource =
+    Boolean(reviewRepair) &&
+    reviewRepair.changedFiles.length > 0 &&
+    reviewRepair.changedFiles.every((file) => isAllowedRepairPath(file));
+  const review2HasNoAcceptedBlocker =
+    Boolean(review2) &&
+    review2.decisions.every((item) => item.decision !== "accepted_blocking");
+  const intendedOnReview1 = Boolean(
+    review1?.decisions.some(
+      (item) =>
+        item.decision === "accepted_blocking" &&
+        isIntendedArch01Finding(item.finding),
+    ),
+  );
+  const lastVerification = result.verifications[result.verifications.length - 1];
+
+  return (
+    result.workflowStatus === "success" &&
+    result.specDecision?.status === "executable" &&
+    result.implementationStarted === true &&
+    first?.passed === true &&
+    result.reviewAttempts === 2 &&
+    intendedOnReview1 &&
+    result.intendedFindingDetected === true &&
+    result.blockingFalsePositives.length === 0 &&
+    result.reviewRepairAttempts === 1 &&
+    reviewRepairChangedOnlySource &&
+    lastVerification?.passed === true &&
+    result.finalVerificationPassed === true &&
+    review2HasNoAcceptedBlocker &&
+    result.finalReviewerOutcome === "pass" &&
+    result.repeatedFinding === false
+  );
+}
+
+function printReviewProbeSummary(result: HarnessRunResult): void {
+  const expected = isExpectedREV01Outcome(result) ? "expected" : "UNEXPECTED";
+  const first = result.verifications[0];
+  const last = result.verifications[result.verifications.length - 1];
+  console.log("\n=== REV01 Independent Review Probe Summary ===");
+  console.log(
+    `first_verify: ${first ? (first.passed ? "PASS" : "FAIL") : "missing"}`,
+  );
+  console.log(`review_attempts: ${result.reviewAttempts}`);
+  console.log(
+    `review1_findings: ${result.reviews[0]?.findings.length ?? 0} | intended: ${result.intendedFindingDetected}`,
+  );
+  console.log(
+    `accepted_blocking: ${result.acceptedBlockingFindings.length} | non_blocking: ${result.acceptedNonBlockingFindings.length} | rejected: ${result.rejectedFindings.length} | blocking_fp: ${result.blockingFalsePositives.length}`,
+  );
+  console.log(`review_repair_attempts: ${result.reviewRepairAttempts}`);
+  console.log(
+    `review_repair_changed_files: ${result.reviewRepairs[0]?.changedFiles.join(", ") || "(none)"}`,
+  );
+  console.log(
+    `verify_after_repair: ${last ? (last.passed ? "PASS" : "FAIL") : "missing"}`,
+  );
+  console.log(`reviewer_outcome: ${result.finalReviewerOutcome}`);
+  console.log(`workflow_status: ${result.workflowStatus}`);
+  console.log(`outcome: ${expected}`);
+}
+
 export function printExperimentSummary(
   runs: Array<{ label: BenchmarkRunLabel; result: HarnessRunResult }>,
 ): void {
@@ -347,6 +487,7 @@ type CliOptions = {
   all: boolean;
   experiment: boolean;
   repairProbe: boolean;
+  reviewProbe: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
 };
@@ -357,33 +498,72 @@ function parseArgs(argv: string[]): CliOptions {
     : "baseline";
 
   if (argv.includes("--experiment")) {
-    return { all: false, experiment: true, repairProbe: false, contextMode };
+    return {
+      all: false,
+      experiment: true,
+      repairProbe: false,
+      reviewProbe: false,
+      contextMode,
+    };
+  }
+  if (argv.includes("REV01") || argv.includes("--review-probe")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: true,
+      contextMode,
+    };
   }
   if (argv.includes("R01") || argv.includes("--repair-probe")) {
-    return { all: false, experiment: false, repairProbe: true, contextMode };
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: true,
+      reviewProbe: false,
+      contextMode,
+    };
   }
   if (argv.includes("--all")) {
-    return { all: true, experiment: false, repairProbe: false, contextMode };
+    return {
+      all: true,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      contextMode,
+    };
   }
   const taskId = argv.find((arg) => TASK_IDS.includes(arg as TaskId)) as
     | TaskId
     | undefined;
   if (!taskId) {
-    return { all: false, experiment: false, repairProbe: false, contextMode };
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      contextMode,
+    };
   }
   return {
     all: false,
     experiment: false,
     repairProbe: false,
+    reviewProbe: false,
     taskId,
     contextMode,
   };
 }
 
 async function main(): Promise<void> {
-  const { all, experiment, repairProbe, taskId, contextMode } = parseArgs(
-    process.argv.slice(2),
-  );
+  const { all, experiment, repairProbe, reviewProbe, taskId, contextMode } =
+    parseArgs(process.argv.slice(2));
+
+  if (reviewProbe) {
+    const result = await runReviewProbe();
+    process.exit(isExpectedREV01Outcome(result) ? 0 : 1);
+    return;
+  }
 
   if (repairProbe) {
     const result = await runRepairProbe();
@@ -407,6 +587,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark:all [--baseline|--variant]");
     console.error("   or: npm run benchmark:experiment");
     console.error("   or: npm run benchmark -- R01");
+    console.error("   or: npm run benchmark -- REV01");
     process.exit(1);
   }
 

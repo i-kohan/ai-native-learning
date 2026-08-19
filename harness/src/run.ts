@@ -15,6 +15,21 @@ import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
 import { normalizeFailure, type NormalizedFailure } from "./failure.ts";
 import { runAgentLoop, type AgentRunResult } from "./loop.ts";
 import { formatRepairContract, nextRepairDecision } from "./repair.ts";
+import {
+  aggregateReviewState,
+  decideFinding,
+  emptyReviewRunState,
+  formatReviewRepairContract,
+  nextReviewDecision,
+  shouldStartReview,
+  type ArchitectureConstraint,
+  type FindingDecisionRecord,
+  type ReviewAttemptSummary,
+  type ReviewContext,
+  type ReviewRepairSummary,
+  type ReviewRunState,
+} from "./review.ts";
+import { runIndependentReview } from "./review-phase.ts";
 import { buildSpec } from "./spec-phase.ts";
 import {
   formatSpecContract,
@@ -32,7 +47,9 @@ export type WorkflowStatus = "success" | "failure" | "needs_human_judgment";
 export type WorkflowFailureReason =
   | AgentRunResult["failureReason"]
   | "spec_phase_failed"
-  | "final_verification_failed";
+  | "final_verification_failed"
+  | "review_parse_failed"
+  | "review_unresolved_blocker";
 
 export type VerificationAttempt = {
   attempt: number;
@@ -73,6 +90,17 @@ export type HarnessRunResult = {
   repeatedFailure: boolean;
   verifications: VerificationAttempt[];
   repairs: RepairAttemptSummary[];
+  reviewAttempts: number;
+  reviews: ReviewAttemptSummary[];
+  reviewRepairAttempts: number;
+  reviewRepairs: ReviewRepairSummary[];
+  repeatedFinding: boolean;
+  intendedFindingDetected: boolean;
+  acceptedBlockingFindings: FindingDecisionRecord[];
+  acceptedNonBlockingFindings: FindingDecisionRecord[];
+  rejectedFindings: FindingDecisionRecord[];
+  blockingFalsePositives: FindingDecisionRecord[];
+  finalReviewerOutcome: ReviewRunState["finalReviewerOutcome"];
   finalVerificationPassed: boolean;
   finalVerification: VerificationResult | null;
   modelFinalResponse: string;
@@ -91,6 +119,7 @@ export async function runV1Harness(options: {
   runId: string;
   beforeSnapshot?: FileSnapshot;
   contextMode?: ContextMode;
+  architectureConstraints?: ArchitectureConstraint[];
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
 }): Promise<HarnessRunResult> {
@@ -116,11 +145,12 @@ export async function runV1Harness(options: {
   }
 
   tracer.record("run_started", {
-    version: "v2",
+    version: "v3",
     task,
     model: config.model,
     maxTurns: config.maxTurns,
     maxRepairAttempts: config.maxRepairAttempts,
+    maxReviewRepairAttempts: config.maxReviewRepairAttempts,
     contextMode,
   });
 
@@ -257,7 +287,60 @@ export async function runV1Harness(options: {
     reusableContext,
     runId,
     implementation,
+    emitSuccessOutcome: false,
   });
+
+  let workflowStatus = verified.workflowStatus;
+  let failureReason = verified.failureReason;
+  let modelFinalResponse = verified.modelFinalResponse;
+  let verificationAttempts = verified.verificationAttempts;
+  let repairAttempts = verified.repairAttempts;
+  let repeatedFailure = verified.repeatedFailure;
+  let verifications = verified.verifications;
+  let repairs = verified.repairs;
+  let finalVerificationPassed = verified.finalVerificationPassed;
+  let finalVerification = verified.finalVerification;
+  let reviewState = emptyReviewRunState();
+
+  const canReview =
+    shouldStartReview(verified.finalVerificationPassed) &&
+    verified.workflowStatus === "success";
+
+  if (canReview) {
+    const reviewed = await runIndependentReviewLoop({
+      config,
+      task,
+      spec: decision.spec,
+      tracer,
+      reusableContext,
+      runId,
+      implementation,
+      beforeSnapshot,
+      architectureConstraints: options.architectureConstraints ?? [],
+      lastVerification: verified.finalVerification!,
+      lastVerificationAttempt: verified.verificationAttempts,
+    });
+    workflowStatus = reviewed.workflowStatus;
+    failureReason = reviewed.failureReason;
+    modelFinalResponse = reviewed.modelFinalResponse;
+    verificationAttempts =
+      verified.verificationAttempts + reviewed.extraVerificationAttempts;
+    repairAttempts = verified.repairAttempts + reviewed.extraRepairAttempts;
+    repeatedFailure = verified.repeatedFailure || reviewed.repeatedFailure;
+    verifications = [...verified.verifications, ...reviewed.extraVerifications];
+    repairs = [...verified.repairs, ...reviewed.extraRepairs];
+    finalVerificationPassed = reviewed.finalVerificationPassed;
+    finalVerification = reviewed.finalVerification;
+    reviewState = reviewed.reviewState;
+  } else if (verified.workflowStatus === "success") {
+    tracer.record("workflow_outcome", {
+      status: "success",
+      reason: "verified_success",
+      verificationAttempts: verified.verificationAttempts,
+      repairAttempts: verified.repairAttempts,
+      reviewSkipped: true,
+    });
+  }
 
   const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
   const { changedFiles, unifiedDiff } = diffSnapshots(
@@ -267,8 +350,8 @@ export async function runV1Harness(options: {
 
   const result = baseResult({
     task,
-    workflowStatus: verified.workflowStatus,
-    failureReason: verified.failureReason,
+    workflowStatus,
+    failureReason,
     specDecision: decision,
     unresolvedQuestions: [],
     implementationStarted: true,
@@ -277,14 +360,15 @@ export async function runV1Harness(options: {
     contextMode,
     contextPreparation,
     receivedTerminalResponse: implementation.receivedTerminalResponse,
-    verificationAttempts: verified.verificationAttempts,
-    repairAttempts: verified.repairAttempts,
-    repeatedFailure: verified.repeatedFailure,
-    verifications: verified.verifications,
-    repairs: verified.repairs,
-    finalVerificationPassed: verified.finalVerificationPassed,
-    finalVerification: verified.finalVerification,
-    modelFinalResponse: verified.modelFinalResponse,
+    verificationAttempts,
+    repairAttempts,
+    repeatedFailure,
+    verifications,
+    repairs,
+    review: reviewState,
+    finalVerificationPassed,
+    finalVerification,
+    modelFinalResponse,
     changedFiles,
     unifiedDiff,
     tracePath: tracer.tracePath,
@@ -295,7 +379,7 @@ export async function runV1Harness(options: {
 }
 
 export function printHarnessResult(result: HarnessRunResult): void {
-  console.log("\n=== V2 Harness Result ===");
+  console.log("\n=== V3 Harness Result ===");
   console.log(`task: ${truncate(result.task, 200)}`);
   console.log(`workflow_status: ${result.workflowStatus}`);
   console.log(`spec_decision: ${result.specDecision?.status ?? "(none)"}`);
@@ -357,6 +441,12 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(
     `verification_attempts: ${result.verificationAttempts} | repair_attempts: ${result.repairAttempts} | repeated_failure: ${result.repeatedFailure}`,
   );
+  console.log(
+    `review_attempts: ${result.reviewAttempts} | review_repair_attempts: ${result.reviewRepairAttempts} | reviewer: ${result.finalReviewerOutcome} | intended: ${result.intendedFindingDetected} | repeated_finding: ${result.repeatedFinding}`,
+  );
+  console.log(
+    `review_findings: blocking=${result.acceptedBlockingFindings.length} non_blocking=${result.acceptedNonBlockingFindings.length} rejected=${result.rejectedFindings.length} blocking_fp=${result.blockingFalsePositives.length}`,
+  );
   if (result.verifications.length) {
     console.log(
       `verifications: ${result.verifications
@@ -415,7 +505,7 @@ function printContextMetrics(metrics: ContextRunMetrics): void {
   if (metrics.tokenUsage) {
     const usage = metrics.tokenUsage;
     console.log(
-      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"}; repair in=${usage.repairInputTokens ?? "n/a"} out=${usage.repairOutputTokens ?? "n/a"})`,
+      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"}; repair in=${usage.repairInputTokens ?? "n/a"} out=${usage.repairOutputTokens ?? "n/a"}; review in=${usage.reviewInputTokens ?? "n/a"} out=${usage.reviewOutputTokens ?? "n/a"}; review_repair in=${usage.reviewRepairInputTokens ?? "n/a"} out=${usage.reviewRepairOutputTokens ?? "n/a"})`,
     );
   }
 }
@@ -440,6 +530,7 @@ async function runVerifyRepairLoop(options: {
   reusableContext: ReusableContext | undefined;
   runId: string;
   implementation: AgentRunResult;
+  emitSuccessOutcome?: boolean;
 }): Promise<{
   workflowStatus: WorkflowStatus;
   failureReason?: WorkflowFailureReason;
@@ -531,12 +622,14 @@ async function runVerifyRepairLoop(options: {
     });
 
     if (decision.action === "verified_success") {
-      tracer.record("workflow_outcome", {
-        status: "success",
-        reason: "verified_success",
-        verificationAttempts: attempt,
-        repairAttempts,
-      });
+      if (options.emitSuccessOutcome !== false) {
+        tracer.record("workflow_outcome", {
+          status: "success",
+          reason: "verified_success",
+          verificationAttempts: attempt,
+          repairAttempts,
+        });
+      }
       return {
         workflowStatus: "success",
         verificationAttempts: attempt,
@@ -650,6 +743,328 @@ async function runVerifyRepairLoop(options: {
   }
 }
 
+async function runIndependentReviewLoop(options: {
+  config: HarnessConfig;
+  task: string;
+  spec: Spec;
+  tracer: Tracer;
+  reusableContext: ReusableContext | undefined;
+  runId: string;
+  implementation: AgentRunResult;
+  beforeSnapshot: FileSnapshot;
+  architectureConstraints: ArchitectureConstraint[];
+  lastVerification: VerificationResult;
+  lastVerificationAttempt: number;
+}): Promise<{
+  workflowStatus: WorkflowStatus;
+  failureReason?: WorkflowFailureReason;
+  modelFinalResponse: string;
+  extraVerificationAttempts: number;
+  extraRepairAttempts: number;
+  extraVerifications: VerificationAttempt[];
+  extraRepairs: RepairAttemptSummary[];
+  repeatedFailure: boolean;
+  finalVerificationPassed: boolean;
+  finalVerification: VerificationResult;
+  reviewState: ReviewRunState;
+}> {
+  const {
+    config,
+    task,
+    spec,
+    tracer,
+    reusableContext,
+    runId,
+    beforeSnapshot,
+    architectureConstraints,
+  } = options;
+
+  const reviews: ReviewAttemptSummary[] = [];
+  const reviewRepairs: ReviewRepairSummary[] = [];
+  const extraVerifications: VerificationAttempt[] = [];
+  const extraRepairs: RepairAttemptSummary[] = [];
+  let extraVerificationAttempts = 0;
+  let extraRepairAttempts = 0;
+  let reviewRepairAttempts = 0;
+  let previousBlockingKeys: string[] = [];
+  let lastVerification = options.lastVerification;
+  let lastVerificationAttempt = options.lastVerificationAttempt;
+  let modelFinalResponse = options.implementation.modelFinalResponse;
+  let repeatedFailure = false;
+
+  const runReviewRound = async (
+    round: number,
+  ): Promise<
+    | { ok: true; blockingKeys: string[] }
+    | { ok: false; reason: "review_parse_failed" }
+  > => {
+    const current = snapshotDirectory(config.targetSrcRoot);
+    const { changedFiles, unifiedDiff } = diffSnapshots(
+      beforeSnapshot,
+      current,
+    );
+    const context: ReviewContext = {
+      spec,
+      unifiedDiff,
+      changedFiles,
+      architectureConstraints,
+      verificationEvidence: {
+        passed: lastVerification.passed,
+        exitCode: lastVerification.exitCode,
+        durationMs: lastVerification.durationMs,
+        attempt: lastVerificationAttempt,
+      },
+    };
+
+    const review = await runIndependentReview({
+      config,
+      context,
+      tracer,
+      round,
+    });
+
+    if (!review.result) {
+      tracer.record("review_completed", {
+        round,
+        parseOk: false,
+        failureReason: review.failureReason ?? "invalid_review",
+        modelCalls: review.modelCalls,
+        durationMs: review.durationMs,
+      });
+      return { ok: false, reason: "review_parse_failed" };
+    }
+
+    const decisions = review.result.findings.map((finding) => {
+      const decided = decideFinding(finding, context);
+      tracer.record("review_finding", {
+        round,
+        findingKey: finding.findingKey,
+        category: finding.category,
+        severity: finding.severity,
+        confidence: finding.confidence,
+        description: finding.description,
+        evidence: finding.evidence,
+        relatedAuthority: finding.relatedAuthority ?? null,
+      });
+      tracer.record("review_finding_decision", {
+        round,
+        findingKey: finding.findingKey,
+        decision: decided.decision,
+        reason: decided.reason,
+      });
+      return decided;
+    });
+
+    const blockingKeys = decisions
+      .filter((item) => item.decision === "accepted_blocking")
+      .map((item) => item.finding.findingKey);
+
+    reviews.push({
+      round,
+      status: review.result.status,
+      findings: review.result.findings,
+      decisions,
+      modelCalls: review.modelCalls,
+      toolCalls: review.toolCalls,
+      durationMs: review.durationMs,
+      parseOk: true,
+      tokenUsage: review.tokenUsage,
+    });
+
+    tracer.record("review_completed", {
+      round,
+      parseOk: true,
+      status: review.result.status,
+      findingsCount: review.result.findings.length,
+      acceptedBlocking: blockingKeys.length,
+      acceptedNonBlocking: decisions.filter(
+        (item) => item.decision === "accepted_non_blocking",
+      ).length,
+      rejected: decisions.filter((item) => item.decision === "rejected").length,
+      modelCalls: review.modelCalls,
+      durationMs: review.durationMs,
+    });
+
+    return { ok: true, blockingKeys };
+  };
+
+  const finish = (
+    workflowStatus: WorkflowStatus,
+    finalReviewerOutcome: ReviewRunState["finalReviewerOutcome"],
+    extra?: {
+      failureReason?: WorkflowFailureReason;
+      repeatedFinding?: boolean;
+    },
+  ) => {
+    const aggregated = aggregateReviewState(reviews);
+    const reviewState: ReviewRunState = {
+      ...emptyReviewRunState(),
+      reviewAttempts: reviews.length,
+      reviews,
+      reviewRepairAttempts,
+      reviewRepairs,
+      repeatedFinding: extra?.repeatedFinding ?? false,
+      finalReviewerOutcome,
+      ...aggregated,
+    };
+    tracer.record("workflow_outcome", {
+      status: workflowStatus,
+      reason: extra?.failureReason ?? finalReviewerOutcome,
+      reviewAttempts: reviews.length,
+      reviewRepairAttempts,
+      intendedFindingDetected: reviewState.intendedFindingDetected,
+      acceptedBlocking: reviewState.acceptedBlockingFindings.length,
+      blockingFalsePositives: reviewState.blockingFalsePositives.length,
+      repeatedFinding: reviewState.repeatedFinding,
+    });
+    return {
+      workflowStatus,
+      failureReason: extra?.failureReason,
+      modelFinalResponse,
+      extraVerificationAttempts,
+      extraRepairAttempts,
+      extraVerifications,
+      extraRepairs,
+      repeatedFailure,
+      finalVerificationPassed: lastVerification.passed,
+      finalVerification: lastVerification,
+      reviewState,
+    };
+  };
+
+  const first = await runReviewRound(1);
+  if (!first.ok) {
+    return finish("failure", "parse_failed", {
+      failureReason: "review_parse_failed",
+    });
+  }
+
+  const firstDecision = nextReviewDecision({
+    reviewRound: 1,
+    acceptedBlockingKeys: first.blockingKeys,
+    previousBlockingKeys,
+    reviewRepairAttemptsUsed: reviewRepairAttempts,
+    maxReviewRepairAttempts: config.maxReviewRepairAttempts,
+  });
+
+  if (firstDecision.action === "success") {
+    return finish("success", "pass");
+  }
+
+  if (firstDecision.action === "stop") {
+    return finish("failure", "findings_unresolved", {
+      failureReason: "review_unresolved_blocker",
+      repeatedFinding: firstDecision.repeatedFinding,
+    });
+  }
+
+  previousBlockingKeys = first.blockingKeys;
+  reviewRepairAttempts = firstDecision.attempt;
+  const acceptedBlockers = reviews[0].decisions
+    .filter((item) => item.decision === "accepted_blocking")
+    .map((item) => item.finding);
+
+  const repairBefore = snapshotDirectory(config.targetSrcRoot);
+  tracer.record("review_repair_started", {
+    attempt: reviewRepairAttempts,
+    maxReviewRepairAttempts: config.maxReviewRepairAttempts,
+    findingKeys: acceptedBlockers.map((item) => item.findingKey),
+    promptIncludesSpec: true,
+    promptIncludesAcceptedFindings: true,
+  });
+
+  const repair = await runAgentLoop({
+    config,
+    task: formatReviewRepairContract(task, spec, acceptedBlockers),
+    runId,
+    beforeSnapshot: repairBefore,
+    spec,
+    tracer,
+    reusableContext,
+    phase: "review_repair",
+  });
+
+  modelFinalResponse = repair.modelFinalResponse;
+  reviewRepairs.push({
+    attempt: reviewRepairAttempts,
+    modelCalls: repair.modelCalls,
+    toolCalls: repair.toolCalls,
+    turns: repair.turns,
+    receivedTerminalResponse: repair.receivedTerminalResponse,
+    changedFiles: repair.changedFiles,
+    durationMs: repair.durationMs,
+    tokenUsage: repair.tokenUsage,
+  });
+  tracer.record("review_repair_completed", {
+    attempt: reviewRepairAttempts,
+    episodeStatus: repair.status,
+    changedFiles: repair.changedFiles,
+    modelCalls: repair.modelCalls,
+    toolCalls: repair.toolCalls,
+    durationMs: repair.durationMs,
+  });
+
+  const postRepair = await runVerifyRepairLoop({
+    config,
+    task,
+    spec,
+    tracer,
+    reusableContext,
+    runId,
+    implementation: { ...repair, failureReason: undefined },
+    emitSuccessOutcome: false,
+  });
+
+  extraVerifications.push(
+    ...postRepair.verifications.map((item, index) => ({
+      ...item,
+      attempt: lastVerificationAttempt + index + 1,
+    })),
+  );
+  extraRepairs.push(...postRepair.repairs);
+  extraVerificationAttempts = postRepair.verificationAttempts;
+  extraRepairAttempts = postRepair.repairAttempts;
+  repeatedFailure = postRepair.repeatedFailure;
+  lastVerification = postRepair.finalVerification ?? lastVerification;
+  lastVerificationAttempt =
+    lastVerificationAttempt + postRepair.verificationAttempts;
+  modelFinalResponse = postRepair.modelFinalResponse;
+
+  if (
+    postRepair.workflowStatus !== "success" ||
+    !postRepair.finalVerificationPassed
+  ) {
+    return finish("failure", "findings_unresolved", {
+      failureReason: postRepair.failureReason ?? "final_verification_failed",
+    });
+  }
+
+  const second = await runReviewRound(2);
+  if (!second.ok) {
+    return finish("failure", "parse_failed", {
+      failureReason: "review_parse_failed",
+    });
+  }
+
+  const secondDecision = nextReviewDecision({
+    reviewRound: 2,
+    acceptedBlockingKeys: second.blockingKeys,
+    previousBlockingKeys,
+    reviewRepairAttemptsUsed: reviewRepairAttempts,
+    maxReviewRepairAttempts: config.maxReviewRepairAttempts,
+  });
+
+  if (secondDecision.action === "success") {
+    return finish("success", "pass");
+  }
+
+  return finish("failure", "findings_unresolved", {
+    failureReason: "review_unresolved_blocker",
+    repeatedFinding:
+      secondDecision.action === "stop" && secondDecision.repeatedFinding,
+  });
+}
+
 function baseResult(fields: {
   task: string;
   workflowStatus: WorkflowStatus;
@@ -674,6 +1089,7 @@ function baseResult(fields: {
   repeatedFailure: boolean;
   verifications: VerificationAttempt[];
   repairs: RepairAttemptSummary[];
+  review?: ReviewRunState;
   finalVerificationPassed: boolean;
   finalVerification: VerificationResult | null;
   modelFinalResponse: string;
@@ -692,7 +1108,12 @@ function baseResult(fields: {
         })
       : null;
 
+  const review = fields.review ?? emptyReviewRunState();
   const repairTokenUsage = fields.repairs.map((item) => item.tokenUsage);
+  const reviewTokenUsage = review.reviews.map((item) => item.tokenUsage);
+  const reviewRepairTokenUsage = review.reviewRepairs.map(
+    (item) => item.tokenUsage,
+  );
 
   const contextMetrics: ContextRunMetrics = {
     mode: fields.contextMode,
@@ -706,6 +1127,8 @@ function baseResult(fields: {
       fields.specPhase.tokenUsage,
       implementation?.tokenUsage ?? null,
       ...repairTokenUsage,
+      ...reviewTokenUsage,
+      ...reviewRepairTokenUsage,
     ),
   };
 
@@ -715,6 +1138,26 @@ function baseResult(fields: {
     0,
   );
   const repairToolCalls = fields.repairs.reduce(
+    (sum, item) => sum + item.toolCalls,
+    0,
+  );
+  const reviewModelCalls = review.reviews.reduce(
+    (sum, item) => sum + item.modelCalls,
+    0,
+  );
+  const reviewToolCalls = review.reviews.reduce(
+    (sum, item) => sum + item.toolCalls,
+    0,
+  );
+  const reviewRepairTurns = review.reviewRepairs.reduce(
+    (sum, item) => sum + item.turns,
+    0,
+  );
+  const reviewRepairModelCalls = review.reviewRepairs.reduce(
+    (sum, item) => sum + item.modelCalls,
+    0,
+  );
+  const reviewRepairToolCalls = review.reviewRepairs.reduce(
     (sum, item) => sum + item.toolCalls,
     0,
   );
@@ -730,21 +1173,40 @@ function baseResult(fields: {
     specTurns: fields.specPhase.turns,
     specModelCalls: fields.specPhase.modelCalls,
     specToolCalls: fields.specPhase.toolCalls,
-    turns: fields.specPhase.turns + (implementation?.turns ?? 0) + repairTurns,
+    turns:
+      fields.specPhase.turns +
+      (implementation?.turns ?? 0) +
+      repairTurns +
+      reviewRepairTurns,
     modelCalls:
       fields.specPhase.modelCalls +
       (implementation?.modelCalls ?? 0) +
-      repairModelCalls,
+      repairModelCalls +
+      reviewModelCalls +
+      reviewRepairModelCalls,
     toolCalls:
       fields.specPhase.toolCalls +
       (implementation?.toolCalls ?? 0) +
-      repairToolCalls,
+      repairToolCalls +
+      reviewToolCalls +
+      reviewRepairToolCalls,
     receivedTerminalResponse: fields.receivedTerminalResponse,
     verificationAttempts: fields.verificationAttempts,
     repairAttempts: fields.repairAttempts,
     repeatedFailure: fields.repeatedFailure,
     verifications: fields.verifications,
     repairs: fields.repairs,
+    reviewAttempts: review.reviewAttempts,
+    reviews: review.reviews,
+    reviewRepairAttempts: review.reviewRepairAttempts,
+    reviewRepairs: review.reviewRepairs,
+    repeatedFinding: review.repeatedFinding,
+    intendedFindingDetected: review.intendedFindingDetected,
+    acceptedBlockingFindings: review.acceptedBlockingFindings,
+    acceptedNonBlockingFindings: review.acceptedNonBlockingFindings,
+    rejectedFindings: review.rejectedFindings,
+    blockingFalsePositives: review.blockingFalsePositives,
+    finalReviewerOutcome: review.finalReviewerOutcome,
     finalVerificationPassed: fields.finalVerificationPassed,
     finalVerification: fields.finalVerification,
     modelFinalResponse: fields.modelFinalResponse,
@@ -771,7 +1233,7 @@ async function finishRun(
     workflowStatus: result.workflowStatus,
   });
   tracer.record("run_completed", {
-    version: "v2",
+    version: "v3",
     workflowStatus: result.workflowStatus,
     specDecision: result.specDecision?.status ?? null,
     spec: result.specDecision?.spec ?? null,
@@ -797,6 +1259,55 @@ async function finishRun(
       signature: item.normalizedFailure?.signature ?? null,
     })),
     repairs: result.repairs,
+    reviewAttempts: result.reviewAttempts,
+    reviews: result.reviews.map((item) => ({
+      round: item.round,
+      status: item.status,
+      parseOk: item.parseOk,
+      findingsCount: item.findings.length,
+      findings: item.findings,
+      decisions: item.decisions.map((decision) => ({
+        findingKey: decision.finding.findingKey,
+        category: decision.finding.category,
+        severity: decision.finding.severity,
+        confidence: decision.finding.confidence,
+        description: decision.finding.description,
+        evidence: decision.finding.evidence,
+        relatedAuthority: decision.finding.relatedAuthority ?? null,
+        decision: decision.decision,
+        reason: decision.reason,
+      })),
+    })),
+    reviewRepairAttempts: result.reviewRepairAttempts,
+    reviewRepairs: result.reviewRepairs,
+    repeatedFinding: result.repeatedFinding,
+    intendedFindingDetected: result.intendedFindingDetected,
+    acceptedBlockingFindings: result.acceptedBlockingFindings.map((item) => ({
+      findingKey: item.finding.findingKey,
+      category: item.finding.category,
+      description: item.finding.description,
+      evidence: item.finding.evidence,
+      relatedAuthority: item.finding.relatedAuthority ?? null,
+      reason: item.reason,
+    })),
+    acceptedNonBlockingFindings: result.acceptedNonBlockingFindings.map(
+      (item) => ({
+        findingKey: item.finding.findingKey,
+        category: item.finding.category,
+        description: item.finding.description,
+        reason: item.reason,
+      }),
+    ),
+    rejectedFindings: result.rejectedFindings.map((item) => ({
+      findingKey: item.finding.findingKey,
+      category: item.finding.category,
+      description: item.finding.description,
+      reason: item.reason,
+    })),
+    blockingFalsePositives: result.blockingFalsePositives.map((item) => ({
+      findingKey: item.finding.findingKey,
+    })),
+    finalReviewerOutcome: result.finalReviewerOutcome,
     finalVerificationPassed: result.finalVerificationPassed,
     changedFiles: result.changedFiles,
     durationMs: result.durationMs,
