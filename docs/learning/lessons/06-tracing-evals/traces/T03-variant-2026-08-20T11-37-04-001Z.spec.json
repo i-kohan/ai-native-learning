@@ -1,0 +1,68 @@
+{
+  "task": "# T03 — Filter tasks by status\n\n`GET /tasks` should support:\n\n- `?status=pending`\n- `?status=completed`\n\nWhen `status` is provided, return only matching tasks.\nWithout `status`, preserve existing behavior (return all tasks).\n\nImplement the missing behavior and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Implement status-based filtering for GET /tasks while preserving the existing unfiltered list behavior, and verify it with automated tests.",
+    "requirements": [
+      "GET /tasks?status=pending returns only tasks whose status is \"pending\".",
+      "GET /tasks?status=completed returns only tasks whose status is \"completed\".",
+      "GET /tasks without a status query parameter returns all tasks, preserving existing behavior.",
+      "The task service list operation must honor its optional TaskStatus argument rather than ignoring it.",
+      "Retain the existing route-level handling for unsupported status values and the existing task ordering (Map insertion order)."
+    ],
+    "constraints": [
+      "Use the existing TaskStatus and Task types from src/tasks/types.ts.",
+      "Integrate with the existing TaskService and task-routes architecture; no new endpoint or response shape is needed.",
+      "Do not alter task creation, completion, reopening, or task response formats.",
+      "Add or maintain tests in tests/tasks.test.ts covering pending filtering, completed filtering, and omitted-status behavior."
+    ],
+    "nonGoals": [
+      "Changing task status transition behavior or completedAt handling.",
+      "Adding pagination, sorting, additional status values, or a new persistence mechanism.",
+      "Changing the existing invalid-status response contract."
+    ],
+    "acceptance": [
+      "A pending task is excluded from GET /tasks?status=completed and included in GET /tasks?status=pending.",
+      "A completed task is excluded from GET /tasks?status=pending and included in GET /tasks?status=completed.",
+      "An unfiltered GET /tasks includes both pending and completed tasks.",
+      "The existing status-filter tests pass, along with the rest of the test suite."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Confirm the status-filter tests exercise both valid status values and the omitted query parameter, and that all tests pass."
+    ],
+    "ambiguities": [
+      {
+        "question": "Where should the filtering logic be applied?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Apply it in TaskService.list using its existing optional TaskStatus parameter; the route already parses valid status values and passes the value to service.list.",
+        "basis": "src/tasks/task-routes.ts calls service.list(status ?? undefined), while src/tasks/task-service.ts declares list(_status?: TaskStatus) but currently returns every task and explicitly marks the filter as ignored."
+      },
+      {
+        "question": "What should happen when status is omitted?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return all tasks.",
+        "basis": "The task explicitly requires preserving existing behavior, and the existing test 'returns all tasks when status is omitted' asserts a two-task unfiltered result."
+      },
+      {
+        "question": "Which status values are supported?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Only pending and completed are valid filter values.",
+        "basis": "The task specifies those two query values, TaskStatus is the union of those literals, and task-routes.ts already rejects other non-null values with status 400 and error invalid_status."
+      },
+      {
+        "question": "Should filtered results preserve insertion order?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Yes; filter the existing Map values without sorting or reordering.",
+        "basis": "The current unfiltered service implementation returns [...this.tasks.values()], and the task requests filtering rather than ordering changes."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

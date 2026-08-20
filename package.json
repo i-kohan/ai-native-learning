@@ -7,6 +7,7 @@
     "test:harness": "npm test --prefix harness",
     "test": "npm run test:target && npm run test:harness",
     "benchmark": "npm run benchmark --prefix harness --",
-    "benchmark:all": "npm run benchmark:all --prefix harness"
+    "benchmark:all": "npm run benchmark:all --prefix harness",
+    "benchmark:eval": "npm run benchmark:eval --prefix harness"
   }
 }

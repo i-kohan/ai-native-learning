@@ -3,6 +3,8 @@ dist/
 .env
 traces/*.jsonl
 traces/*.spec.json
+evals/*.json
+evals/*.txt
 *.log
 .DS_Store
 target-app/coverage/

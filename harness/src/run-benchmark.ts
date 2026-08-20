@@ -9,12 +9,13 @@ import {
   runV1Harness,
   type HarnessRunResult,
 } from "./run.ts";
+import { aggregateRuns } from "./eval/aggregate.ts";
+import { normalizeRun } from "./eval/normalize.ts";
+import type { EvalResult, FixedTaskId } from "./eval/types.ts";
+import { writeEvalArtifact } from "./eval/write.ts";
 import { injectMissingTask500Fault } from "./r01-fault.ts";
 import { injectArch01CompleteTaskFault } from "./rev01-fault.ts";
-import {
-  ARCH_01,
-  isIntendedArch01Finding,
-} from "./review.ts";
+import { ARCH_01, isIntendedArch01Finding } from "./review.ts";
 import { runFinalVerification } from "./verify.ts";
 
 const BENCHMARKS_ROOT = path.join(REPO_ROOT, "benchmarks");
@@ -117,6 +118,55 @@ export async function runContextExperiment(): Promise<
 
   printExperimentSummary(runs);
   return runs;
+}
+
+export function scoreExpectedOutcome(
+  taskId: FixedTaskId,
+  result: HarnessRunResult,
+): boolean {
+  if (taskId === "R01") {
+    return isExpectedR01Outcome(result);
+  }
+  if (taskId === "REV01") {
+    return isExpectedREV01Outcome(result);
+  }
+  return isExpectedV1Outcome(taskId, result);
+}
+
+export function runIdFromTracePath(tracePath: string): string {
+  return path.basename(tracePath, ".jsonl");
+}
+
+export async function runFixedSuite(): Promise<EvalResult> {
+  const labeled: Array<{ taskId: FixedTaskId; result: HarnessRunResult }> = [];
+
+  for (const taskId of TASK_IDS) {
+    labeled.push({
+      taskId,
+      result: await runBenchmark(taskId, "variant"),
+    });
+  }
+  labeled.push({ taskId: "R01", result: await runRepairProbe() });
+  labeled.push({ taskId: "REV01", result: await runReviewProbe() });
+
+  const metrics = labeled.map(({ taskId, result }) =>
+    normalizeRun({
+      taskId,
+      runId: runIdFromTracePath(result.tracePath),
+      result,
+      expectedOutcomeMet: scoreExpectedOutcome(taskId, result),
+    }),
+  );
+  const evalResult = aggregateRuns(metrics);
+  const artifacts = writeEvalArtifact({
+    evalsDir: path.join(REPO_ROOT, "evals"),
+    result: evalResult,
+  });
+
+  console.log(`\n${evalResult.report}`);
+  console.log(`\neval_json: ${artifacts.jsonPath}`);
+  console.log(`eval_report: ${artifacts.reportPath}`);
+  return evalResult;
 }
 
 export function isExpectedV1Outcome(
@@ -294,7 +344,9 @@ export async function runReviewProbe(): Promise<HarnessRunResult> {
     );
   }
 
-  console.log("\n=== Preparing REV01 (controlled independent review probe) ===");
+  console.log(
+    "\n=== Preparing REV01 (controlled independent review probe) ===",
+  );
   console.log(
     "initial_tests: PASS (green fixture; ARCH-01 defect injected after implementation)",
   );
@@ -353,7 +405,8 @@ export function isExpectedREV01Outcome(result: HarnessRunResult): boolean {
         isIntendedArch01Finding(item.finding),
     ),
   );
-  const lastVerification = result.verifications[result.verifications.length - 1];
+  const lastVerification =
+    result.verifications[result.verifications.length - 1];
 
   return (
     result.workflowStatus === "success" &&
@@ -488,6 +541,7 @@ type CliOptions = {
   experiment: boolean;
   repairProbe: boolean;
   reviewProbe: boolean;
+  evalSuite: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
 };
@@ -497,12 +551,23 @@ function parseArgs(argv: string[]): CliOptions {
     ? "variant"
     : "baseline";
 
+  if (argv.includes("--eval") || argv.includes("--fixed-suite")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      evalSuite: true,
+      contextMode,
+    };
+  }
   if (argv.includes("--experiment")) {
     return {
       all: false,
       experiment: true,
       repairProbe: false,
       reviewProbe: false,
+      evalSuite: false,
       contextMode,
     };
   }
@@ -512,6 +577,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: false,
       reviewProbe: true,
+      evalSuite: false,
       contextMode,
     };
   }
@@ -521,6 +587,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: true,
       reviewProbe: false,
+      evalSuite: false,
       contextMode,
     };
   }
@@ -530,6 +597,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: false,
       reviewProbe: false,
+      evalSuite: false,
       contextMode,
     };
   }
@@ -542,6 +610,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: false,
       reviewProbe: false,
+      evalSuite: false,
       contextMode,
     };
   }
@@ -550,14 +619,28 @@ function parseArgs(argv: string[]): CliOptions {
     experiment: false,
     repairProbe: false,
     reviewProbe: false,
+    evalSuite: false,
     taskId,
     contextMode,
   };
 }
 
 async function main(): Promise<void> {
-  const { all, experiment, repairProbe, reviewProbe, taskId, contextMode } =
-    parseArgs(process.argv.slice(2));
+  const {
+    all,
+    experiment,
+    repairProbe,
+    reviewProbe,
+    evalSuite,
+    taskId,
+    contextMode,
+  } = parseArgs(process.argv.slice(2));
+
+  if (evalSuite) {
+    const evalResult = await runFixedSuite();
+    process.exit(evalResult.regressions.length === 0 ? 0 : 1);
+    return;
+  }
 
   if (reviewProbe) {
     const result = await runReviewProbe();
@@ -586,6 +669,7 @@ async function main(): Promise<void> {
     );
     console.error("   or: npm run benchmark:all [--baseline|--variant]");
     console.error("   or: npm run benchmark:experiment");
+    console.error("   or: npm run benchmark:eval");
     console.error("   or: npm run benchmark -- R01");
     console.error("   or: npm run benchmark -- REV01");
     process.exit(1);

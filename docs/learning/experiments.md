@@ -504,4 +504,113 @@ deterministic PASS on an architectural defect tests do not encode
 
 This does **not** prove that V3 will catch naturally occurring architecture misses, that T01–T04 remain unchanged, or that a reviewer without an explicit ARCH-01 constraint would find the same defect.
 
-Module 05 experiment recorded; formal module closure still pending Topic Chat review.
+Module 05 experiment recorded; later formally closed by Master. Finding aggregation was deferred to Module 06.
+
+---
+
+## Module 06 — Tracing & Evals (fixed-suite measurement layer)
+
+### Hypothesis
+
+A small normalized measurement layer over existing V3 `HarnessRunResult` can compare the fixed suite without mixing capability regression with controlled probes, and without treating correct T04 escalation as failure.
+
+### What this experiment is
+
+Normalization + aggregation over the existing V3 suite:
+
+- T01–T04: `capability_regression`
+- R01: `mechanism_probe` / `verification_repair`
+- REV01: `mechanism_probe` / `independent_review_repair`
+
+Not a new tracing system, dashboard, grader farm, or reviewer-quality study.
+
+### Variant
+
+```text
+HarnessRunResult
+→ normalizeRun (taskId + runId + existing graders)
+→ RunMetrics
+→ aggregateRuns
+→ EvalResult / compact report
+```
+
+Raw JSONL traces remain. Command:
+
+```bash
+cd harness && npm run benchmark:eval
+```
+
+Model/context: same family as prior modules (`gpt-5.6-luna`), `contextMode=variant`.
+
+### Decision rule
+
+Hard correctness regression if any of:
+
+- T01–T03 expected outcome fails;
+- T04 no longer escalates before implementation;
+- known escaped defect appears (only if independent ground truth exists);
+- R01 or REV01 mechanism contract fails.
+
+Not hard regressions: more tokens/calls/time, a first-pass task needing bounded repair, more rejected findings, a recurring finding candidate.
+
+### Results
+
+Evidence:
+
+- report: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T11-39-01-776Z.txt`
+- normalized JSON: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T11-39-01-776Z.json`
+- raw traces in the same folder
+
+```text
+Capability / Regression
+Expected outcomes      4 / 4
+Executable tasks        3
+First-pass success     3 / 3
+Eventual success       3 / 3
+Recovered success      0 / 3
+Correct escalations    1 / 1
+Autonomous completion  3 / 4
+Human escalation       1 / 4
+Known escaped defects   n/a (grader = harness VERIFY)
+
+Mechanism probes
+R01 verification repair      PASS
+REV01 independent review     PASS
+
+All fixed benchmark contracts  6 / 6
+Hard regressions: none
+Diagnostics: none
+```
+
+| Task | Kind | expected | first-pass | verify | model/tools | tokens in/out | wall |
+| ---- | ---- | -------- | ---------- | ------ | ----------- | ------------- | ---- |
+| T01  | capability | yes | yes | PASS | 7 / 11 | 15449 / 1759 | ~27s |
+| T02  | capability | yes | yes | PASS | 7 / 15 | 19332 / 1686 | ~25s |
+| T03  | capability | yes | yes | PASS | 7 / 15 | 19217 / 1634 | ~33s |
+| T04  | capability | yes | n/a | n/a | 2 / 7 | 4445 / 847 | ~11s |
+| R01  | probe | yes | no | FAIL→PASS | 10 / 19 | 28015 / 2271 | ~33s |
+| REV01 | probe | yes | no | PASS→PASS | 11 / 21 | 27684 / 2633 | ~40s |
+
+T04: `expectedOutcomeMet=true`, `autonomousCompletion=false`, `humanEscalation=true`, first-pass/eventual/recovered = `null`.
+
+R01: controlled FAIL triggered, one verification repair, then PASS. Excluded from capability first-pass.
+
+REV01: first VERIFY PASS, intended ARCH-01 detected, unexpected blocking=0, one review repair, VERIFY PASS, REVIEW #2 pass. Canonical `verificationAttempts=2`, sequence `[PASS, PASS]`. `firstPassSuccess=false` because review repair is harness recovery; this is not a capability first-pass miss.
+
+### Failures / unexpected behavior
+
+None against the Module 06 decision rule.
+
+### Conclusion
+
+Hypothesis supported for this suite:
+
+- capability and mechanism-probe numbers stay separated;
+- T04 escalation is scored as expected outcome, not failure;
+- probe recovery is not mixed into natural first-pass;
+- reviewer accepted/rejected findings are not auto-claimed as precision;
+- `escapedDefect` stays unknown rather than false.
+
+This does **not** prove long-run regression trends, reviewer precision, or escaped-defect detection beyond the current shared `npm test` grader.
+
+Module 06 experiment recorded; formal module closure still pending Topic Chat / Master review.

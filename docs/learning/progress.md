@@ -10,7 +10,7 @@ Completed modules:
 4. ✅ 04 — Verification + bounded Repair
 5. ✅ 05 — Independent Review + bounded Review Repair
 
-Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**.
+Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, plus a **small Module 06 measurement layer** (`RunMetrics` → `EvalResult`) that does not change V3 control flow.
 
 Current execution flow:
 
@@ -37,23 +37,73 @@ raw task
 
 Detailed evidence lives in `docs/learning/experiments.md` and the corresponding `docs/learning/lessons/*` folders.
 
-## Next module
+## Next step
 
-**06 — Tracing & Evals**
+**Module 06 — Tracing & Evals is implemented at Topic Chat level and ready for review. It is not formally complete.**
 
-This intentionally combines roadmap topics **4.9 Tracing** and **4.10 Evals** into one module.
+Inspect `docs/learning/lessons/06-tracing-evals/`, the eval report, and `harness/src/eval/`. Do not treat 6/6 contracts as automatic module closure.
 
-Why now:
+After formal Module 06 closure, return to Phase 2 with **Skills**, then Worktrees / Isolation and Security.
 
-- basic JSONL tracing and controlled experiments already exist from earlier modules, so a standalone introductory tracing module would mostly repeat existing practice;
-- V3 now emits meaningful cross-episode signals: spec/implementation/repair/review phases, verification attempts, reviewer findings, accepted/rejected blockers, false positives, repeated findings, tokens and latency;
-- without a systematic eval layer, the next optimization topics (skills, routing, subagents, orchestration) would be judged by anecdotes rather than comparable evidence;
-- Module 05 explicitly exposed the need to retain/aggregate structured findings so recurring validated patterns can be promoted into deterministic checks;
-- this is the right point to turn ad-hoc probes into a small repeatable task suite and episode-level metrics, without building a publication-grade statistics platform.
+---
 
-After Module 06, return to Phase 2 with **Skills**, then Worktrees / Isolation and Security.
+## Module: 06 — Tracing & Evals
 
-Target after Module 06: **V3 + systematic observability/eval layer**. Do not add new agent roles merely for this module.
+**Status:** 🟡 IMPLEMENTED — awaiting Topic Chat / Master review. Not marked complete.
+
+Theory recap: `docs/learning/lessons/06-tracing-evals/theory.md`  
+Practical notes + traces/eval artifacts: `docs/learning/lessons/06-tracing-evals/`
+
+### Built
+
+- small measurement layer over existing V3 `HarnessRunResult` (no new tracing system, no V3 control-flow change);
+- `normalizeRun` → compact `RunMetrics`;
+- `aggregateRuns` → `EvalResult` + human-readable report;
+- fixed-suite runner: `npm run benchmark:eval` (T01–T04 + R01 + REV01);
+- deterministic semantic tests in `harness/tests/eval.test.ts`.
+
+### Important design decisions
+
+- T01–T04 = `capability_regression`; R01/REV01 = `mechanism_probe` and are excluded from natural first-pass denominators;
+- T04 first-pass/eventual/recovered are `null`, not `false`; correct escalation is not a task failure;
+- canonical verification count uses `verifications[]` execution order, not raw local attempt numbers;
+- accepted/rejected reviewer findings are not auto-labeled true/false positives;
+- REV01 ARCH-01 fields stay probe-specific;
+- `escapedDefect` is `null` because the current grader is the same `npm test` as harness VERIFY;
+- `failureLayer` is not auto-classified;
+- recurring findings are candidates for human review, not auto-promotion;
+- efficiency changes are diagnostics, not hard regressions.
+
+### Suite result (2026-08-20)
+
+```text
+Capability / Regression
+Expected outcomes      4 / 4
+Executable tasks        3
+First-pass success     3 / 3
+Eventual success       3 / 3
+Recovered success      0 / 3
+Correct escalations    1 / 1
+Autonomous completion  3 / 4
+Human escalation       1 / 4
+Known escaped defects   n/a
+
+R01 verification repair      PASS
+REV01 independent review     PASS
+All fixed benchmark contracts  6 / 6
+Hard regressions: none
+```
+
+Evidence: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T11-39-01-776Z.txt`
+
+### Known limits
+
+1. No independent hidden-test grader, so escaped-defect detection is N/A rather than false.
+2. Spec-phase wall time is not separately instrumented.
+3. `turns` is not a core eval metric.
+4. Per-tool census is only spec+impl `list_files`/`read_file`.
+5. No stored efficiency baseline, so token/time drift is not auto-warned.
+6. Module is not formally closed.
 
 ---
 
@@ -129,7 +179,7 @@ No additional reviewer machinery is required before moving on.
 2. `findingKey` repeat detection is literal; semantic deduplication is deferred.
 3. Reviewer quality without explicit architecture constraints is not demonstrated.
 4. T01–T04 were not rerun in Module 05.
-5. Finding aggregation / recurring-pattern analytics are not yet implemented.
+5. Finding aggregation / recurring-pattern analytics were deferred to Module 06 and now exist as a minimal candidate list, not auto-promotion.
 6. Stable recurring reviewer rules should be promoted into deterministic checks when practical.
 
 ---
