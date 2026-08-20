@@ -1,0 +1,53 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure task completion lifecycle updates completedAt consistently: completing a task records a timestamp, and reopening a completed task clears it.",
+    "requirements": [
+      "When TaskService.complete successfully transitions a task to completed, set completedAt to a non-empty timestamp string.",
+      "When TaskService.reopen successfully transitions a task to pending, set completedAt to null.",
+      "Preserve existing task routes, response statuses, task fields, and create behavior."
+    ],
+    "constraints": [
+      "The Task type already defines completedAt as string | null.",
+      "Completion and reopening are implemented in src/tasks/task-service.ts and exposed by the existing routes.",
+      "Do not alter unrelated task filtering, validation, or not-found behavior.",
+      "Use the repository's existing test command and TypeScript/module conventions."
+    ],
+    "nonGoals": [
+      "No change to the HTTP API shape or endpoint names.",
+      "No change to timestamp persistence beyond the in-memory TaskService.",
+      "No new product rules for unrelated task operations."
+    ],
+    "acceptance": [
+      "POST /tasks/:id/complete returns 200 with status \"completed\" and completedAt as a non-empty string timestamp.",
+      "POST /tasks/:id/reopen after completion returns 200 with status \"pending\" and completedAt equal to null.",
+      "The updated task observed through subsequent retrieval/listing reflects the same completedAt value.",
+      "Existing missing-task and unrelated task behavior remains intact."
+    ],
+    "verification": [
+      "Run npm test (script: tsx --test tests/**/*.test.ts).",
+      "Confirm the complete/reopen tests in tests/tasks.test.ts pass, including the completedAt assertions.",
+      "Confirm the full existing test suite passes."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp representation should be used for completedAt?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a current ISO-8601 string (for example, new Date().toISOString()), which satisfies the existing string|null contract and is an interoperable timestamp representation.",
+        "basis": "The task requires a timestamp and the type requires a string|null; no repository-specific format is defined, so standard ISO-8601 serialization is a low-risk implementation choice."
+      },
+      {
+        "question": "What should happen if complete is called on an already completed task?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Only the required transition behavior is specified; preserve the existing operation shape and ensure the task remains completed with a timestamp. No additional API behavior or tests are required for repeated completion.",
+        "basis": "The task specifically describes when a task becomes completed and does not request idempotency or timestamp-refresh semantics; existing service behavior supports repeated calls without errors."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

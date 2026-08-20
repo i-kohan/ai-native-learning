@@ -266,6 +266,49 @@ function r01Probe(): HarnessRunResult {
   });
 }
 
+function rev01RescuedByVerificationRepair(): HarnessRunResult {
+  const ok = rev01Probe();
+  return {
+    ...ok,
+    verificationAttempts: 3,
+    repairAttempts: 1,
+    verifications: [
+      ok.verifications[0],
+      {
+        attempt: 2,
+        passed: false,
+        exitCode: 1,
+        durationMs: 10,
+        normalizedFailure: normalizeFailure({
+          passed: false,
+          exitCode: 1,
+          durationMs: 10,
+          output: FAIL_OUTPUT,
+        }),
+      },
+      {
+        attempt: 3,
+        passed: true,
+        exitCode: 0,
+        durationMs: 10,
+        normalizedFailure: null,
+      },
+    ],
+    repairs: [
+      {
+        attempt: 1,
+        modelCalls: 2,
+        toolCalls: 2,
+        turns: 2,
+        receivedTerminalResponse: true,
+        changedFiles: ["tasks/task-routes.ts"],
+        durationMs: 20,
+        tokenUsage: null,
+      },
+    ],
+  };
+}
+
 function rev01Probe(options?: {
   localVerificationNumbering?: boolean;
 }): HarnessRunResult {
@@ -457,6 +500,35 @@ describe("RunMetrics normalization", () => {
     assert.equal(metrics.probe, undefined);
   });
 
+  it("passes REV01 on PASS→PASS with zero verification repairs", () => {
+    const metrics = normalize("REV01", rev01Probe());
+    assert.equal(metrics.outcome.expectedOutcomeMet, true);
+    assert.deepEqual(metrics.recovery.verificationSequence, ["PASS", "PASS"]);
+    assert.equal(metrics.recovery.verificationAttempts, 2);
+    assert.equal(metrics.recovery.verificationRepairAttempts, 0);
+    if (metrics.probe?.mechanism === "independent_review_repair") {
+      assert.equal(metrics.probe.succeeded, true);
+    } else {
+      assert.fail("REV01 probe metrics missing");
+    }
+  });
+
+  it("fails REV01 when review repair is rescued by verification repair", () => {
+    const metrics = normalize("REV01", rev01RescuedByVerificationRepair());
+    assert.equal(metrics.outcome.expectedOutcomeMet, false);
+    assert.deepEqual(metrics.recovery.verificationSequence, [
+      "PASS",
+      "FAIL",
+      "PASS",
+    ]);
+    assert.equal(metrics.recovery.verificationRepairAttempts, 1);
+    if (metrics.probe?.mechanism === "independent_review_repair") {
+      assert.equal(metrics.probe.succeeded, false);
+    } else {
+      assert.fail("REV01 probe metrics missing");
+    }
+  });
+
   it("records recovered executable success without calling it first-pass", () => {
     const metrics = normalize("T02", t02Recovered());
     assert.equal(metrics.outcome.expectedOutcomeMet, true);
@@ -517,6 +589,64 @@ describe("EvalResult aggregation", () => {
     assert.equal(
       suite.capability.knownEscapedDefects.independentGroundTruthRuns,
       0,
+    );
+  });
+
+  it("keeps the same findingKey in different categories as separate entries", () => {
+    const key = "task-state-transition-outside-service";
+    const architecture = decision(
+      arch01Finding(),
+      "accepted_blocking",
+      "architecture_blocker",
+    );
+    const correctnessFinding = {
+      ...arch01Finding(),
+      category: "correctness" as const,
+    };
+    const correctness = decision(
+      correctnessFinding,
+      "rejected",
+      "architecture_restated_as_correctness",
+    );
+    const evalResult = aggregateRuns([
+      normalize(
+        "T01",
+        harnessResult({
+          reviewAttempts: 1,
+          reviews: [
+            {
+              round: 1,
+              status: "findings",
+              findings: [arch01Finding(), correctnessFinding],
+              decisions: [architecture, correctness],
+              modelCalls: 1,
+              toolCalls: 1,
+              durationMs: 12,
+              parseOk: true,
+              tokenUsage: null,
+            },
+          ],
+          acceptedBlockingFindings: [architecture],
+          rejectedFindings: [correctness],
+        }),
+      ),
+    ]);
+    const entries = evalResult.recurringFindings.filter(
+      (item) => item.findingKey === key,
+    );
+    assert.equal(entries.length, 2);
+    assert.deepEqual(entries.map((item) => item.category).sort(), [
+      "architecture",
+      "correctness",
+    ]);
+    assert.equal(
+      entries.find((item) => item.category === "architecture")
+        ?.acceptedBlocking,
+      1,
+    );
+    assert.equal(
+      entries.find((item) => item.category === "correctness")?.rejected,
+      1,
     );
   });
 

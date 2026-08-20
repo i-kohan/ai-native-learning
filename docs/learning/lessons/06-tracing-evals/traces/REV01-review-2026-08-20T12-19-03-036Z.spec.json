@@ -1,0 +1,71 @@
+{
+  "task": "Ensure POST /tasks/:id/complete marks an existing task completed, sets completedAt, and preserves existing missing-task behavior.\n\nDo not change unrelated behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure POST /tasks/:id/complete completes an existing task by setting its status to \"completed\" and assigning completedAt, while preserving the existing response for missing task IDs and leaving unrelated behavior unchanged.",
+    "requirements": [
+      "For POST requests matching /tasks/:id/complete, invoke the task completion behavior for the captured task ID.",
+      "When the task exists, set its status to \"completed\" and set completedAt to a non-null timestamp string; return HTTP 200 with the updated task.",
+      "When the task ID does not exist, return HTTP 404 with body { error: \"task_not_found\" }, without creating or mutating a task.",
+      "Do not modify unrelated routes or task behaviors, including task creation, listing, retrieval, and reopening.",
+      "Do not modify tests."
+    ],
+    "constraints": [
+      "Use the existing route and service architecture and Task shape (status: pending|completed; completedAt: string|null).",
+      "Preserve the existing missing-task contract and response payload.",
+      "Keep the change limited to completion behavior."
+    ],
+    "nonGoals": [
+      "Changing completion URL or HTTP method.",
+      "Changing the missing-task status or error payload.",
+      "Changing reopen, create, get, list, or status-filter semantics.",
+      "Adding or changing tests as part of the implementation."
+    ],
+    "acceptance": [
+      "Completing an existing task through POST /tasks/:id/complete returns status 200.",
+      "The returned and stored task has status \"completed\" and a non-null completedAt string.",
+      "A subsequent retrieval or listing reflects the completed status and completedAt value.",
+      "POST /tasks/missing/complete returns status 404 and exactly { error: \"task_not_found\" }.",
+      "Existing unrelated behavior remains unchanged."
+    ],
+    "verification": [
+      "Run the existing test suite with npm test.",
+      "Exercise the route with a newly created task and verify the 200 response, completed status, and non-empty timestamp.",
+      "Exercise the route with an unknown ID and verify the 404 task_not_found response.",
+      "Retrieve or list the completed task to verify the mutation is persisted."
+    ],
+    "ambiguities": [
+      {
+        "question": "What route and method should trigger completion?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "POST /tasks/:id/complete.",
+        "basis": "src/tasks/task-routes.ts matches /^\\/tasks\\/([^/]+)\\/complete$/ and requires req.method === \"POST\"."
+      },
+      {
+        "question": "What should completion do for an existing task?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Set status to \"completed\" and completedAt to a new ISO timestamp string, return the task with HTTP 200.",
+        "basis": "TaskService.complete currently mutates status and completedAt with new Date().toISOString(); completeTask returns status 200 and the task. tests/tasks.test.ts verifies status and non-empty string completedAt."
+      },
+      {
+        "question": "What should happen when the task does not exist?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 404 with { error: \"task_not_found\" }.",
+        "basis": "TaskService.complete returns undefined for missing IDs and completeTask maps that result to the established 404 response; getTask uses the same contract, and the task explicitly requires preserving it."
+      },
+      {
+        "question": "Should repeated completion have a special idempotency or timestamp-preservation rule?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "No new repeated-completion rule is needed; preserve the repository's existing completion behavior and avoid unrelated changes.",
+        "basis": "The task specifies completion of an existing task and preservation of unrelated behavior, while the current service assigns a fresh timestamp whenever complete is called."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

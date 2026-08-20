@@ -387,7 +387,6 @@ export async function runReviewProbe(): Promise<HarnessRunResult> {
 }
 
 export function isExpectedREV01Outcome(result: HarnessRunResult): boolean {
-  const first = result.verifications[0];
   const review1 = result.reviews[0];
   const review2 = result.reviews[1];
   const reviewRepair = result.reviewRepairs[0];
@@ -405,21 +404,23 @@ export function isExpectedREV01Outcome(result: HarnessRunResult): boolean {
         isIntendedArch01Finding(item.finding),
     ),
   );
-  const lastVerification =
-    result.verifications[result.verifications.length - 1];
+  const exactlyTwoPassPass =
+    result.verifications.length === 2 &&
+    result.verifications[0]?.passed === true &&
+    result.verifications[1]?.passed === true;
 
   return (
     result.workflowStatus === "success" &&
     result.specDecision?.status === "executable" &&
     result.implementationStarted === true &&
-    first?.passed === true &&
+    exactlyTwoPassPass &&
+    result.repairAttempts === 0 &&
     result.reviewAttempts === 2 &&
     intendedOnReview1 &&
     result.intendedFindingDetected === true &&
     result.blockingFalsePositives.length === 0 &&
     result.reviewRepairAttempts === 1 &&
     reviewRepairChangedOnlySource &&
-    lastVerification?.passed === true &&
     result.finalVerificationPassed === true &&
     review2HasNoAcceptedBlocker &&
     result.finalReviewerOutcome === "pass" &&

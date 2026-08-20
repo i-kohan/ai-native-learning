@@ -51,8 +51,8 @@ After formal Module 06 closure, return to Phase 2 with **Skills**, then Worktree
 
 **Status:** 🟡 IMPLEMENTED — awaiting Topic Chat / Master review. Not marked complete.
 
-Theory recap: `docs/learning/lessons/06-tracing-evals/theory.md`  
-Practical notes + traces/eval artifacts: `docs/learning/lessons/06-tracing-evals/`
+Practical notes + traces/eval artifacts: `docs/learning/lessons/06-tracing-evals/`  
+`theory.md` is deferred until Topic Chat recap.
 
 ### Built
 
@@ -67,6 +67,8 @@ Practical notes + traces/eval artifacts: `docs/learning/lessons/06-tracing-evals
 - T01–T04 = `capability_regression`; R01/REV01 = `mechanism_probe` and are excluded from natural first-pass denominators;
 - T04 first-pass/eventual/recovered are `null`, not `false`; correct escalation is not a task failure;
 - canonical verification count uses `verifications[]` execution order, not raw local attempt numbers;
+- REV01 expected contract requires exactly PASS→PASS with zero verification repairs (review-repair rescued by VERIFY repair does not pass the probe);
+- recurring findings are keyed by `findingKey` + `category`;
 - accepted/rejected reviewer findings are not auto-labeled true/false positives;
 - REV01 ARCH-01 fields stay probe-specific;
 - `escapedDefect` is `null` because the current grader is the same `npm test` as harness VERIFY;
@@ -74,7 +76,7 @@ Practical notes + traces/eval artifacts: `docs/learning/lessons/06-tracing-evals
 - recurring findings are candidates for human review, not auto-promotion;
 - efficiency changes are diagnostics, not hard regressions.
 
-### Suite result (2026-08-20)
+### Suite result (2026-08-20, after Topic Chat semantic tightening)
 
 ```text
 Capability / Regression
@@ -94,7 +96,7 @@ All fixed benchmark contracts  6 / 6
 Hard regressions: none
 ```
 
-Evidence: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T11-39-01-776Z.txt`
+Evidence: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T12-19-39-403Z.txt`
 
 ### Known limits
 

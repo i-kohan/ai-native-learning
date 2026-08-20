@@ -557,8 +557,8 @@ Not hard regressions: more tokens/calls/time, a first-pass task needing bounded 
 
 Evidence:
 
-- report: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T11-39-01-776Z.txt`
-- normalized JSON: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T11-39-01-776Z.json`
+- report: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T12-19-39-403Z.txt`
+- normalized JSON: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T12-19-39-403Z.json`
 - raw traces in the same folder
 
 ```text
@@ -582,20 +582,22 @@ Hard regressions: none
 Diagnostics: none
 ```
 
-| Task | Kind | expected | first-pass | verify | model/tools | tokens in/out | wall |
-| ---- | ---- | -------- | ---------- | ------ | ----------- | ------------- | ---- |
-| T01  | capability | yes | yes | PASS | 7 / 11 | 15449 / 1759 | ~27s |
-| T02  | capability | yes | yes | PASS | 7 / 15 | 19332 / 1686 | ~25s |
-| T03  | capability | yes | yes | PASS | 7 / 15 | 19217 / 1634 | ~33s |
-| T04  | capability | yes | n/a | n/a | 2 / 7 | 4445 / 847 | ~11s |
-| R01  | probe | yes | no | FAIL→PASS | 10 / 19 | 28015 / 2271 | ~33s |
-| REV01 | probe | yes | no | PASS→PASS | 11 / 21 | 27684 / 2633 | ~40s |
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 15      | 18732 / 1881  | ~26s |
+| T02   | capability | yes      | yes        | PASS      | 7 / 14      | 16097 / 1640  | ~25s |
+| T03   | capability | yes      | yes        | PASS      | 7 / 15      | 18943 / 1534  | ~25s |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4444 / 909    | ~12s |
+| R01   | probe      | yes      | no         | FAIL→PASS | 11 / 23     | 30384 / 2105  | ~35s |
+| REV01 | probe      | yes      | no         | PASS→PASS | 10 / 20     | 25801 / 2561  | ~36s |
 
 T04: `expectedOutcomeMet=true`, `autonomousCompletion=false`, `humanEscalation=true`, first-pass/eventual/recovered = `null`.
 
 R01: controlled FAIL triggered, one verification repair, then PASS. Excluded from capability first-pass.
 
-REV01: first VERIFY PASS, intended ARCH-01 detected, unexpected blocking=0, one review repair, VERIFY PASS, REVIEW #2 pass. Canonical `verificationAttempts=2`, sequence `[PASS, PASS]`. `firstPassSuccess=false` because review repair is harness recovery; this is not a capability first-pass miss.
+REV01: first VERIFY PASS, intended ARCH-01 detected, unexpected blocking=0, one review repair, VERIFY PASS with **zero verification repairs**, REVIEW #2 pass. Canonical `verificationAttempts=2`, sequence `[PASS, PASS]`. `firstPassSuccess=false` because review repair is harness recovery; this is not a capability first-pass miss.
+
+Topic Chat review tightened two semantics: REV01 fails if review repair is rescued by verification repair (PASS→FAIL→PASS); recurring findings are keyed by `findingKey` + `category`.
 
 ### Failures / unexpected behavior
 

@@ -1,6 +1,6 @@
 # 06 — Tracing & Evals
 
-Практический журнал. Measurement layer поверх V3; фиксированный suite прогнан. Модуль **не** закрыт: Topic Chat / Master смотрят evidence.
+Практический журнал. Measurement layer поверх V3; фиксированный suite прогнан. Модуль **не** закрыт: Topic Chat / Master смотрят evidence. `theory.md` пишет Topic Chat после review.
 
 ## Что это за урок одной фразой
 
@@ -39,12 +39,12 @@ V3 control flow не менялся.
 
 ## Семантика, которую нельзя смешивать
 
-| Поле | Смысл |
-| --- | --- |
-| `expectedOutcomeMet` | выполнен benchmark contract этой задачи |
-| `autonomousCompletion` | workflow success без escalation |
-| `firstPassSuccess` | success без verification/review repair и без escalation |
-| `escapedDefect` | workflow success, но независимый grader знает, что requirement нарушен |
+| Поле                   | Смысл                                                                  |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `expectedOutcomeMet`   | выполнен benchmark contract этой задачи                                |
+| `autonomousCompletion` | workflow success без escalation                                        |
+| `firstPassSuccess`     | success без verification/review repair и без escalation                |
+| `escapedDefect`        | workflow success, но независимый grader знает, что requirement нарушен |
 
 T04 expected:
 
@@ -80,16 +80,21 @@ Hard regressions: none
 Diagnostics: none
 ```
 
-| Task | Kind | expected | first-pass | verify | model/tools | tokens in/out | wall |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| T01 | capability | yes | yes | PASS | 7 / 11 | 15449 / 1759 | ~27s |
-| T02 | capability | yes | yes | PASS | 7 / 15 | 19332 / 1686 | ~25s |
-| T03 | capability | yes | yes | PASS | 7 / 15 | 19217 / 1634 | ~33s |
-| T04 | capability | yes | n/a | n/a | 2 / 7 | 4445 / 847 | ~11s |
-| R01 | probe / verification_repair | yes | no | FAIL→PASS | 10 / 19 | 28015 / 2271 | ~33s |
-| REV01 | probe / independent_review_repair | yes | no | PASS→PASS | 11 / 21 | 27684 / 2633 | ~40s |
+| Task  | Kind                              | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | --------------------------------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability                        | yes      | yes        | PASS      | 7 / 15      | 18732 / 1881  | ~26s |
+| T02   | capability                        | yes      | yes        | PASS      | 7 / 14      | 16097 / 1640  | ~25s |
+| T03   | capability                        | yes      | yes        | PASS      | 7 / 15      | 18943 / 1534  | ~25s |
+| T04   | capability                        | yes      | n/a        | n/a       | 2 / 7       | 4444 / 909    | ~12s |
+| R01   | probe / verification_repair       | yes      | no         | FAIL→PASS | 11 / 23     | 30384 / 2105  | ~35s |
+| REV01 | probe / independent_review_repair | yes      | no         | PASS→PASS | 10 / 20     | 25801 / 2561  | ~36s |
 
-REV01: `firstVerificationPassed=true`, `verificationAttempts=2`, intended ARCH-01 detected, unexpected blocking=0, review repair=1. Это recovered success на probe, не capability first-pass miss.
+REV01: `firstVerificationPassed=true`, `verificationAttempts=2`, `verificationRepairAttempts=0`, intended ARCH-01 detected, unexpected blocking=0, review repair=1. Это recovered success на probe, не capability first-pass miss.
+
+## Topic Chat review fix
+
+1. REV01 expected contract now requires exactly PASS→PASS and zero verification repairs. PASS→FAIL→PASS after a bad review repair is not an independent-review-repair success.
+2. Recurring finding aggregation keys by `findingKey` + `category`; identical keys in different categories stay separate.
 
 ## Ограничения / N/A
 
@@ -104,6 +109,6 @@ REV01: `firstVerificationPassed=true`, `verificationAttempts=2`, intended ARCH-0
 
 ## Evidence
 
-- Report: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T11-39-01-776Z.txt`
-- Normalized JSON: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T11-39-01-776Z.json`
+- Report: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T12-19-39-403Z.txt`
+- Normalized JSON: `docs/learning/lessons/06-tracing-evals/traces/2026-08-20T12-19-39-403Z.json`
 - Raw traces рядом в той же папке (`T01`…`T04`, `R01`, `REV01`)

@@ -52,7 +52,7 @@ function sampleFinding(overrides: Partial<Finding> = {}): Finding {
     description:
       "task-routes.ts completeTask mutates Task.status and Task.completedAt instead of delegating to TaskService.",
     evidence: [
-      "completeTask calls service.get(id) then assigns task.status = \"completed\" and task.completedAt",
+      'completeTask calls service.get(id) then assigns task.status = "completed" and task.completedAt',
     ],
     relatedAuthority: {
       type: "architecture_constraint",
@@ -62,9 +62,7 @@ function sampleFinding(overrides: Partial<Finding> = {}): Finding {
   };
 }
 
-function sampleContext(
-  overrides: Partial<ReviewContext> = {},
-): ReviewContext {
+function sampleContext(overrides: Partial<ReviewContext> = {}): ReviewContext {
   return {
     spec: sampleSpec(),
     unifiedDiff: `--- tasks/task-routes.ts\n+++ tasks/task-routes.ts\n-  const task = service.complete(id);\n+  const task = service.get(id);\n+  task.status = "completed";\n+  task.completedAt = new Date().toISOString();`,
@@ -226,7 +224,10 @@ describe("structured review parsing", () => {
     assert.equal(parsed.ok, true);
     if (parsed.ok) {
       assert.equal(parsed.value.status, "findings");
-      assert.equal(parsed.value.findings[0].findingKey, sampleFinding().findingKey);
+      assert.equal(
+        parsed.value.findings[0].findingKey,
+        sampleFinding().findingKey,
+      );
     }
   });
 
@@ -454,17 +455,18 @@ describe("review repair capability boundary", () => {
   });
 
   it("gives repair the spec and accepted findings without a prescribed fix", () => {
-    const prompt = formatReviewRepairContract(
-      "raw task text",
-      sampleSpec(),
-      [sampleFinding()],
-    );
+    const prompt = formatReviewRepairContract("raw task text", sampleSpec(), [
+      sampleFinding(),
+    ]);
     assert.match(prompt, /Authoritative specification/);
     assert.match(prompt, /Accepted blocking review findings/);
     assert.match(prompt, /task-state-transition-outside-service/);
     assert.match(prompt, /raw task text/);
     assert.doesNotMatch(prompt, /suggestedFix/);
-    assert.doesNotMatch(prompt, /change completeTask to call service.complete now/i);
+    assert.doesNotMatch(
+      prompt,
+      /change completeTask to call service.complete now/i,
+    );
   });
 
   it("builds a reviewer context without implementer conversation", () => {
@@ -523,9 +525,7 @@ describe("REV01 fault injection", () => {
           "utf8",
         ),
       );
-      injectArch01CompleteTaskFault(
-        path.join(REPO_ROOT, "target-app/src"),
-      );
+      injectArch01CompleteTaskFault(path.join(REPO_ROOT, "target-app/src"));
       const verification = runFinalVerification({
         apiKey: "unused",
         model: "unused",
@@ -565,6 +565,43 @@ describe("REV01 expected outcome", () => {
         verifications: [
           { ...ok.verifications[0], passed: false },
           ok.verifications[1],
+        ],
+      }),
+      false,
+    );
+    assert.equal(
+      isExpectedREV01Outcome({
+        ...ok,
+        verificationAttempts: 3,
+        repairAttempts: 1,
+        verifications: [
+          ok.verifications[0],
+          {
+            attempt: 2,
+            passed: false,
+            exitCode: 1,
+            durationMs: 10,
+            normalizedFailure: null,
+          },
+          {
+            attempt: 3,
+            passed: true,
+            exitCode: 0,
+            durationMs: 10,
+            normalizedFailure: null,
+          },
+        ],
+        repairs: [
+          {
+            attempt: 1,
+            modelCalls: 1,
+            toolCalls: 1,
+            turns: 1,
+            receivedTerminalResponse: true,
+            changedFiles: ["tasks/task-routes.ts"],
+            durationMs: 10,
+            tokenUsage: null,
+          },
         ],
       }),
       false,

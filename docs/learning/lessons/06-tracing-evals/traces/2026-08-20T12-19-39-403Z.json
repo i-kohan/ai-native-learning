@@ -52,7 +52,7 @@
   },
   "recurringFindings": [
     {
-      "findingKey": "complete-route-bypasses-service-transition",
+      "findingKey": "completion-state-transition-bypasses-service",
       "category": "architecture",
       "observed": 1,
       "acceptedBlocking": 1,
@@ -66,7 +66,7 @@
   "runs": [
     {
       "identity": {
-        "runId": "T01-variant-2026-08-20T11-36-11-261Z",
+        "runId": "T01-variant-2026-08-20T12-16-58-033Z",
         "taskId": "T01",
         "taskKind": "capability_regression",
         "suiteVersion": "fixed-v3-m06"
@@ -92,7 +92,9 @@
       "recovery": {
         "firstVerificationPassed": true,
         "verificationAttempts": 1,
-        "verificationSequence": ["PASS"],
+        "verificationSequence": [
+          "PASS"
+        ],
         "verificationRepairAttempts": 0,
         "repeatedFailure": false
       },
@@ -108,32 +110,32 @@
       },
       "efficiency": {
         "modelCalls": 7,
-        "toolCalls": 11,
+        "toolCalls": 15,
         "repoDiscoveryToolCalls": {
-          "list_files": 0,
-          "read_file": 7
+          "list_files": 2,
+          "read_file": 9
         },
-        "inputTokens": 15449,
-        "outputTokens": 1759,
-        "wallTimeMs": 26695,
+        "inputTokens": 18732,
+        "outputTokens": 1881,
+        "wallTimeMs": 26082,
         "phases": {
           "spec": {
             "modelCalls": 2,
-            "toolCalls": 7,
-            "inputTokens": 4496,
-            "outputTokens": 753,
+            "toolCalls": 9,
+            "inputTokens": 4559,
+            "outputTokens": 798,
             "wallTimeMs": null
           },
           "implementation": {
             "modelCalls": 4,
-            "toolCalls": 3,
-            "inputTokens": 9060,
-            "outputTokens": 966,
-            "wallTimeMs": 12705
+            "toolCalls": 5,
+            "inputTokens": 12259,
+            "outputTokens": 1013,
+            "wallTimeMs": 12120
           },
           "verification": {
             "attempts": 1,
-            "wallTimeMs": 423
+            "wallTimeMs": 452
           },
           "repair": {
             "modelCalls": 0,
@@ -145,9 +147,9 @@
           "review": {
             "modelCalls": 1,
             "toolCalls": 1,
-            "inputTokens": 1893,
-            "outputTokens": 40,
-            "wallTimeMs": 1645
+            "inputTokens": 1914,
+            "outputTokens": 70,
+            "wallTimeMs": 2332
           },
           "review_repair": {
             "modelCalls": 0,
@@ -161,7 +163,7 @@
     },
     {
       "identity": {
-        "runId": "T02-variant-2026-08-20T11-36-38-424Z",
+        "runId": "T02-variant-2026-08-20T12-17-24-603Z",
         "taskId": "T02",
         "taskKind": "capability_regression",
         "suiteVersion": "fixed-v3-m06"
@@ -187,7 +189,9 @@
       "recovery": {
         "firstVerificationPassed": true,
         "verificationAttempts": 1,
-        "verificationSequence": ["PASS"],
+        "verificationSequence": [
+          "PASS"
+        ],
         "verificationRepairAttempts": 0,
         "repeatedFailure": false
       },
@@ -203,32 +207,32 @@
       },
       "efficiency": {
         "modelCalls": 7,
-        "toolCalls": 15,
+        "toolCalls": 14,
         "repoDiscoveryToolCalls": {
           "list_files": 0,
-          "read_file": 11
+          "read_file": 10
         },
-        "inputTokens": 19332,
-        "outputTokens": 1686,
-        "wallTimeMs": 25138,
+        "inputTokens": 16097,
+        "outputTokens": 1640,
+        "wallTimeMs": 24863,
         "phases": {
           "spec": {
             "modelCalls": 2,
             "toolCalls": 7,
             "inputTokens": 4514,
-            "outputTokens": 1080,
+            "outputTokens": 890,
             "wallTimeMs": null
           },
           "implementation": {
             "modelCalls": 4,
-            "toolCalls": 7,
-            "inputTokens": 13235,
-            "outputTokens": 566,
-            "wallTimeMs": 9025
+            "toolCalls": 6,
+            "inputTokens": 10136,
+            "outputTokens": 692,
+            "wallTimeMs": 10870
           },
           "verification": {
             "attempts": 1,
-            "wallTimeMs": 422
+            "wallTimeMs": 425
           },
           "repair": {
             "modelCalls": 0,
@@ -240,9 +244,9 @@
           "review": {
             "modelCalls": 1,
             "toolCalls": 1,
-            "inputTokens": 1583,
-            "outputTokens": 40,
-            "wallTimeMs": 1492
+            "inputTokens": 1447,
+            "outputTokens": 58,
+            "wallTimeMs": 1927
           },
           "review_repair": {
             "modelCalls": 0,
@@ -256,7 +260,7 @@
     },
     {
       "identity": {
-        "runId": "T03-variant-2026-08-20T11-37-04-001Z",
+        "runId": "T03-variant-2026-08-20T12-17-49-944Z",
         "taskId": "T03",
         "taskKind": "capability_regression",
         "suiteVersion": "fixed-v3-m06"
@@ -282,7 +286,9 @@
       "recovery": {
         "firstVerificationPassed": true,
         "verificationAttempts": 1,
-        "verificationSequence": ["PASS"],
+        "verificationSequence": [
+          "PASS"
+        ],
         "verificationRepairAttempts": 0,
         "repeatedFailure": false
       },
@@ -300,30 +306,30 @@
         "modelCalls": 7,
         "toolCalls": 15,
         "repoDiscoveryToolCalls": {
-          "list_files": 0,
-          "read_file": 11
+          "list_files": 1,
+          "read_file": 10
         },
-        "inputTokens": 19217,
-        "outputTokens": 1634,
-        "wallTimeMs": 32787,
+        "inputTokens": 18943,
+        "outputTokens": 1534,
+        "wallTimeMs": 25394,
         "phases": {
           "spec": {
             "modelCalls": 2,
             "toolCalls": 7,
-            "inputTokens": 4512,
-            "outputTokens": 930,
+            "inputTokens": 4511,
+            "outputTokens": 921,
             "wallTimeMs": null
           },
           "implementation": {
             "modelCalls": 4,
             "toolCalls": 7,
-            "inputTokens": 13084,
-            "outputTokens": 581,
-            "wallTimeMs": 12172
+            "inputTokens": 12818,
+            "outputTokens": 572,
+            "wallTimeMs": 10185
           },
           "verification": {
             "attempts": 1,
-            "wallTimeMs": 409
+            "wallTimeMs": 420
           },
           "repair": {
             "modelCalls": 0,
@@ -335,9 +341,9 @@
           "review": {
             "modelCalls": 1,
             "toolCalls": 1,
-            "inputTokens": 1621,
-            "outputTokens": 123,
-            "wallTimeMs": 7661
+            "inputTokens": 1614,
+            "outputTokens": 41,
+            "wallTimeMs": 1395
           },
           "review_repair": {
             "modelCalls": 0,
@@ -351,7 +357,7 @@
     },
     {
       "identity": {
-        "runId": "T04-variant-2026-08-20T11-37-37-205Z",
+        "runId": "T04-variant-2026-08-20T12-18-15-767Z",
         "taskId": "T04",
         "taskKind": "capability_regression",
         "suiteVersion": "fixed-v3-m06"
@@ -398,15 +404,15 @@
           "list_files": 0,
           "read_file": 6
         },
-        "inputTokens": 4445,
-        "outputTokens": 847,
-        "wallTimeMs": 10711,
+        "inputTokens": 4444,
+        "outputTokens": 909,
+        "wallTimeMs": 11854,
         "phases": {
           "spec": {
             "modelCalls": 2,
             "toolCalls": 7,
-            "inputTokens": 4445,
-            "outputTokens": 847,
+            "inputTokens": 4444,
+            "outputTokens": 909,
             "wallTimeMs": null
           },
           "implementation": {
@@ -446,7 +452,7 @@
     },
     {
       "identity": {
-        "runId": "R01-repair-2026-08-20T11-37-48-345Z",
+        "runId": "R01-repair-2026-08-20T12-18-28-060Z",
         "taskId": "R01",
         "taskKind": "mechanism_probe",
         "mechanism": "verification_repair",
@@ -473,7 +479,10 @@
       "recovery": {
         "firstVerificationPassed": false,
         "verificationAttempts": 2,
-        "verificationSequence": ["FAIL", "PASS"],
+        "verificationSequence": [
+          "FAIL",
+          "PASS"
+        ],
         "verificationRepairAttempts": 1,
         "repeatedFailure": false
       },
@@ -488,47 +497,47 @@
         "findings": []
       },
       "efficiency": {
-        "modelCalls": 10,
-        "toolCalls": 19,
+        "modelCalls": 11,
+        "toolCalls": 23,
         "repoDiscoveryToolCalls": {
-          "list_files": 0,
-          "read_file": 11
+          "list_files": 1,
+          "read_file": 12
         },
-        "inputTokens": 28015,
-        "outputTokens": 2271,
-        "wallTimeMs": 32913,
+        "inputTokens": 30384,
+        "outputTokens": 2105,
+        "wallTimeMs": 34540,
         "phases": {
           "spec": {
             "modelCalls": 2,
             "toolCalls": 7,
             "inputTokens": 4481,
-            "outputTokens": 836,
+            "outputTokens": 704,
             "wallTimeMs": null
           },
           "implementation": {
-            "modelCalls": 3,
-            "toolCalls": 6,
-            "inputTokens": 8675,
-            "outputTokens": 230,
-            "wallTimeMs": 6044
+            "modelCalls": 4,
+            "toolCalls": 8,
+            "inputTokens": 11081,
+            "outputTokens": 310,
+            "wallTimeMs": 8830
           },
           "verification": {
             "attempts": 2,
-            "wallTimeMs": 883
+            "wallTimeMs": 854
           },
           "repair": {
             "modelCalls": 4,
-            "toolCalls": 5,
-            "inputTokens": 13623,
-            "outputTokens": 1003,
-            "wallTimeMs": 11774
+            "toolCalls": 7,
+            "inputTokens": 13739,
+            "outputTokens": 1039,
+            "wallTimeMs": 13692
           },
           "review": {
             "modelCalls": 1,
             "toolCalls": 1,
-            "inputTokens": 1236,
-            "outputTokens": 202,
-            "wallTimeMs": 4008
+            "inputTokens": 1083,
+            "outputTokens": 52,
+            "wallTimeMs": 1659
           },
           "review_repair": {
             "modelCalls": 0,
@@ -547,7 +556,7 @@
     },
     {
       "identity": {
-        "runId": "REV01-review-2026-08-20T11-38-21-714Z",
+        "runId": "REV01-review-2026-08-20T12-19-03-036Z",
         "taskId": "REV01",
         "taskKind": "mechanism_probe",
         "mechanism": "independent_review_repair",
@@ -574,7 +583,10 @@
       "recovery": {
         "firstVerificationPassed": true,
         "verificationAttempts": 2,
-        "verificationSequence": ["PASS", "PASS"],
+        "verificationSequence": [
+          "PASS",
+          "PASS"
+        ],
         "verificationRepairAttempts": 0,
         "repeatedFailure": false
       },
@@ -588,7 +600,7 @@
         "rejected": 0,
         "findings": [
           {
-            "findingKey": "complete-route-bypasses-service-transition",
+            "findingKey": "completion-state-transition-bypasses-service",
             "category": "architecture",
             "severity": "high",
             "decision": "accepted_blocking",
@@ -598,33 +610,33 @@
         ]
       },
       "efficiency": {
-        "modelCalls": 11,
-        "toolCalls": 21,
+        "modelCalls": 10,
+        "toolCalls": 20,
         "repoDiscoveryToolCalls": {
-          "list_files": 1,
-          "read_file": 10
+          "list_files": 0,
+          "read_file": 12
         },
-        "inputTokens": 27684,
-        "outputTokens": 2633,
-        "wallTimeMs": 40059,
+        "inputTokens": 25801,
+        "outputTokens": 2561,
+        "wallTimeMs": 36364,
         "phases": {
           "spec": {
             "modelCalls": 2,
             "toolCalls": 7,
             "inputTokens": 4471,
-            "outputTokens": 1030,
+            "outputTokens": 1027,
             "wallTimeMs": null
           },
           "implementation": {
             "modelCalls": 3,
-            "toolCalls": 6,
-            "inputTokens": 7036,
-            "outputTokens": 227,
-            "wallTimeMs": 8323
+            "toolCalls": 7,
+            "inputTokens": 9392,
+            "outputTokens": 279,
+            "wallTimeMs": 6830
           },
           "verification": {
             "attempts": 2,
-            "wallTimeMs": 868
+            "wallTimeMs": 851
           },
           "repair": {
             "modelCalls": 0,
@@ -636,16 +648,16 @@
           "review": {
             "modelCalls": 2,
             "toolCalls": 2,
-            "inputTokens": 3533,
-            "outputTokens": 355,
-            "wallTimeMs": 6130
+            "inputTokens": 3713,
+            "outputTokens": 284,
+            "wallTimeMs": 4973
           },
           "review_repair": {
-            "modelCalls": 4,
-            "toolCalls": 6,
-            "inputTokens": 12644,
-            "outputTokens": 1021,
-            "wallTimeMs": 11131
+            "modelCalls": 3,
+            "toolCalls": 4,
+            "inputTokens": 8225,
+            "outputTokens": 971,
+            "wallTimeMs": 11510
           }
         }
       },
@@ -658,5 +670,5 @@
     }
   ],
   "report": "=== Eval Report (fixed-v3-m06) ===\n\nCapability / Regression\nExpected outcomes      4 / 4\nExecutable tasks        3\nFirst-pass success     3 / 3\nEventual success       3 / 3\nRecovered success      0 / 3\nCorrect escalations    1 / 1\nAutonomous completion  3 / 4\nHuman escalation       1 / 4\nKnown escaped defects   n/a (grader = harness VERIFY; no independent ground truth)\n\nMechanism probes\nR01 verification repair      PASS\nREV01 independent review     PASS\n\nAll fixed benchmark contracts  6 / 6\n(qualified: capability expected outcomes + probe contracts, not an overall success rate)\n\nHard regressions\n- (none)\n\nDiagnostics (not correctness regressions)\n- (none)\n\nPer-run\nT01  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS\nT02  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS\nT03  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS\nT04  capability_regression  expected=yes  first_pass=n/a  autonomous=false  escalate=true  verify=n/a\nR01  mechanism_probe/verification_repair  expected=yes  first_pass=no  autonomous=true  escalate=false  verify=FAIL→PASS controlled_fail=true\nREV01  mechanism_probe/independent_review_repair  expected=yes  first_pass=no  autonomous=true  escalate=false  verify=PASS→PASS intended=true unexpected_blocking=0",
-  "generatedAt": "2026-08-20T11:39:01.776Z"
+  "generatedAt": "2026-08-20T12:19:39.403Z"
 }

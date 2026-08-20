@@ -111,7 +111,8 @@ function recurringFindingAggregation(runs: RunMetrics[]): RecurringFinding[] {
 
   for (const run of runs) {
     for (const finding of run.review.findings) {
-      const existing = byKey.get(finding.findingKey) ?? {
+      const compositeKey = `${finding.findingKey}\0${finding.category}`;
+      const existing = byKey.get(compositeKey) ?? {
         findingKey: finding.findingKey,
         category: finding.category,
         observed: 0,
@@ -131,14 +132,15 @@ function recurringFindingAggregation(runs: RunMetrics[]): RecurringFinding[] {
       if (finding.repeatedAfterRepair) {
         existing.repeatedAfterRepair += 1;
       }
-      byKey.set(finding.findingKey, existing);
+      byKey.set(compositeKey, existing);
     }
   }
 
   return [...byKey.values()].sort(
     (left, right) =>
       right.observed - left.observed ||
-      left.findingKey.localeCompare(right.findingKey),
+      left.findingKey.localeCompare(right.findingKey) ||
+      left.category.localeCompare(right.category),
   );
 }
 

@@ -1,0 +1,65 @@
+{
+  "task": "# T03 — Filter tasks by status\n\n`GET /tasks` should support:\n\n- `?status=pending`\n- `?status=completed`\n\nWhen `status` is provided, return only matching tasks.\nWithout `status`, preserve existing behavior (return all tasks).\n\nImplement the missing behavior and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Implement status-based filtering for GET /tasks while preserving the existing unfiltered list behavior, and verify it with automated tests.",
+    "requirements": [
+      "GET /tasks?status=pending returns only tasks whose status is \"pending\".",
+      "GET /tasks?status=completed returns only tasks whose status is \"completed\".",
+      "GET /tasks without a status query parameter returns all tasks in the existing service insertion order.",
+      "Use the existing TaskStatus type and route/service structure; the route already extracts and validates the supported status values and passes the filter to TaskService.list.",
+      "Retain the existing invalid-status response behavior (HTTP 400 with { error: \"invalid_status\" }) because it is already explicitly implemented in the route.",
+      "Add or retain tests covering both supported filters and the omitted-status case, using tasks in different statuses."
+    ],
+    "constraints": [
+      "Do not change task creation, completion, reopening, response shapes, or task ordering.",
+      "The filtering should be performed by TaskService.list(status), which currently accepts an optional TaskStatus but ignores it.",
+      "Supported status values are exactly \"pending\" and \"completed\" as defined by TaskStatus and enforced by the route.",
+      "No new persistence, API endpoints, or status semantics are required."
+    ],
+    "nonGoals": [
+      "Changing validation or error behavior for other query parameters.",
+      "Changing how task status or completedAt is updated.",
+      "Adding pagination, sorting, or additional filters.",
+      "Changing the route-level query parsing."
+    ],
+    "acceptance": [
+      "A pending task is included by status=pending and completed tasks are excluded.",
+      "A completed task is included by status=completed and pending tasks are excluded.",
+      "When no status is supplied, both pending and completed tasks are returned.",
+      "The existing status-filter tests pass, including assertions on HTTP 200 and returned task statuses/IDs.",
+      "The full repository test suite passes."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Confirm the status-filter tests create one pending and one completed task, assert each filter returns exactly its matching task, and assert an omitted status returns all created tasks.",
+      "Optionally verify invalid values continue to return HTTP 400 with error invalid_status."
+    ],
+    "ambiguities": [
+      {
+        "question": "Should unsupported status query values be rejected, or treated as an unfiltered request?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Reject unsupported values with HTTP 400 and { error: \"invalid_status\" }.",
+        "basis": "src/tasks/task-routes.ts already explicitly checks values other than pending/completed and returns this response; the task only defines the two supported values."
+      },
+      {
+        "question": "Where should the filtering logic be implemented?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Implement it in TaskService.list(status), preserving insertion order and returning all tasks when status is undefined.",
+        "basis": "TaskService.list already has the optional TaskStatus parameter but currently ignores it, while task-routes.ts already passes the parsed status."
+      },
+      {
+        "question": "What behavior should apply when the filtered set is empty?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Return HTTP 200 with an empty task array.",
+        "basis": "The route returns service.list directly with status 200, and no alternate empty-result behavior is defined by the task or repository."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}
