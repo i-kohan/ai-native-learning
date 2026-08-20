@@ -27,3 +27,5 @@ npm run benchmark --prefix harness -- T01
 ```
 
 Learning docs: `docs/learning/`.
+
+Architecture reference: `docs/learning/deepseek-harness-reference.md` — notes on DeepSeek Harness as a real-world extensible harness, without changing the current learning architecture.
