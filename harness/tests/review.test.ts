@@ -210,6 +210,7 @@ function intendedReviewResult(): HarnessRunResult {
       implNavCallsBeforeFirstWrite: null,
       tokenUsage: null,
     },
+    skillLoads: [],
   };
 }
 

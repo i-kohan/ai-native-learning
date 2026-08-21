@@ -10,6 +10,13 @@ import {
   type ReusableContext,
   type TokenUsageSummary,
 } from "./context.ts";
+import {
+  formatProceduralContext,
+  skillIdForPhase,
+  loadSkill,
+  toSkillLoadRecord,
+  type SkillLoadRecord,
+} from "./skills.ts";
 import { TOOL_DEFINITIONS, executeTool } from "./tools.ts";
 import { Tracer } from "./trace.ts";
 import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
@@ -46,6 +53,7 @@ export type AgentRunResult = {
   discovery: ReturnType<DiscoveryTracker["toMetrics"]>;
   implNavCallsBeforeFirstWrite: number | null;
   tokenUsage: TokenUsageSummary | null;
+  skillLoad: SkillLoadRecord | null;
 };
 
 type FunctionCallItem = {
@@ -83,9 +91,19 @@ export async function runAgentLoop(options: {
         ? REVIEW_REPAIR_INSTRUCTIONS
         : AGENT_INSTRUCTIONS;
 
-  const taskContent = reusableContext
-    ? `${formatImplementationHints(reusableContext)}\n\n${task}`
-    : task;
+  const selectedSkillId = skillIdForPhase(phase);
+  const loadedSkill = selectedSkillId
+    ? loadSkill(config.repoRoot, selectedSkillId)
+    : null;
+  const skillLoad = loadedSkill ? toSkillLoadRecord(loadedSkill, phase) : null;
+
+  const taskContent = [
+    reusableContext ? formatImplementationHints(reusableContext) : null,
+    loadedSkill ? formatProceduralContext(loadedSkill) : null,
+    task,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join("\n\n");
 
   // Conversation input for the Responses API. Tool results are appended here.
   let input: Array<Record<string, unknown>> = [
@@ -101,6 +119,10 @@ export async function runAgentLoop(options: {
   let modelFinalResponse = "";
   let receivedTerminalResponse = false;
   let failureReason: AgentRunResult["failureReason"];
+
+  if (skillLoad) {
+    tracer.record("skill_loaded", skillLoad);
+  }
 
   if (!nested) {
     tracer.record("run_started", {
@@ -286,6 +308,7 @@ export async function runAgentLoop(options: {
     discovery: implDiscovery,
     implNavCallsBeforeFirstWrite: discovery.getImplNavCallsBeforeFirstWrite(),
     tokenUsage,
+    skillLoad,
   };
 
   if (!nested) {
@@ -302,6 +325,7 @@ export async function runAgentLoop(options: {
       implDiscovery,
       implNavCallsBeforeFirstWrite: result.implNavCallsBeforeFirstWrite,
       tokenUsage,
+      skillLoad: result.skillLoad,
     });
     await tracer.close();
   }

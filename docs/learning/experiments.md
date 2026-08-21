@@ -615,4 +615,143 @@ Hypothesis supported for this suite:
 
 This does **not** prove long-run regression trends, reviewer precision, or escaped-defect detection beyond the current shared `npm test` grader.
 
-Module 06 experiment recorded; formal module closure still pending Topic Chat / Master review.
+Module 06 experiment recorded; later formally closed by Master.
+
+---
+
+## Module 07 — Skills (shared evidence-guided repair)
+
+### Hypothesis
+
+Shared evidence-guided repair procedure can be extracted from two role-specific instruction blocks into one reusable Skill, loaded only for applicable repair episodes, while preserving R01/REV01 behavior and existing harness authority boundaries.
+
+### Baseline
+
+Module 06 fixed suite (`fixed-v3-m06`, 2026-08-20):
+
+```text
+T01–T04 expected outcomes   4 / 4
+Executable first-pass       3 / 3
+Correct escalation T04      1 / 1
+R01 verification repair     PASS
+REV01 independent review    PASS
+All fixed contracts         6 / 6
+```
+
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 15      | 18732 / 1881  | ~26s |
+| T02   | capability | yes      | yes        | PASS      | 7 / 14      | 16097 / 1640  | ~25s |
+| T03   | capability | yes      | yes        | PASS      | 7 / 15      | 18943 / 1534  | ~25s |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4444 / 909    | ~12s |
+| R01   | probe      | yes      | no         | FAIL→PASS | 11 / 23     | 30384 / 2105  | ~35s |
+| REV01 | probe      | yes      | no         | PASS→PASS | 10 / 20     | 25801 / 2561  | ~36s |
+
+### What this experiment is
+
+The smallest real Skills mechanism on unchanged V3 control flow:
+
+- one procedural skill: `evidence-guided-repair`;
+- deterministic phase → skill mapping;
+- skill injected as labeled procedural context, not as privileged role instructions;
+- observability via `skill_loaded` / `skillLoads`.
+
+Not a skill marketplace, semantic router, or extra repair policy.
+
+### Variant
+
+```text
+implementation → no skill
+repair         → evidence-guided-repair
+review_repair  → evidence-guided-repair
+reviewer       → no skill
+```
+
+Command:
+
+```bash
+cd harness && npm run benchmark:eval
+```
+
+Model/context: same family as prior modules (`gpt-5.6-luna`), `contextMode=variant`. Suite label: `fixed-v3-m07`.
+
+### Decision rule
+
+Hard correctness regression if any of:
+
+- T01–T03 expected outcome fails;
+- T04 no longer escalates before implementation;
+- R01 or REV01 mechanism contract fails.
+
+Not hard regressions: token/call/time movement without an obvious major regression; unexpected skill disclosure is a diagnostic, not a 6/6 contract failure. Progressive disclosure is judged from traces, not only from final PASS.
+
+### Results
+
+Evidence:
+
+- report: `docs/learning/lessons/07-skills/traces/2026-08-21T11-14-29-911Z.txt`
+- normalized JSON: `docs/learning/lessons/07-skills/traces/2026-08-21T11-14-29-911Z.json`
+- raw traces in the same folder
+
+```text
+Capability / Regression
+Expected outcomes      4 / 4
+Executable tasks        3
+First-pass success     3 / 3
+Eventual success       3 / 3
+Recovered success      0 / 3
+Correct escalations    1 / 1
+Autonomous completion  3 / 4
+Human escalation       1 / 4
+Known escaped defects   n/a (grader = harness VERIFY)
+
+Mechanism probes
+R01 verification repair      PASS
+REV01 independent review     PASS
+
+Skills
+T01–T04  (none)
+R01      evidence-guided-repair@repair
+REV01    evidence-guided-repair@review_repair
+hash     efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25
+         (identical on R01 and REV01)
+
+All fixed benchmark contracts  6 / 6
+Hard regressions: none
+Diagnostics: none
+```
+
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall | skill |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- | ----- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 15      | 19871 / 1806  | ~32s | none |
+| T02   | capability | yes      | yes        | PASS      | 7 / 13      | 16372 / 1783  | ~28s | none |
+| T03   | capability | yes      | yes        | PASS      | 7 / 17      | 19331 / 1519  | ~25s | none |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4445 / 835    | ~11s | none |
+| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 21     | 27703 / 2140  | ~34s | repair |
+| REV01 | probe      | yes      | no         | PASS→PASS | 11 / 21     | 28903 / 2789  | ~39s | review_repair |
+
+Trace-level progressive disclosure:
+
+- T01–T04 jsonl contain no `skill_loaded` event;
+- R01: `repair_started` then `skill_loaded` with `phase=repair`; implementation and later reviewer did not load the skill;
+- REV01: `review_repair_started` then `skill_loaded` with `phase=review_repair`; `implementation_started` and both `review_started` rounds have no skill event.
+
+Efficiency vs Module 06: no obvious major regression. T01 wall +~6s / input +~1.1k; REV01 input +~3.1k is consistent with injecting the skill only on review_repair. R01 was slightly cheaper on this run (10/21 vs 11/23 model/tools).
+
+### Failures / unexpected behavior
+
+None against the Module 07 decision rule.
+
+### Conclusion
+
+Hypothesis supported for this suite:
+
+- shared repair procedure can live in one Skill used by two distinct episode roles;
+- progressive disclosure held: capability/spec episodes did not receive the repair skill;
+- R01/REV01 contracts remained 6/6;
+- harness still owns VERIFY, review acceptance, retry bounds, and tool permissions.
+
+This does **not** prove that more skills, model-selected routing, or a catalog would help. One repeated procedure was enough to test the abstraction.
+
+Module 07 experiment recorded; formal module closure still pending Topic Chat review.
+

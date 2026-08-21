@@ -1,0 +1,63 @@
+{
+  "task": "Ensure POST /tasks/:id/complete marks an existing task completed, sets completedAt, and preserves existing missing-task behavior.\n\nDo not change unrelated behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure POST /tasks/:id/complete completes an existing task by updating its status and completion timestamp, while retaining the established response for a missing task and avoiding unrelated behavior changes.",
+    "requirements": [
+      "For POST requests matching /tasks/:id/complete where the task exists, set the task status to \"completed\".",
+      "For an existing task completed through this endpoint, set completedAt to a non-null ISO timestamp string.",
+      "Return HTTP 200 with the completed task as the response body for a successful completion.",
+      "For a missing task, retain HTTP 404 with body { error: \"task_not_found\" }.",
+      "Do not alter unrelated task routes, task creation, listing/filtering, or reopen behavior."
+    ],
+    "constraints": [
+      "Do not modify tests.",
+      "Use the existing Task, TaskService, and task-route contracts and in-memory behavior.",
+      "The endpoint has no request body or additional parameters.",
+      "Preserve the existing route matching and error-response conventions."
+    ],
+    "nonGoals": [
+      "Changing the semantics of task creation, retrieval, listing, or reopening.",
+      "Changing the missing-task status code or error body.",
+      "Adding persistence, authentication, validation, or a new API response shape.",
+      "Defining behavior beyond the requested completion operation."
+    ],
+    "acceptance": [
+      "A created task completed via POST /tasks/:id/complete returns 200, has status \"completed\", and has a non-empty string completedAt.",
+      "The task retrieved or listed after completion remains status \"completed\" with its completion timestamp set.",
+      "POST /tasks/missing/complete returns 404 and exactly { error: \"task_not_found\" }.",
+      "Existing tests and unrelated endpoint behavior continue to pass."
+    ],
+    "verification": [
+      "Run the existing test suite with npm test.",
+      "Add or execute a focused check for POST /tasks/:id/complete against a created task and a missing task; do not modify the repository tests.",
+      "Confirm the returned and subsequently stored task fields, including status and completedAt, and confirm the missing-task response status/body."
+    ],
+    "ambiguities": [
+      {
+        "question": "What should happen if POST /tasks/:id/complete is called for a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Treat it as the same idempotent completion operation: the task remains completed and has a non-null completion timestamp; do not introduce any new response or error behavior.",
+        "basis": "The task asks to complete an existing task and explicitly says not to change unrelated behavior. The existing service operation already accepts any existing task, sets status to completed, refreshes completedAt, and returns 200; no repository contract specifies a separate repeated-completion response."
+      },
+      {
+        "question": "What is the missing-task response contract?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return status 404 with body { error: \"task_not_found\" }.",
+        "basis": "task-routes.ts delegates completion to TaskService.complete and uses this exact response when the service returns undefined; get and reopen use the same established convention, and the task explicitly requires preserving missing-task behavior."
+      },
+      {
+        "question": "What timestamp representation is required?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Use a non-null ISO 8601 string generated at completion time.",
+        "basis": "Task.completedAt is typed as string | null, the existing TaskService uses new Date().toISOString(), and tests assert that completedAt is a non-empty string."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

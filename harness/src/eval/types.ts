@@ -1,8 +1,9 @@
 import type { WorkflowFailureReason, WorkflowStatus } from "../run.ts";
 import type { FindingDecisionKind, FindingSeverity } from "../review.ts";
+import type { SkillLoadRecord } from "../skills.ts";
 import type { SpecDecision } from "../spec.ts";
 
-export const SUITE_VERSION = "fixed-v3-m06";
+export const SUITE_VERSION = "fixed-v3-m07";
 
 export const CAPABILITY_TASK_IDS = ["T01", "T02", "T03", "T04"] as const;
 export const EXECUTABLE_CAPABILITY_TASK_IDS = ["T01", "T02", "T03"] as const;
@@ -133,12 +134,17 @@ export type ProbeMetrics =
   | VerificationRepairProbe
   | IndependentReviewRepairProbe;
 
+export type SkillMetrics = {
+  loads: SkillLoadRecord[];
+};
+
 export type RunMetrics = {
   identity: RunIdentity;
   outcome: OutcomeMetrics;
   recovery: RecoveryMetrics;
   review: ReviewMetrics;
   efficiency: EfficiencyMetrics;
+  skills: SkillMetrics;
   probe?: ProbeMetrics;
 };
 

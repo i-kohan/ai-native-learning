@@ -244,6 +244,7 @@ describe("V1 expected outcomes", () => {
         implNavCallsBeforeFirstWrite: 0,
         tokenUsage: null,
       },
+      skillLoads: [],
       ...overrides,
     };
   }

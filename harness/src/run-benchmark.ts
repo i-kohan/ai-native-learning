@@ -315,6 +315,7 @@ function printRepairProbeSummary(result: HarnessRunResult): void {
   console.log(
     `repair_changed_files: ${result.repairs[0]?.changedFiles.join(", ") || "(none)"}`,
   );
+  console.log(`skill_loads: ${formatProbeSkillLoads(result)}`);
   console.log(`outcome: ${expected}`);
 }
 
@@ -452,6 +453,7 @@ function printReviewProbeSummary(result: HarnessRunResult): void {
   );
   console.log(`reviewer_outcome: ${result.finalReviewerOutcome}`);
   console.log(`workflow_status: ${result.workflowStatus}`);
+  console.log(`skill_loads: ${formatProbeSkillLoads(result)}`);
   console.log(`outcome: ${expected}`);
 }
 
@@ -535,6 +537,15 @@ function copyDir(from: string, to: string): void {
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+function formatProbeSkillLoads(result: HarnessRunResult): string {
+  if (result.skillLoads.length === 0) {
+    return "(none)";
+  }
+  return result.skillLoads
+    .map((item) => `${item.skillId}@${item.phase} ${item.contentHash}`)
+    .join("; ");
 }
 
 type CliOptions = {

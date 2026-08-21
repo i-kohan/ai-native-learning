@@ -4,6 +4,7 @@ import {
   taskKindOf,
 } from "./catalog.ts";
 import { formatEvalReport } from "./report.ts";
+import { EVIDENCE_GUIDED_REPAIR_SKILL_ID } from "../skills.ts";
 import {
   SUITE_VERSION,
   type CapabilityEval,
@@ -184,6 +185,7 @@ function diagnosticWarnings(
   const diagnostics: string[] = [];
 
   for (const run of runs) {
+    diagnostics.push(...skillLoadDiagnostics(run));
     if (
       isExecutableCapabilityTask(run.identity.taskId) &&
       run.outcome.recoveredSuccess
@@ -208,6 +210,53 @@ function diagnosticWarnings(
   }
 
   return diagnostics;
+}
+
+function skillLoadDiagnostics(run: RunMetrics): string[] {
+  const { taskId } = run.identity;
+  const loads = run.skills.loads;
+
+  if (isExecutableCapabilityTask(taskId) || isEscalationTask(taskId)) {
+    if (loads.length === 0) {
+      return [];
+    }
+    return [`${taskId}: unexpected skill load (${formatLoads(loads)})`];
+  }
+
+  if (taskId === "R01") {
+    const unexpected = loads.filter((item) => item.phase !== "repair");
+    if (!hasSkill(loads, EVIDENCE_GUIDED_REPAIR_SKILL_ID, "repair")) {
+      return ["R01: expected evidence-guided-repair for repair"];
+    }
+    if (unexpected.length > 0) {
+      return [`R01: unexpected skill phase (${formatLoads(unexpected)})`];
+    }
+    return [];
+  }
+
+  if (taskId === "REV01") {
+    const unexpected = loads.filter((item) => item.phase !== "review_repair");
+    if (!hasSkill(loads, EVIDENCE_GUIDED_REPAIR_SKILL_ID, "review_repair")) {
+      return ["REV01: expected evidence-guided-repair for review_repair"];
+    }
+    if (unexpected.length > 0) {
+      return [`REV01: unexpected skill phase (${formatLoads(unexpected)})`];
+    }
+  }
+
+  return [];
+}
+
+function hasSkill(
+  loads: RunMetrics["skills"]["loads"],
+  skillId: string,
+  phase: string,
+): boolean {
+  return loads.some((item) => item.skillId === skillId && item.phase === phase);
+}
+
+function formatLoads(loads: RunMetrics["skills"]["loads"]): string {
+  return loads.map((item) => `${item.skillId}@${item.phase}`).join(", ");
 }
 
 function ratio(

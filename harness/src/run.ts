@@ -30,6 +30,7 @@ import {
   type ReviewRunState,
 } from "./review.ts";
 import { runIndependentReview } from "./review-phase.ts";
+import type { SkillLoadRecord } from "./skills.ts";
 import { buildSpec } from "./spec-phase.ts";
 import {
   formatSpecContract,
@@ -117,6 +118,7 @@ export type HarnessRunResult = {
   durationMs: number;
   contextMode: ContextMode;
   contextMetrics: ContextRunMetrics;
+  skillLoads: SkillLoadRecord[];
 };
 
 export async function runV1Harness(options: {
@@ -198,6 +200,7 @@ export async function runV1Harness(options: {
       unifiedDiff,
       tracePath: tracer.tracePath,
       durationMs: Date.now() - startedAt,
+      skillLoads: [],
     });
     tracer.record("harness_gate", {
       action: "abort",
@@ -243,6 +246,7 @@ export async function runV1Harness(options: {
       unifiedDiff,
       tracePath: tracer.tracePath,
       durationMs: Date.now() - startedAt,
+      skillLoads: [],
     });
     await finishRun(tracer, result);
     return result;
@@ -307,6 +311,10 @@ export async function runV1Harness(options: {
   let finalVerificationPassed = verified.finalVerificationPassed;
   let finalVerification = verified.finalVerification;
   let reviewState = emptyReviewRunState();
+  const skillLoads: SkillLoadRecord[] = [
+    ...collectedSkillLoads(implementation),
+    ...verified.skillLoads,
+  ];
 
   const canReview =
     shouldStartReview(verified.finalVerificationPassed) &&
@@ -338,6 +346,7 @@ export async function runV1Harness(options: {
     finalVerificationPassed = reviewed.finalVerificationPassed;
     finalVerification = reviewed.finalVerification;
     reviewState = reviewed.reviewState;
+    skillLoads.push(...reviewed.skillLoads);
   } else if (verified.workflowStatus === "success") {
     tracer.record("workflow_outcome", {
       status: "success",
@@ -379,6 +388,7 @@ export async function runV1Harness(options: {
     unifiedDiff,
     tracePath: tracer.tracePath,
     durationMs: Date.now() - startedAt,
+    skillLoads,
   });
   await finishRun(tracer, result);
   return result;
@@ -486,6 +496,7 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(`duration_ms: ${result.durationMs}`);
   console.log(`context_mode: ${result.contextMode}`);
   printContextMetrics(result.contextMetrics);
+  console.log(`skill_loads: ${formatSkillLoads(result.skillLoads)}`);
   console.log(`model_final_response:\n${result.modelFinalResponse}`);
 }
 
@@ -548,12 +559,14 @@ async function runVerifyRepairLoop(options: {
   finalVerificationPassed: boolean;
   finalVerification: VerificationResult | null;
   modelFinalResponse: string;
+  skillLoads: SkillLoadRecord[];
 }> {
   const { config, task, spec, tracer, reusableContext, runId, implementation } =
     options;
 
   const verifications: VerificationAttempt[] = [];
   const repairs: RepairAttemptSummary[] = [];
+  const skillLoads: SkillLoadRecord[] = [];
   let repairAttempts = 0;
   let repeatedFailure = false;
   let previousSignature: string | null = null;
@@ -581,6 +594,7 @@ async function runVerifyRepairLoop(options: {
       finalVerificationPassed: false,
       finalVerification: null,
       modelFinalResponse,
+      skillLoads,
     };
   }
 
@@ -646,6 +660,7 @@ async function runVerifyRepairLoop(options: {
         finalVerificationPassed: true,
         finalVerification: verification,
         modelFinalResponse,
+        skillLoads,
       };
     }
 
@@ -670,6 +685,7 @@ async function runVerifyRepairLoop(options: {
         finalVerificationPassed: false,
         finalVerification: verification,
         modelFinalResponse,
+        skillLoads,
       };
     }
 
@@ -704,6 +720,7 @@ async function runVerifyRepairLoop(options: {
 
     lastRepairChangedFiles = repair.changedFiles.length > 0;
     modelFinalResponse = repair.modelFinalResponse;
+    skillLoads.push(...collectedSkillLoads(repair));
     repairs.push({
       attempt: repairAttempts,
       modelCalls: repair.modelCalls,
@@ -744,6 +761,7 @@ async function runVerifyRepairLoop(options: {
         finalVerificationPassed: false,
         finalVerification: lastVerification,
         modelFinalResponse,
+        skillLoads,
       };
     }
   }
@@ -773,6 +791,7 @@ async function runIndependentReviewLoop(options: {
   finalVerificationPassed: boolean;
   finalVerification: VerificationResult;
   reviewState: ReviewRunState;
+  skillLoads: SkillLoadRecord[];
 }> {
   const {
     config,
@@ -789,6 +808,7 @@ async function runIndependentReviewLoop(options: {
   const reviewRepairs: ReviewRepairSummary[] = [];
   const extraVerifications: VerificationAttempt[] = [];
   const extraRepairs: RepairAttemptSummary[] = [];
+  const skillLoads: SkillLoadRecord[] = [];
   let extraVerificationAttempts = 0;
   let extraRepairAttempts = 0;
   let reviewRepairAttempts = 0;
@@ -935,6 +955,7 @@ async function runIndependentReviewLoop(options: {
       finalVerificationPassed: lastVerification.passed,
       finalVerification: lastVerification,
       reviewState,
+      skillLoads,
     };
   };
 
@@ -991,6 +1012,7 @@ async function runIndependentReviewLoop(options: {
   });
 
   modelFinalResponse = repair.modelFinalResponse;
+  skillLoads.push(...collectedSkillLoads(repair));
   reviewRepairs.push({
     attempt: reviewRepairAttempts,
     modelCalls: repair.modelCalls,
@@ -1037,6 +1059,7 @@ async function runIndependentReviewLoop(options: {
   extraRepairs.push(...postRepair.repairs);
   extraVerificationAttempts = postRepair.verificationAttempts;
   extraRepairAttempts = postRepair.repairAttempts;
+  skillLoads.push(...postRepair.skillLoads);
   repeatedFailure = postRepair.repeatedFailure;
   lastVerification = postRepair.finalVerification ?? lastVerification;
   lastVerificationAttempt =
@@ -1110,6 +1133,7 @@ function baseResult(fields: {
   unifiedDiff: string;
   tracePath: string;
   durationMs: number;
+  skillLoads?: SkillLoadRecord[];
 }): HarnessRunResult {
   const implementation = fields.implementation;
   const implDiscovery = implementation?.discovery ?? null;
@@ -1230,6 +1254,7 @@ function baseResult(fields: {
     durationMs: fields.durationMs,
     contextMode: fields.contextMode,
     contextMetrics,
+    skillLoads: fields.skillLoads ?? [],
   };
 }
 
@@ -1326,8 +1351,22 @@ async function finishRun(
     durationMs: result.durationMs,
     contextMode: result.contextMode,
     contextMetrics: result.contextMetrics,
+    skillLoads: result.skillLoads,
   });
   await tracer.close();
+}
+
+function collectedSkillLoads(result: AgentRunResult): SkillLoadRecord[] {
+  return result.skillLoad ? [result.skillLoad] : [];
+}
+
+function formatSkillLoads(loads: SkillLoadRecord[]): string {
+  if (loads.length === 0) {
+    return "(none)";
+  }
+  return loads
+    .map((item) => `${item.skillId}@${item.phase} ${item.contentHash}`)
+    .join("; ");
 }
 
 function printList(label: string, items: string[]): void {

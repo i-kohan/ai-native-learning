@@ -28,6 +28,7 @@ export function normalizeRun(options: {
     recovery: recoveryMetrics(result),
     review: reviewMetrics(result),
     efficiency: efficiencyMetrics(result),
+    skills: { loads: result.skillLoads },
     ...(identity.mechanism
       ? { probe: probeMetrics(taskId, result, expectedOutcomeMet) }
       : {}),

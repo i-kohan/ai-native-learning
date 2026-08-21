@@ -120,6 +120,7 @@ function harnessResult(
       implNavCallsBeforeFirstWrite: 0,
       tokenUsage: null,
     },
+    skillLoads: [],
     ...overrides,
   };
 }
@@ -263,6 +264,7 @@ function r01Probe(): HarnessRunResult {
     ],
     changedFiles: [],
     tracePath: "/tmp/R01-repair.jsonl",
+    skillLoads: [repairSkillLoad("repair")],
   });
 }
 
@@ -382,7 +384,18 @@ function rev01Probe(options?: {
     finalReviewerOutcome: "pass",
     changedFiles: [],
     tracePath: "/tmp/REV01-review.jsonl",
+    skillLoads: [repairSkillLoad("review_repair")],
   });
+}
+
+function repairSkillLoad(
+  phase: "repair" | "review_repair",
+): HarnessRunResult["skillLoads"][number] {
+  return {
+    skillId: "evidence-guided-repair",
+    phase,
+    contentHash: "a".repeat(64),
+  };
 }
 
 function hasGenericPrecisionClaim(value: unknown): boolean {
@@ -680,6 +693,49 @@ describe("EvalResult aggregation", () => {
     assert.equal(
       suite.regressions.some((item) => item.includes("T02")),
       false,
+    );
+  });
+
+  it("records skill loads as diagnostics, not as hard benchmark contracts", () => {
+    assert.equal(normalize("T01", t01FirstPass()).skills.loads.length, 0);
+    assert.deepEqual(
+      normalize("R01", r01Probe()).skills.loads[0]?.phase,
+      "repair",
+    );
+    assert.deepEqual(
+      normalize("REV01", rev01Probe()).skills.loads[0]?.phase,
+      "review_repair",
+    );
+    assert.match(suite.report, /Skills/);
+    assert.match(suite.report, /T01\s+\(none\)/);
+    assert.match(suite.report, /R01\s+evidence-guided-repair@repair/);
+    assert.match(suite.report, /REV01 evidence-guided-repair@review_repair/);
+
+    const withSkill = aggregateRuns([normalize("R01", r01Probe())]);
+    const withoutSkill = aggregateRuns([
+      normalize("R01", { ...r01Probe(), skillLoads: [] }),
+    ]);
+    assert.equal(withSkill.regressions.length, 0);
+    assert.equal(withSkill.diagnostics.length, 0);
+    assert.equal(withoutSkill.probes.R01?.passed, true);
+    assert.ok(
+      withoutSkill.diagnostics.some((item) =>
+        item.includes("expected evidence-guided-repair for repair"),
+      ),
+    );
+
+    const leaked = aggregateRuns([
+      normalize(
+        "T01",
+        harnessResult({
+          skillLoads: [repairSkillLoad("repair")],
+        }),
+      ),
+    ]);
+    assert.equal(leaked.regressions.length, 0);
+    assert.equal(leaked.capability.expectedOutcomesMet.met, 1);
+    assert.ok(
+      leaked.diagnostics.some((item) => item.includes("unexpected skill load")),
     );
   });
 });

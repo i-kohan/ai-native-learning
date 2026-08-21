@@ -1,0 +1,63 @@
+{
+  "task": "# T03 — Filter tasks by status\n\n`GET /tasks` should support:\n\n- `?status=pending`\n- `?status=completed`\n\nWhen `status` is provided, return only matching tasks.\nWithout `status`, preserve existing behavior (return all tasks).\n\nImplement the missing behavior and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Implement status-based filtering for GET /tasks while preserving the existing unfiltered listing behavior, and verify it with tests.",
+    "requirements": [
+      "For GET /tasks?status=pending, return only tasks whose status is \"pending\".",
+      "For GET /tasks?status=completed, return only tasks whose status is \"completed\".",
+      "For GET /tasks without a status parameter, return all tasks in the existing insertion/list order.",
+      "Retain the existing route handling for invalid status values: respond with HTTP 400 and { error: \"invalid_status\" }.",
+      "Add or maintain tests covering both supported filters and the no-status behavior."
+    ],
+    "constraints": [
+      "Use the existing TaskStatus and Task types.",
+      "Preserve the current TaskService list API and route contract; the route already passes an optional status to TaskService.list.",
+      "Do not change task creation, completion, reopening, response shapes, or ordering semantics.",
+      "Verification should use the repository's existing npm test script."
+    ],
+    "nonGoals": [
+      "Changing the set of supported status values.",
+      "Adding pagination, sorting, or other query parameters.",
+      "Changing behavior for invalid status values beyond preserving the existing 400 response.",
+      "Changing task lifecycle behavior or persistence."
+    ],
+    "acceptance": [
+      "A mixed set of pending and completed tasks queried with status=pending contains only pending tasks.",
+      "The same mixed set queried with status=completed contains only completed tasks.",
+      "A GET /tasks request without status returns both pending and completed tasks.",
+      "Existing task route and lifecycle tests continue to pass.",
+      "Invalid status requests continue to return 400 with error invalid_status."
+    ],
+    "verification": [
+      "Run npm test using the existing package.json test script.",
+      "Confirm the status-filter tests pass for pending, completed, and omitted status, along with the existing test suite."
+    ],
+    "ambiguities": [
+      {
+        "question": "What should GET /tasks do for a status value other than pending or completed?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 400 with { error: \"invalid_status\" }.",
+        "basis": "src/tasks/task-routes.ts already explicitly validates statusParam and returns this response for unsupported values; the implementation should preserve that established contract."
+      },
+      {
+        "question": "How should filtering affect task ordering?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Preserve the existing Map insertion order among matching tasks.",
+        "basis": "TaskService stores tasks in a Map and list currently returns [...this.tasks.values()]; filtering that sequence preserves established ordering."
+      },
+      {
+        "question": "Where should the missing filtering behavior be implemented?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Implement it in TaskService.list(status), since the route already parses and validates the query parameter and passes it to service.list.",
+        "basis": "src/tasks/task-routes.ts calls service.list(status ?? undefined), while src/tasks/task-service.ts currently accepts _status but ignores it and contains the documented gap."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

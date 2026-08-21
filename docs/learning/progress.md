@@ -11,7 +11,7 @@ Completed modules:
 5. ✅ 05 — Independent Review + bounded Review Repair
 6. ✅ 06 — Tracing & Evals
 
-Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with a **systematic measurement layer** (`HarnessRunResult → RunMetrics → EvalResult`) around the unchanged V3 control flow.
+Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with a **systematic measurement layer** and a **small Skills mechanism** (`evidence-guided-repair` loaded only for repair / review_repair episodes).
 
 Current execution flow:
 
@@ -22,14 +22,15 @@ raw task
 → SpecDecision
    ├─ needs_human_judgment → stop before coding side effects
    └─ executable
-       → implementation episode
+       → implementation episode (no skill)
        → harness-owned VERIFY / bounded repair
+          (repair episode loads evidence-guided-repair)
           ├─ cannot reach PASS → stop
           └─ PASS
-             → independent REVIEW #1
+             → independent REVIEW #1 (no repair skill)
                 ├─ no accepted blocker → success
                 └─ accepted blocker
-                   → one review repair
+                   → one review repair (loads evidence-guided-repair)
                    → deterministic VERIFY again
                    → REVIEW #2
                       ├─ pass → success
@@ -49,20 +50,62 @@ HarnessRunResult / raw traces
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
 
-## Next module
+## Next
 
-**07 — Skills**
+**07 — Skills** is implemented and the fixed suite has been rerun. Topic Chat still needs to review the learning-critical code and traces, then write `theory.md`. Do not mark Module 07 complete yet.
 
-Why now:
+After Topic Chat / Master closure, follow the current master plan with **Worktrees / Isolation**, then **Security fundamentals**.
 
-- the current `master-learning-plan.md` places Skills immediately after Independent review/repair in Phase 2 — Reliable Autonomy;
-- spec, context, verification and review boundaries now exist, so reusable procedures can have explicit inputs, context requirements and verification rather than becoming generic prompt snippets;
-- Module 06 gives us a fixed measurement layer, so a skill can be evaluated rather than kept because it merely feels helpful;
-- the goal is reusable procedural knowledge for repeated workflows, not a generic agent/plugin framework.
+---
 
-After Skills, follow the current master plan with **Worktrees / Isolation**, then **Security fundamentals**.
+## Module: 07 — Skills
 
-Target after Module 07: **V3 + measurement layer + small real Skills mechanism / several concrete reusable skills**, without changing the core agent roles or adding model routing/subagents.
+**Status:** implemented / experiment recorded — **not formally complete**. Topic Chat review and `theory.md` are still required.
+
+Practical notes + eval evidence: `docs/learning/lessons/07-skills/`
+
+### Built
+
+- one reusable skill: `skills/evidence-guided-repair/SKILL.md`;
+- deterministic loader/selector: `skillIdForPhase` + `loadSkill(skillId)`;
+- skill injected as a labeled procedural-context block, not merged into privileged role instructions;
+- `REPAIR_INSTRUCTIONS` / `REVIEW_REPAIR_INSTRUCTIONS` kept role-specific;
+- `skill_loaded` trace/result provenance (`skillId`, `phase`, `contentHash`);
+- eval report Skills section; unexpected disclosure is a diagnostic, not a hard 6/6 failure.
+
+### Fixed-suite evidence
+
+`docs/learning/lessons/07-skills/traces/2026-08-21T11-14-29-911Z.txt`
+
+```text
+T01–T04 expected outcomes   4 / 4
+Executable first-pass       3 / 3
+Correct escalation T04      1 / 1
+R01 verification repair     PASS
+REV01 independent review    PASS
+All fixed contracts         6 / 6
+Hard regressions            none
+```
+
+Progressive disclosure:
+
+- T01–T04: no `skill_loaded`;
+- R01: `evidence-guided-repair` loaded exactly for `repair`;
+- REV01: loaded exactly for `review_repair`; reviewer episodes did not receive it;
+- same SKILL.md hash on R01 and REV01: `efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25`.
+
+### Important design decisions
+
+- one skill, two roles: verification-repair and review-repair stay distinct episodes;
+- skill is procedural guidance only; spec, repo state, tools, VERIFY, review policy and retry bounds stay authoritative;
+- missing/invalid skill fails explicitly (`SkillLoadError`);
+- no model-selected routing, registry, or extra skills.
+
+### Known limits
+
+- only one skill exists; there is no catalog beyond a hardcoded phase map;
+- skill loading is not part of the 6/6 hard contracts;
+- Module 07 is not closed until Topic Chat review.
 
 ---
 

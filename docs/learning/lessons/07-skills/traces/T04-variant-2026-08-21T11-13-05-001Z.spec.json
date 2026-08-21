@@ -1,0 +1,66 @@
+{
+  "task": "# T04 — Ambiguity probe\n\nMake the task list less cluttered by hiding completed tasks when appropriate.",
+  "decision": "needs_human_judgment",
+  "spec": {
+    "goal": "Reduce clutter in task-list responses by conditionally excluding completed tasks, while preserving the existing task lifecycle and explicit status filtering unless the clarified product rule says otherwise.",
+    "requirements": [
+      "The change concerns task-list behavior for GET /tasks.",
+      "Completed tasks must be hidden under a product-defined condition described by the phrase \"when appropriate\".",
+      "The existing task model distinguishes pending and completed tasks, and GET /tasks already supports status=pending and status=completed filters."
+    ],
+    "constraints": [
+      "Task records, status values, completedAt behavior, create/complete/reopen operations, and route shapes are already established by the repository.",
+      "The existing API returns both pending and completed tasks when GET /tasks omits status; changing that default is externally observable.",
+      "Invalid status values currently produce HTTP 400 with {error:\"invalid_status\"}; explicit status filtering is currently supported."
+    ],
+    "nonGoals": [
+      "Do not alter task creation, completion, reopening, identifiers, or completedAt semantics.",
+      "Do not invent a UI behavior; this repository exposes an HTTP-style task API and contains no UI files.",
+      "Do not remove the ability to retrieve completed tasks unless explicitly required by the clarified product rule."
+    ],
+    "acceptance": [
+      "After the missing product rule is supplied, GET /tasks behavior clearly specifies when completed tasks are excluded.",
+      "Explicit status=pending and status=completed behavior remains defined and tested, unless the clarified requirement explicitly changes it.",
+      "Existing task lifecycle tests continue to pass."
+    ],
+    "verification": [
+      "Add or update route tests covering the clarified default/list condition with a pending and a completed task.",
+      "Verify explicit status filters and invalid-status handling remain correct.",
+      "Run the repository test script: npm test."
+    ],
+    "ambiguities": [
+      {
+        "question": "What precisely does \"when appropriate\" mean for hiding completed tasks? For example, should GET /tasks with no status parameter return only pending tasks by default, should a new query parameter control hiding, or should completed tasks be hidden only under another condition?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "The task requests a behavior change but does not define the trigger or default. The repository shows that GET /tasks currently returns all tasks when status is omitted, while explicit pending/completed filters already exist; no docs, UI, or tests establish a new hiding rule."
+      },
+      {
+        "question": "Should completed tasks remain retrievable through GET /tasks?status=completed (or otherwise through the API) after they are hidden from the main list?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "The current route contract supports an explicit completed filter, but the task only says to hide completed tasks and does not state whether this is a default-list presentation change or removal from all list retrieval."
+      }
+    ]
+  },
+  "unresolvedQuestions": [
+    {
+      "question": "What precisely does \"when appropriate\" mean for hiding completed tasks? For example, should GET /tasks with no status parameter return only pending tasks by default, should a new query parameter control hiding, or should completed tasks be hidden only under another condition?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "The task requests a behavior change but does not define the trigger or default. The repository shows that GET /tasks currently returns all tasks when status is omitted, while explicit pending/completed filters already exist; no docs, UI, or tests establish a new hiding rule."
+    },
+    {
+      "question": "Should completed tasks remain retrievable through GET /tasks?status=completed (or otherwise through the API) after they are hidden from the main list?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "The current route contract supports an explicit completed filter, but the task only says to hide completed tasks and does not state whether this is a default-list presentation change or removal from all list retrieval."
+    }
+  ],
+  "implementationStarted": false,
+  "workflowStatus": "needs_human_judgment"
+}

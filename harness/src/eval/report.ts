@@ -20,6 +20,9 @@ export function formatEvalReport(result: EvalResult): string {
     formatProbe("R01 verification repair", result.probes.R01),
     formatProbe("REV01 independent review", result.probes.REV01),
     "",
+    "Skills",
+    ...result.runs.map(formatSkillLine),
+    "",
     `All fixed benchmark contracts  ${formatRatio(result.allFixedContracts)}`,
     "(qualified: capability expected outcomes + probe contracts, not an overall success rate)",
     "",
@@ -94,5 +97,23 @@ function formatRunLine(run: EvalResult["runs"][number]): string {
       : run.probe?.mechanism === "verification_repair"
         ? ` controlled_fail=${run.probe.controlledFailureTriggered}`
         : "";
-  return `${run.identity.taskId}  ${run.identity.taskKind}${run.identity.mechanism ? `/${run.identity.mechanism}` : ""}  expected=${run.outcome.expectedOutcomeMet ? "yes" : "no"}  first_pass=${firstPass}  autonomous=${run.outcome.autonomousCompletion}  escalate=${run.outcome.humanEscalation}  verify=${run.recovery.verificationSequence.join("→") || "n/a"}${probe}`;
+  const skills =
+    run.skills.loads.length === 0
+      ? "skills=none"
+      : `skills=${run.skills.loads
+          .map((item) => `${item.skillId}@${item.phase}`)
+          .join(",")}`;
+  return `${run.identity.taskId}  ${run.identity.taskKind}${run.identity.mechanism ? `/${run.identity.mechanism}` : ""}  expected=${run.outcome.expectedOutcomeMet ? "yes" : "no"}  first_pass=${firstPass}  autonomous=${run.outcome.autonomousCompletion}  escalate=${run.outcome.humanEscalation}  verify=${run.recovery.verificationSequence.join("→") || "n/a"}  ${skills}${probe}`;
+}
+
+function formatSkillLine(run: EvalResult["runs"][number]): string {
+  if (run.skills.loads.length === 0) {
+    return `${run.identity.taskId.padEnd(5)} (none)`;
+  }
+  return run.skills.loads
+    .map(
+      (item) =>
+        `${run.identity.taskId.padEnd(5)} ${item.skillId}@${item.phase} ${item.contentHash}`,
+    )
+    .join("\n");
 }

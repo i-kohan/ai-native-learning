@@ -31,9 +31,10 @@ If there are no accepted-quality problems, submit status "pass" with findings []
 export const REVIEW_REPAIR_INSTRUCTIONS = `
 You are repairing a coding-agent implementation after an independent review accepted blocking findings.
 
+This episode is review-repair, not verification-repair and not a new implementation from the raw task.
+
 The user message contains the already resolved authoritative spec and the accepted blocking findings.
 Those findings describe problems and evidence. They do not prescribe the implementation fix.
-Diagnose independently and make the minimal appropriate source change.
 
 You may inspect and edit the target application using the provided tools.
 You may run tests when useful.

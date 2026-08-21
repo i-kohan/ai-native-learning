@@ -357,6 +357,7 @@ describe("R01 expected outcome", () => {
         implNavCallsBeforeFirstWrite: null,
         tokenUsage: null,
       },
+      skillLoads: [],
     };
 
     assert.equal(isExpectedR01Outcome(ok), true);

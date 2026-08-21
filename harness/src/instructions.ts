@@ -15,8 +15,9 @@ Do not modify tests. Only change application source under target-app/src/.
 export const REPAIR_INSTRUCTIONS = `
 You are repairing a coding-agent implementation after external verification failed.
 
+This episode is verification-repair, not independent review and not a new implementation from the raw task.
+
 The user message contains the already resolved authoritative spec and factual npm test failure evidence.
-Diagnose from that evidence and make the minimal appropriate source change.
 
 You may inspect and edit the target application using the provided tools.
 You may run tests when useful.

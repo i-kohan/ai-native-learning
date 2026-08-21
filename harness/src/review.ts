@@ -419,7 +419,7 @@ export function formatReviewRepairContract(
     ),
     "",
     "## Repair",
-    "Make the minimal appropriate source change under target-app/src/.",
+    "This episode repairs the current implementation from the accepted findings above.",
     "Do not modify tests, spec, verifier, or harness.",
     "When the repair is complete, stop calling tools and reply with a short summary.",
     "",
