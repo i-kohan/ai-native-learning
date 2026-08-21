@@ -33,17 +33,19 @@ Master → Topic Chat → Cursor → Topic Chat → GitHub → Master
 - read current `master-learning-plan.md` + `progress.md` from GitHub;
 - inspect experiments/lesson recap/architecture/code when needed;
 - choose one next module;
-- give a ready-to-copy Topic prompt with progress, harness state, roadmap position, why now, learning goals, practical outcome, scope/non-goals, relevant repo paths.
+- give a ready-to-copy Topic prompt with progress, harness state, roadmap position, why now, learning goals, practical outcome, scope/non-goals, relevant repo paths;
+- include a **frontier / production lens** in every Topic Chat starter prompt: besides the smallest learning implementation, the Topic Chat must explain how the same mechanism is used in mature large-scale agent systems, what extra infrastructure/controls appear there, and which of those additions are scale-driven rather than fundamental to the concept.
 
 ### Topic Chat
 
 1. Understand.
-2. Connect to current harness.
-3. Split **learning-critical** vs **delegatable** implementation.
-4. Define experiment.
-5. Produce Cursor Task.
-6. Review results and understanding.
-7. Before handoff to Master, ensure compact lesson artifacts exist:
+2. Add a **frontier / production lens**: show `our minimal version → mature production version`, including representative large-organization patterns when supported by current evidence. Explain what changes at scale (routing, registries, policy, observability, lifecycle, governance, etc.) without pulling those future mechanisms into the current implementation unless they are the module subject.
+3. Connect to current harness.
+4. Split **learning-critical** vs **delegatable** implementation.
+5. Define experiment.
+6. Produce Cursor Task.
+7. Review results and understanding.
+8. Before handoff to Master, ensure compact lesson artifacts exist:
 
 ```text
 lessons/NN-short-name/
@@ -81,6 +83,8 @@ No worktrees / complex branching / parallel development early.
 - problem understood;
 - mechanism understood;
 - key execution flow explainable;
+- minimal implementation understood;
+- frontier / production evolution understood;
 - implementation works;
 - learning-critical code inspected;
 - verification/experiment completed;
