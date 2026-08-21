@@ -52,16 +52,15 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 ## Next
 
-**07 — Skills** is implemented and the fixed suite has been rerun. Topic Chat still needs to review the learning-critical code and traces, then write `theory.md`. Do not mark Module 07 complete yet.
-
-After Topic Chat / Master closure, follow the current master plan with **Worktrees / Isolation**, then **Security fundamentals**.
+**07 — Skills** has completed Topic Chat implementation/evidence/theory review and is **ready for formal Master closure**. Master should verify the current repository state, close Module 07 if satisfied, and only then choose the next roadmap module from `master-learning-plan.md`.
 
 ---
 
 ## Module: 07 — Skills
 
-**Status:** implemented / experiment recorded — **not formally complete**. Topic Chat review and `theory.md` are still required.
+**Status:** implementation + experiment + Topic Chat review complete — **ready for Master closure**.
 
+Theory: `docs/learning/lessons/07-skills/theory.md`  
 Practical notes + eval evidence: `docs/learning/lessons/07-skills/`
 
 ### Built
@@ -85,6 +84,7 @@ R01 verification repair     PASS
 REV01 independent review    PASS
 All fixed contracts         6 / 6
 Hard regressions            none
+Skill disclosure diagnostics none
 ```
 
 Progressive disclosure:
@@ -99,13 +99,31 @@ Progressive disclosure:
 - one skill, two roles: verification-repair and review-repair stay distinct episodes;
 - skill is procedural guidance only; spec, repo state, tools, VERIFY, review policy and retry bounds stay authoritative;
 - missing/invalid skill fails explicitly (`SkillLoadError`);
-- no model-selected routing, registry, or extra skills.
+- no model-selected routing, registry, or extra skills;
+- Module 07 success is judged as preserved fixed contracts **plus** correct progressive disclosure, not `6/6` alone.
+
+### Topic Chat conclusions
+
+- implementation accepted; no repair required;
+- experiment supports modular reuse + selective loading + preservation of existing outcomes/authority boundaries;
+- experiment does **not** claim that the Skill causally improves model quality, because R01/REV01 already passed before extraction;
+- Skill is reusable procedural **HOW**, while Spec remains **WHAT**;
+- role and skill are separate axes: two repair roles reuse one procedure;
+- harness owns repair start, selection, retry/control flow and capabilities; Skill does not launch itself or expand authority;
+- evidence is not automatically root cause or prescribed fix;
+- repeating behavior should be classified before becoming a Skill: facts → context/docs, hard invariants → policy/checks, deterministic operations → software, reusable uncertain procedures → Skills;
+- Skill discovery finds candidates; selection decides what actually loads;
+- Skills should be re-evaluated and may be changed, automated or retired as models/environments evolve.
 
 ### Known limits
 
 - only one skill exists; there is no catalog beyond a hardcoded phase map;
-- skill loading is not part of the 6/6 hard contracts;
-- Module 07 is not closed until Topic Chat review.
+- skill loading is diagnostic rather than part of the 6/6 product/mechanism contracts, so closure also requires no disclosure diagnostics;
+- no claim about multi-skill routing, automatic mining, organization-wide registry/governance, or model-quality uplift.
+
+### Topic Chat recommendation
+
+Module 07 satisfies the intended basic Skills learning goal and is ready for Master closure. No next module is selected here.
 
 ---
 
@@ -264,5 +282,3 @@ Key outcome:
 
 - explicit model → tool → observation loop, bounded capabilities, external verification and traces;
 - V0 established the baseline and exposed ambiguity/completion failures.
-
-Theory: `docs/learning/lessons/01-agent-loop-harness/theory.md`.
