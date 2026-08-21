@@ -10,8 +10,13 @@ Completed modules:
 4. ✅ 04 — Verification + bounded Repair
 5. ✅ 05 — Independent Review + bounded Review Repair
 6. ✅ 06 — Tracing & Evals
+7. ✅ 07 — Skills
 
-Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with a **systematic measurement layer** and a **small Skills mechanism** (`evidence-guided-repair` loaded only for repair / review_repair episodes).
+Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with:
+
+- systematic measurement: `HarnessRunResult → RunMetrics → EvalResult`;
+- one reusable procedural Skill: `evidence-guided-repair`;
+- deterministic progressive disclosure: the Skill is loaded only for `repair` and `review_repair` episodes.
 
 Current execution flow:
 
@@ -22,9 +27,9 @@ raw task
 → SpecDecision
    ├─ needs_human_judgment → stop before coding side effects
    └─ executable
-       → implementation episode (no skill)
+       → implementation episode (no repair skill)
        → harness-owned VERIFY / bounded repair
-          (repair episode loads evidence-guided-repair)
+          (repair loads evidence-guided-repair)
           ├─ cannot reach PASS → stop
           └─ PASS
              → independent REVIEW #1 (no repair skill)
@@ -50,235 +55,89 @@ HarnessRunResult / raw traces
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
 
-## Next
+## Next module
 
-**07 — Skills** has completed Topic Chat implementation/evidence/theory review and is **ready for formal Master closure**. Master should verify the current repository state, close Module 07 if satisfied, and only then choose the next roadmap module from `master-learning-plan.md`.
+**08 — Worktrees / Isolation**
+
+Why now:
+
+- the current `master-learning-plan.md` places **Worktrees / Isolation immediately after Skills** in Phase 2 — Reliable Autonomy;
+- the harness can now execute, repair, review and measure work, but all tasks still conceptually operate against shared mutable workspace state;
+- isolation is the next prerequisite for safely running autonomous or parallel task executions without cross-task filesystem/environment interference;
+- security remains the following module: this module should establish workspace/environment isolation without prematurely expanding into the full untrusted-input / credential / network threat model.
+
+Target after Module 08: **current V3 + measurement + Skills + a small per-task isolation/workspace boundary**, with evidence that task state does not leak or collide across isolated runs.
+
+After Module 08, follow the current master plan with **09 — Security fundamentals**.
 
 ---
 
 ## Module: 07 — Skills
 
-**Status:** implementation + experiment + Topic Chat review complete — **ready for Master closure**.
+**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-21.
 
 Theory: `docs/learning/lessons/07-skills/theory.md`  
-Practical notes + eval evidence: `docs/learning/lessons/07-skills/`
+Practical notes + evidence: `docs/learning/lessons/07-skills/`
 
 ### Built
 
-- one reusable skill: `skills/evidence-guided-repair/SKILL.md`;
-- deterministic loader/selector: `skillIdForPhase` + `loadSkill(skillId)`;
-- skill injected as a labeled procedural-context block, not merged into privileged role instructions;
-- `REPAIR_INSTRUCTIONS` / `REVIEW_REPAIR_INSTRUCTIONS` kept role-specific;
-- `skill_loaded` trace/result provenance (`skillId`, `phase`, `contentHash`);
-- eval report Skills section; unexpected disclosure is a diagnostic, not a hard 6/6 failure.
+- `skills/evidence-guided-repair/SKILL.md` as reusable procedural **HOW**;
+- deterministic `skillIdForPhase` + `loadSkill` mechanism;
+- Skill injected as labeled procedural context rather than privileged role instructions;
+- one Skill reused across verification repair and review repair while those roles remain separate;
+- `skill_loaded` provenance with `skillId`, `phase`, and `contentHash`;
+- eval diagnostics for unexpected Skill disclosure.
 
-### Fixed-suite evidence
+### Fresh fixed-suite evidence
 
 `docs/learning/lessons/07-skills/traces/2026-08-21T11-14-29-911Z.txt`
 
 ```text
-T01–T04 expected outcomes   4 / 4
-Executable first-pass       3 / 3
-Correct escalation T04      1 / 1
-R01 verification repair     PASS
-REV01 independent review    PASS
-All fixed contracts         6 / 6
-Hard regressions            none
+T01–T04 expected outcomes    4 / 4
+Executable first-pass        3 / 3
+Correct escalation T04       1 / 1
+R01 verification repair      PASS
+REV01 independent review     PASS
+All fixed contracts          6 / 6
+Hard regressions             none
 Skill disclosure diagnostics none
 ```
 
 Progressive disclosure:
 
-- T01–T04: no `skill_loaded`;
-- R01: `evidence-guided-repair` loaded exactly for `repair`;
-- REV01: loaded exactly for `review_repair`; reviewer episodes did not receive it;
-- same SKILL.md hash on R01 and REV01: `efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25`.
-
-### Important design decisions
-
-- one skill, two roles: verification-repair and review-repair stay distinct episodes;
-- skill is procedural guidance only; spec, repo state, tools, VERIFY, review policy and retry bounds stay authoritative;
-- missing/invalid skill fails explicitly (`SkillLoadError`);
-- no model-selected routing, registry, or extra skills;
-- Module 07 success is judged as preserved fixed contracts **plus** correct progressive disclosure, not `6/6` alone.
-
-### Topic Chat conclusions
-
-- implementation accepted; no repair required;
-- experiment supports modular reuse + selective loading + preservation of existing outcomes/authority boundaries;
-- experiment does **not** claim that the Skill causally improves model quality, because R01/REV01 already passed before extraction;
-- Skill is reusable procedural **HOW**, while Spec remains **WHAT**;
-- role and skill are separate axes: two repair roles reuse one procedure;
-- harness owns repair start, selection, retry/control flow and capabilities; Skill does not launch itself or expand authority;
-- evidence is not automatically root cause or prescribed fix;
-- repeating behavior should be classified before becoming a Skill: facts → context/docs, hard invariants → policy/checks, deterministic operations → software, reusable uncertain procedures → Skills;
-- Skill discovery finds candidates; selection decides what actually loads;
-- Skills should be re-evaluated and may be changed, automated or retired as models/environments evolve.
-
-### Known limits
-
-- only one skill exists; there is no catalog beyond a hardcoded phase map;
-- skill loading is diagnostic rather than part of the 6/6 product/mechanism contracts, so closure also requires no disclosure diagnostics;
-- no claim about multi-skill routing, automatic mining, organization-wide registry/governance, or model-quality uplift.
-
-### Topic Chat recommendation
-
-Module 07 satisfies the intended basic Skills learning goal and is ready for Master closure. No next module is selected here.
-
----
-
-## Module: 06 — Tracing & Evals
-
-**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-20.
-
-Theory recap: `docs/learning/lessons/06-tracing-evals/theory.md`  
-Practical notes + eval evidence: `docs/learning/lessons/06-tracing-evals/`
-
-### Built
-
-- normalization boundary: `HarnessRunResult → RunMetrics`;
-- aggregation: `RunMetrics[] → EvalResult`;
-- fixed-suite runner: T01–T04 + R01 + REV01;
-- capability/regression tasks separated from controlled mechanism probes;
-- outcome, recovery, autonomy, efficiency and reviewer/finding diagnostics kept semantically distinct;
-- recurring finding aggregation;
-- compact human-readable report + normalized JSON artifacts;
-- deterministic semantic tests in `harness/tests/eval.test.ts`.
-
-### Fixed-suite evidence
-
-Fresh post-review run:
-
-`docs/learning/lessons/06-tracing-evals/traces/2026-08-20T12-19-39-403Z.txt`
-
-Recorded:
-
-```text
-T01–T04 expected outcomes   4 / 4
-Executable first-pass       3 / 3
-Correct escalation T04      1 / 1
-R01 verification repair     PASS
-REV01 independent review    PASS
-All fixed contracts         6 / 6
-Hard regressions            none
-```
-
-### Semantic fixes verified before closure
-
-1. **REV01 contract is strict**
-
-```text
-VERIFY PASS
-→ review repair
-→ VERIFY PASS
-```
-
-It requires exactly `PASS → PASS` and **zero verification repairs**. A bad review repair producing `PASS → FAIL → PASS` and then being rescued by the ordinary verification-repair loop does not count as successful independent-review probe.
-
-2. **Recurring findings use `(findingKey, category)` identity**
-
-The same textual key emitted as different semantic categories is retained as separate aggregation entries rather than silently merged.
-
-Both semantics are covered by deterministic eval tests.
-
-### Important conclusions
-
-- trace answers **what happened in one run**; eval answers **how well the harness behaves across runs/tasks**;
-- raw trace facts, normalized run semantics and benchmark judgment are separate levels;
-- `expectedOutcomeMet` is the benchmark outcome metric and can be true for correct escalation;
-- T04 first-pass/eventual/recovered are `null`, not false;
-- R01/REV01 are controlled mechanism probes and do not belong in natural first-pass denominators;
-- outcome metrics take priority over diagnostic efficiency metrics;
-- accepted/rejected reviewer findings are policy outcomes, not generic true/false-positive ground truth;
-- `escapedDefect = null` because the current benchmark grader is the same `npm test` as harness VERIFY and therefore is not independent ground truth;
-- `failureLayer` remains unclassified when evidence does not justify a root-cause claim;
-- recurring findings are human-review candidates for possible promotion into deterministic checks, never automatic rules.
-
-### Known non-blocking limits
-
-1. No independent hidden/benchmark grader yet, so escaped-defect detection remains N/A.
-2. No repeated-trial / holdout / variance methodology yet; that belongs to Stronger Eval Methodology later in the roadmap.
-3. Spec-phase wall time is not separately instrumented.
-4. Per-tool census is intentionally partial.
-5. No stored efficiency baseline / automatic efficiency regression threshold yet.
-6. Reviewer precision/recall is not claimed without ground truth.
+- T01–T04: no Skill loaded;
+- R01: `evidence-guided-repair@repair` only;
+- REV01: `evidence-guided-repair@review_repair` only;
+- R01 and REV01 used the same Skill content hash.
 
 ### Master closure
 
-Module 06 satisfies the roadmap basic Tracing + Evals goal:
+Module 07 satisfies the intended Skills goal:
 
-- existing V3 traces were reused rather than replaced with unnecessary observability infrastructure;
-- a stable semantic normalization layer now makes cross-run comparison possible;
-- the fixed suite distinguishes representative capability tasks from controlled probes;
-- benchmark denominators and N/A states are explicit rather than misleading;
-- the eval report reproduces known T01–T04, R01 and REV01 behavior and reports no hard regression;
-- semantic bugs found during Topic Chat review were corrected, regression-tested and confirmed by a fresh full-suite run;
-- limitations around independent ground truth and statistical confidence are explicit rather than silently overclaimed.
+- reusable procedure is separated from role, spec, context, tools and harness policy;
+- Skill does not expand capabilities or lifecycle authority;
+- the same procedural knowledge is reused across two distinct repair roles;
+- selective loading is observable and verified, not inferred from final PASS alone;
+- fixed-suite outcomes and mechanism contracts remain intact;
+- no unnecessary registry, model-selected routing, plugin framework, or multi-skill infrastructure was added;
+- the experiment correctly claims modular reuse/selective disclosure, not causal model-quality uplift.
 
-No additional tracing/eval platform work is required before moving on.
+No additional Skills infrastructure is required before moving on.
 
----
+### Known non-blocking limits
 
-## Module: 05 — Independent Review + bounded Review Repair
-
-**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-19.
-
-Key outcome:
-
-- deterministic PASS is followed by a fresh artifact-focused reviewer;
-- structured findings pass through harness-owned acceptance policy;
-- one bounded review repair is allowed, followed by mandatory deterministic re-verification and final re-review;
-- REV01 demonstrated a deterministic-green ARCH-01 violation being found and repaired before acceptance.
-
-Theory: `docs/learning/lessons/05-independent-review/theory.md`.
+1. Only one Skill exists; no general catalog/registry is justified yet.
+2. Selection is deterministic by phase; model-selected routing belongs later.
+3. Module 07 does not prove quality uplift because R01/REV01 already passed before Skill extraction.
+4. Skills must be re-evaluated over time and may become deterministic software/checks or be retired.
 
 ---
 
-## Module: 04 — Verification + bounded Repair
+## Prior completed modules — compact recap
 
-**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-19.
-
-Key outcome:
-
-- external deterministic FAIL becomes normalized evidence → bounded repair → mandatory re-verification;
-- R01 demonstrated FAIL → repair → PASS;
-- harness, not model prose, owns completion.
-
-Theory: `docs/learning/lessons/04-verification-repair/theory.md`.
-
----
-
-## Module: 03 — Context Engineering
-
-**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-18.
-
-Key outcome:
-
-- targeted repo orientation + spec→implementation path reuse reduced blind discovery and tokens/wall time while preserving correctness and T04 escalation.
-
-Theory: `docs/learning/lessons/03-context-engineering/theory.md`.
-
----
-
-## Module: 02 — Spec-Driven Development
-
-**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-17.
-
-Key outcome:
-
-- raw intent passes through a physically read-only structured spec phase;
-- `SpecDecision = executable | needs_human_judgment` gates coding side effects;
-- T04 ambiguity stops before implementation.
-
-Theory: `docs/learning/lessons/02-spec-driven-development/theory.md`.
-
----
-
-## Module: 01 — Agent Loop & Harness
-
-**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-13.
-
-Key outcome:
-
-- explicit model → tool → observation loop, bounded capabilities, external verification and traces;
-- V0 established the baseline and exposed ambiguity/completion failures.
+- **06 — Tracing & Evals:** fixed suite, semantic normalization, capability/probe separation, regression reporting.
+- **05 — Independent Review:** deterministic-green architecture defect can be caught by independent artifact-focused review and bounded repair.
+- **04 — Verification + Repair:** external FAIL → factual evidence → bounded repair → mandatory re-verification.
+- **03 — Context Engineering:** targeted orientation/reuse reduced blind discovery while preserving outcomes.
+- **02 — Spec-Driven Development:** read-only structured spec + ambiguity gate before coding side effects.
+- **01 — Agent Loop & Harness:** explicit model/tool/observation loop, bounded tools, external verification and traces.
