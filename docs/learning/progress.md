@@ -11,36 +11,41 @@ Completed modules:
 5. ✅ 05 — Independent Review + bounded Review Repair
 6. ✅ 06 — Tracing & Evals
 7. ✅ 07 — Skills
+8. ✅ 08 — Worktrees / Isolation
 
 Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with:
 
 - systematic measurement: `HarnessRunResult → RunMetrics → EvalResult`;
-- one reusable procedural Skill: `evidence-guided-repair`;
-- deterministic progressive disclosure: the Skill is loaded only for `repair` and `review_repair` episodes;
-- per-run Git worktree isolation for benchmark/eval execution (`Workspace` → bound `HarnessConfig`).
+- one reusable procedural Skill: `evidence-guided-repair`, selectively loaded only for `repair` / `review_repair`;
+- per-run Git worktree isolation for benchmark/eval execution;
+- exact workspace provenance via `baseRevision`;
+- workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace.
 
 Current execution flow:
 
 ```text
 raw task
+→ create isolated workspace from exact committed SHA
+→ bind harness roots to workspace
 → deterministic context preparation / repo orientation
 → read-only spec phase
 → SpecDecision
    ├─ needs_human_judgment → stop before coding side effects
    └─ executable
-       → implementation episode (no repair skill)
+       → implementation episode
        → harness-owned VERIFY / bounded repair
-          (repair loads evidence-guided-repair)
           ├─ cannot reach PASS → stop
           └─ PASS
-             → independent REVIEW #1 (no repair skill)
+             → independent REVIEW #1
                 ├─ no accepted blocker → success
                 └─ accepted blocker
-                   → one review repair (loads evidence-guided-repair)
+                   → one review repair
                    → deterministic VERIFY again
                    → REVIEW #2
                       ├─ pass → success
                       └─ accepted blocker → stop
+→ collect durable traces/eval evidence on host
+→ cleanup isolated workspace
 ```
 
 Measurement layer:
@@ -58,39 +63,75 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 ## Next module
 
-**08 — Worktrees / Isolation** has completed implementation, evidence, theory recap, and Topic Chat review. It is **ready for formal Master closure**.
+**09 — Security fundamentals**
 
-Do not start **09 — Security fundamentals** until Master formally closes Module 08 and selects the next module from the current roadmap.
+Why now:
+
+- the current `master-learning-plan.md` places Security fundamentals immediately after Worktrees / Isolation in Phase 2 — Reliable Autonomy;
+- Module 08 now gives each run separate mutable Git/filesystem state, but a worktree is explicitly **not** a security boundary;
+- the agent may still read hostile repository content, execute dangerous commands, access host files/secrets, use network access, or perform unauthorized side effects unless capabilities are constrained;
+- the next step is therefore to add a minimal explicit threat model + least-privilege capability/security boundary around the existing isolated execution, without prematurely building production sandbox infrastructure.
+
+Target after Module 09: **V5-style safe-autonomy boundary** for this capstone: current V3 + measurement + Skills + worktree isolation + explicit practical security controls/threat model appropriate to the current harness.
+
+After Module 09, return to the current roadmap and enter Phase 3 with **Model Routing**. Do not start routing before Security is formally closed.
 
 ---
 
 ## Module: 08 — Worktrees / Isolation
 
-**Status:** Topic Chat ✅ ACCEPTED on 2026-08-23; **formal Master closure pending**.
+**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-23.
 
 Theory: `docs/learning/lessons/08-worktrees-isolation/theory.md`  
 Practical notes + evidence: `docs/learning/lessons/08-worktrees-isolation/`
 
 ### Built
 
-- `Workspace` with explicit id, worktree root, exact base SHA, and ref;
-- `createWorkspace` / `cleanupWorkspace` / `bindConfig` as the isolation boundary;
-- benchmark/eval runs prepare fixtures inside the task workspace, not the shared main `target-app/src`;
-- traces/evals stay on the host checkout;
-- skills and benchmark inputs are read from the workspace revision;
-- ISO01 mechanism probe: two worktrees from one SHA, mutate A only, verifier A FAIL / B PASS, main checkout unchanged, cleanup retry-safe.
+- `Workspace { id, root, baseRevision, ref }`;
+- `resolveBaseRevision`, `createWorkspace`, `bindConfig`, `cleanupWorkspace`;
+- detached per-run Git worktrees from an exact committed SHA;
+- benchmark/eval fixture setup inside the isolated workspace rather than shared main `target-app/src`;
+- workspace binding reused by normal T01–T04, R01 and REV01 paths rather than implemented only in ISO01;
+- host-side durable traces/eval artifacts retained outside ephemeral worktrees;
+- ISO01 deterministic workspace-isolation mechanism probe;
+- eval/report semantics that keep ISO01 separate from capability denominators and fixed V3 `6/6` contracts.
 
-### Fresh evidence
+### ISO01 evidence
+
+`docs/learning/lessons/08-worktrees-isolation/traces/ISO01-isolation-2026-08-23T11-06-42-372Z.json`
+
+Observed:
+
+```text
+Workspace A base SHA == Workspace B base SHA
+→ yes
+
+mutate source only in A
+→ mutation visible in A
+→ absent in B
+→ absent in main checkout
+
+VERIFY(A)
+→ FAIL (500 !== 404)
+
+VERIFY(B)
+→ PASS
+
+cleanup A/B
+→ success
+
+cleanup retry
+→ safe
+```
+
+The verifier result is intentionally observable evidence of workspace binding rather than merely checking a different cwd/path.
+
+### Fresh regression evidence
 
 `docs/learning/lessons/08-worktrees-isolation/traces/2026-08-23T11-09-29-281Z.txt`
 
 ```text
-Isolation
-ISO01  A and B from e5d77788…; A mutated; B and main untouched
-       verifier A FAIL / verifier B PASS
-       cleanup explicit + retry-safe
-
-Capability / Regression
+ISO01 workspace isolation    PASS
 T01–T04 expected outcomes    4 / 4
 Executable first-pass        3 / 3
 Correct escalation T04       1 / 1
@@ -100,99 +141,61 @@ All fixed V3 contracts       6 / 6
 Hard regressions             none
 ```
 
-ISO01 is a mechanism probe and is **not** in capability first-pass / task-success denominators.
-
-### Topic Chat acceptance
-
-Topic Chat inspected the current implementation and evidence and accepted Module 08 because:
-
-- worktree isolation is added before V3 through workspace-bound roots rather than duplicated across phases;
-- fixture/setup no longer mutates the shared main target source for isolated benchmark/eval runs;
-- tools/context/snapshots/verifier all operate through workspace-bound config roots;
-- ISO01 proves both source separation and verifier binding with observable A FAIL / B PASS evidence;
-- the host/main checkout remains unchanged;
-- cleanup is explicit and retry-safe;
-- ISO01 remains separate from capability metrics and the fixed V3 contracts remain 6/6;
-- the implementation stays intentionally small and does not pull Security, containers, ports, DB namespaces, or orchestration forward.
-
-No code changes are required before Master closure.
-
-### Known non-blocking limits
-
-1. Isolation is Git-worktree / filesystem only. No sandbox, network, secret, or container boundary.
-2. `target-app/node_modules` is shared via symlink; dependency install is not isolated.
-3. Manual `npm start` still uses the main checkout; isolated execution is the benchmark/eval path.
-4. Worktrees are created from the committed SHA, so uncommitted host edits are not part of the task workspace.
-5. `Workspace.ref` currently represents the requested source ref (`HEAD`) rather than a branch owned by the detached worktree; exact provenance is still carried by `baseRevision`, so this is non-blocking.
-
----
-
-## Module: 07 — Skills
-
-**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-21.
-
-Theory: `docs/learning/lessons/07-skills/theory.md`  
-Practical notes + evidence: `docs/learning/lessons/07-skills/`
-
-### Built
-
-- `skills/evidence-guided-repair/SKILL.md` as reusable procedural **HOW**;
-- deterministic `skillIdForPhase` + `loadSkill` mechanism;
-- Skill injected as labeled procedural context rather than privileged role instructions;
-- one Skill reused across verification repair and review repair while those roles remain separate;
-- `skill_loaded` provenance with `skillId`, `phase`, and `contentHash`;
-- eval diagnostics for unexpected Skill disclosure.
-
-### Fresh fixed-suite evidence
-
-`docs/learning/lessons/07-skills/traces/2026-08-21T11-14-29-911Z.txt`
-
-```text
-T01–T04 expected outcomes    4 / 4
-Executable first-pass        3 / 3
-Correct escalation T04       1 / 1
-R01 verification repair      PASS
-REV01 independent review     PASS
-All fixed contracts          6 / 6
-Hard regressions             none
-Skill disclosure diagnostics none
-```
-
-Progressive disclosure:
-
-- T01–T04: no Skill loaded;
-- R01: `evidence-guided-repair@repair` only;
-- REV01: `evidence-guided-repair@review_repair` only;
-- R01 and REV01 used the same Skill content hash.
+ISO01 remains an isolation/mechanism result; it is not included in capability first-pass or task-success denominators and does not turn `6/6` into `7/7`.
 
 ### Master closure
 
-Module 07 satisfies the intended Skills goal:
+Module 08 satisfies the intended Worktrees / Isolation goal:
 
-- reusable procedure is separated from role, spec, context, tools and harness policy;
-- Skill does not expand capabilities or lifecycle authority;
-- the same procedural knowledge is reused across two distinct repair roles;
-- selective loading is observable and verified, not inferred from final PASS alone;
-- fixed-suite outcomes and mechanism contracts remain intact;
-- no unnecessary registry, model-selected routing, plugin framework, or multi-skill infrastructure was added;
-- the experiment correctly claims modular reuse/selective disclosure, not causal model-quality uplift.
+- independent mutable source state is demonstrated for two runs from the same exact base revision;
+- main checkout is not polluted by isolated run mutations;
+- tools/context/snapshots/verifier inherit the workspace via one root-binding boundary instead of phase-specific worktree logic;
+- verifier binding is demonstrated by A FAIL / B PASS against intentionally different workspace states;
+- workspace cleanup is explicit and retry-safe;
+- exact provenance is carried by `baseRevision`;
+- existing V3 capability and repair/review contracts remain intact;
+- isolation evidence remains semantically separate from capability metrics;
+- implementation deliberately stops at Git/filesystem isolation and does not overclaim sandbox/security properties.
 
-No additional Skills infrastructure is required before moving on.
+No additional workspace infrastructure is required before moving on.
 
 ### Known non-blocking limits
 
-1. Only one Skill exists; no general catalog/registry is justified yet.
-2. Selection is deterministic by phase; model-selected routing belongs later.
-3. Module 07 does not prove quality uplift because R01/REV01 already passed before Skill extraction.
-4. Skills must be re-evaluated over time and may become deterministic software/checks or be retired.
+1. Worktree provides Git/filesystem working-state isolation, not process/network/secret/security containment.
+2. `target-app/node_modules` is shared with the host via symlink, so dependency installation is not isolated.
+3. Manual `npm start` still uses the main checkout; isolated execution is integrated into benchmark/eval paths.
+4. Worktrees use committed state: dirty/uncommitted host changes are not included.
+5. `Workspace.ref` currently records the requested source ref (`HEAD`); exact execution provenance is `baseRevision`.
+6. Crash recovery, TTL, leases and distributed cleanup remain later orchestration concerns.
 
 ---
 
 ## Prior completed modules — compact recap
 
-- **06 — Tracing & Evals:** fixed suite, semantic normalization, capability/probe separation, regression reporting.
-- **05 — Independent Review:** deterministic-green architecture defect can be caught by independent artifact-focused review and bounded repair.
-- **04 — Verification + Repair:** external FAIL → factual evidence → bounded repair → mandatory re-verification.
-- **03 — Context Engineering:** targeted orientation/reuse reduced blind discovery while preserving outcomes.
-- **02 — Spec-Driven Development:** read-only structured spec + ambiguity gate before coding side effects.
-- **01 — Agent Loop & Harness:** explicit model/tool/observation loop, bounded tools, external verification and traces.
+### 07 — Skills
+
+One reusable `evidence-guided-repair` procedural Skill is selectively loaded only for verification-repair/review-repair episodes. Spec/repo truth/tools/policy/VERIFY/review remain separate authority layers. Fixed suite remained 6/6 with no disclosure diagnostics.
+
+### 06 — Tracing & Evals
+
+Structured `HarnessRunResult → RunMetrics → EvalResult`; capability tasks separated from controlled mechanism probes; benchmark denominators/N/A states explicit; recurring findings aggregated without inventing unavailable ground truth.
+
+### 05 — Independent Review
+
+A deterministic-green architecture defect can be caught by fresh artifact-focused review, passed through harness-owned finding policy, repaired once, re-verified and re-reviewed.
+
+### 04 — Verification + Repair
+
+External deterministic FAIL becomes factual evidence → bounded repair → mandatory re-verification. Harness, not model prose, owns completion.
+
+### 03 — Context Engineering
+
+Targeted orientation and spec→implementation reuse reduced blind discovery while preserving correctness and ambiguity escalation.
+
+### 02 — Spec-Driven Development
+
+Read-only structured spec + explicit `executable | needs_human_judgment` gate prevents unauthorized product invention before coding side effects.
+
+### 01 — Agent Loop & Harness
+
+Explicit model → tool → observation loop, bounded tools, external verification and traces established the base harness.
