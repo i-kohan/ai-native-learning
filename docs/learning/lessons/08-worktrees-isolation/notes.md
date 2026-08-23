@@ -1,6 +1,6 @@
 # 08 — Worktrees / Isolation
 
-Практический журнал. Минимальный per-run Git worktree поверх неизменённого V3. ISO01 и fixed suite прогнаны. Модуль **не закрыт** — нужен Topic Chat review.
+Практический журнал. Минимальный per-run Git worktree поверх неизменённого V3. ISO01 и fixed suite прогнаны. Topic Chat review **завершён**; формальное закрытие модуля остаётся за Master.
 
 ## Что это за урок одной фразой
 
@@ -83,3 +83,24 @@ T01–T04 traces содержат `workspace.root` / `baseRevision`. Skills по
 - Доказательство изоляции должно быть verifier-observable (FAIL vs PASS), не только «другой cwd».
 - Mechanism probe нельзя класть в capability denominator.
 - Worktree ≠ sandbox. Это filesystem/git isolation для task state.
+
+## Topic Chat review
+
+**Accepted on 2026-08-23.**
+
+Проверено на актуальном `main`:
+
+- `Workspace` остаётся маленькой abstraction: id/root/baseRevision/ref;
+- isolation добавлен перед V3 через `bindConfig`, а не размазан по phases;
+- benchmark fixture/setup больше не мутирует shared main `target-app/src`;
+- tools/context/snapshots/verifier используют workspace-bound roots;
+- ISO01 доказывает source separation и verifier binding observable результатом `FAIL / PASS`;
+- main checkout остаётся неизменным;
+- cleanup explicit и retry-safe;
+- ISO01 хранится отдельно от capability denominators;
+- fixed V3 suite остаётся 6/6 без hard regressions;
+- scope не раздут containers/security/ports/DB/orchestration инфраструктурой.
+
+Неблокирующее замечание: поле `Workspace.ref` сейчас означает requested source ref (`HEAD`), а не branch самого detached worktree. `baseRevision` остаётся однозначным provenance, поэтому переименование вроде `requestedRef` можно сделать когда-нибудь, но оно не требуется для Module 08.
+
+**Topic Chat verdict:** implementation accepted, hypothesis supported, Module 08 ready for formal Master closure.
