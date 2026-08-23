@@ -58,15 +58,15 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 ## Next module
 
-**08 — Worktrees / Isolation** is implemented and has isolation + regression evidence. Formal closure still pending Topic Chat review.
+**08 — Worktrees / Isolation** has completed implementation, evidence, theory recap, and Topic Chat review. It is **ready for formal Master closure**.
 
-After Module 08, follow the current master plan with **09 — Security fundamentals**.
+Do not start **09 — Security fundamentals** until Master formally closes Module 08 and selects the next module from the current roadmap.
 
 ---
 
 ## Module: 08 — Worktrees / Isolation
 
-**Status:** implemented + evidence recorded; **not formally closed**.
+**Status:** Topic Chat ✅ ACCEPTED on 2026-08-23; **formal Master closure pending**.
 
 Theory: `docs/learning/lessons/08-worktrees-isolation/theory.md`  
 Practical notes + evidence: `docs/learning/lessons/08-worktrees-isolation/`
@@ -102,12 +102,28 @@ Hard regressions             none
 
 ISO01 is a mechanism probe and is **not** in capability first-pass / task-success denominators.
 
+### Topic Chat acceptance
+
+Topic Chat inspected the current implementation and evidence and accepted Module 08 because:
+
+- worktree isolation is added before V3 through workspace-bound roots rather than duplicated across phases;
+- fixture/setup no longer mutates the shared main target source for isolated benchmark/eval runs;
+- tools/context/snapshots/verifier all operate through workspace-bound config roots;
+- ISO01 proves both source separation and verifier binding with observable A FAIL / B PASS evidence;
+- the host/main checkout remains unchanged;
+- cleanup is explicit and retry-safe;
+- ISO01 remains separate from capability metrics and the fixed V3 contracts remain 6/6;
+- the implementation stays intentionally small and does not pull Security, containers, ports, DB namespaces, or orchestration forward.
+
+No code changes are required before Master closure.
+
 ### Known non-blocking limits
 
 1. Isolation is Git-worktree / filesystem only. No sandbox, network, secret, or container boundary.
 2. `target-app/node_modules` is shared via symlink; dependency install is not isolated.
 3. Manual `npm start` still uses the main checkout; isolated execution is the benchmark/eval path.
 4. Worktrees are created from the committed SHA, so uncommitted host edits are not part of the task workspace.
+5. `Workspace.ref` currently represents the requested source ref (`HEAD`) rather than a branch owned by the detached worktree; exact provenance is still carried by `baseRevision`, so this is non-blocking.
 
 ---
 
