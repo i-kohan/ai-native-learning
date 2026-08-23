@@ -1,0 +1,69 @@
+{
+  "task": "# T03 — Filter tasks by status\n\n`GET /tasks` should support:\n\n- `?status=pending`\n- `?status=completed`\n\nWhen `status` is provided, return only matching tasks.\nWithout `status`, preserve existing behavior (return all tasks).\n\nImplement the missing behavior and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Implement status-based filtering for GET /tasks while preserving the existing unfiltered list behavior, and verify it with the repository's tests.",
+    "requirements": [
+      "GET /tasks?status=pending returns only tasks whose status is \"pending\".",
+      "GET /tasks?status=completed returns only tasks whose status is \"completed\".",
+      "GET /tasks without a status parameter returns all tasks.",
+      "Use the existing TaskStatus values and route/service structure; the route already accepts the supported values and passes the optional status to TaskService.list.",
+      "Add or retain automated coverage for both supported filters and the omitted-status behavior."
+    ],
+    "constraints": [
+      "Do not change the task representation, status values, or completion/reopen semantics.",
+      "Preserve the existing response shape and HTTP 200 response for valid GET /tasks list requests.",
+      "Preserve existing invalid-status handling in task-routes.ts, which returns HTTP 400 with { error: \"invalid_status\" }.",
+      "Filtering should be applied to the service's in-memory task collection and should not mutate tasks or alter their existing insertion order."
+    ],
+    "nonGoals": [
+      "No changes to task creation, retrieval by ID, completion, reopening, or ID generation.",
+      "No new status values or additional query parameters.",
+      "No changes to application routing or transport behavior beyond the requested list filtering."
+    ],
+    "acceptance": [
+      "A pending and a completed task can coexist, and GET /tasks?status=pending returns only the pending task(s).",
+      "GET /tasks?status=completed returns only the completed task(s).",
+      "GET /tasks with no status returns both pending and completed tasks.",
+      "Existing task tests continue to pass, including completion and reopen behavior.",
+      "The test suite passes using the package's configured test command."
+    ],
+    "verification": [
+      "Run `npm test` (the package script invokes `tsx --test tests/**/*.test.ts`).",
+      "Confirm the status-filter tests assert HTTP 200, matching task IDs/statuses, and that the unfiltered request includes all created tasks."
+    ],
+    "ambiguities": [
+      {
+        "question": "Where should status filtering be implemented?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Implement it in TaskService.list(status), using the optional TaskStatus argument already supplied by the route.",
+        "basis": "src/tasks/task-routes.ts already validates pending/completed and calls service.list(status ?? undefined); src/tasks/task-service.ts currently declares list(_status?: TaskStatus) but ignores the argument, explicitly identifying the feature gap."
+      },
+      {
+        "question": "What should happen when status is omitted?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return all tasks in existing insertion order.",
+        "basis": "The task explicitly requires preserving existing behavior, and the current service returns all Map values; tests/tasks.test.ts includes an omitted-status test expecting both tasks."
+      },
+      {
+        "question": "How should supported status values be validated?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Retain the existing route behavior: pending and completed are accepted, while any other provided value returns HTTP 400 with invalid_status.",
+        "basis": "src/tasks/task-routes.ts explicitly implements this validation, and the requested contract names exactly the two supported values."
+      },
+      {
+        "question": "Should tests be added or changed?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Use the existing GET /tasks status-filter tests as the verification coverage; they already specify matching-only results and all-results behavior when omitted.",
+        "basis": "tests/tasks.test.ts contains a GET /tasks status filter suite covering both supported values and the omitted parameter."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

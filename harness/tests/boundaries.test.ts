@@ -7,7 +7,13 @@ import { PathAccessError, resolveWithin } from "../src/paths.ts";
 import { executeTool } from "../src/tools.ts";
 import type { HarnessConfig } from "../src/config.ts";
 import { REPO_ROOT } from "../src/config.ts";
+import { snapshotDirectory } from "../src/diff.ts";
 import { prepareBenchmark } from "../src/run-benchmark.ts";
+import {
+  bindConfig,
+  cleanupWorkspace,
+  createWorkspace,
+} from "../src/workspace.ts";
 
 function tempConfig(): HarnessConfig {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "harness-tools-"));
@@ -82,28 +88,52 @@ describe("tool boundaries", () => {
   });
 });
 
+function hostConfig(): HarnessConfig {
+  return {
+    apiKey: "unused",
+    model: "unused",
+    maxTurns: 0,
+    maxRepairAttempts: 2,
+    maxReviewRepairAttempts: 1,
+    repoRoot: REPO_ROOT,
+    targetAppRoot: path.join(REPO_ROOT, "target-app"),
+    targetSrcRoot: path.join(REPO_ROOT, "target-app", "src"),
+    tracesDir: path.join(REPO_ROOT, "traces"),
+  };
+}
+
 describe("benchmark setup", { concurrency: false }, () => {
   it("T01 starts with failing tests after setup patch", () => {
-    const prep = prepareBenchmark("T01");
-    assert.equal(prep.initialTestsPassed, false);
-    assert.match(prep.task, /404/);
+    withIsolatedPrep("T01-setup", (config) => {
+      const prep = prepareBenchmark("T01", config);
+      assert.equal(prep.initialTestsPassed, false);
+      assert.match(prep.task, /404/);
+    });
   });
 
   it("T02 starts with failing tests after setup patch", () => {
-    const prep = prepareBenchmark("T02");
-    assert.equal(prep.initialTestsPassed, false);
+    withIsolatedPrep("T02-setup", (config) => {
+      const prep = prepareBenchmark("T02", config);
+      assert.equal(prep.initialTestsPassed, false);
+    });
   });
 
   it("T03 starts with failing tests after setup patch", () => {
-    const prep = prepareBenchmark("T03");
-    assert.equal(prep.initialTestsPassed, false);
+    withIsolatedPrep("T03-setup", (config) => {
+      const prep = prepareBenchmark("T03", config);
+      assert.equal(prep.initialTestsPassed, false);
+    });
   });
 
-  it("leaves target-app/src in clean fixture state", () => {
-    prepareBenchmark("T04");
-    assert.ok(fs.existsSync(path.join(REPO_ROOT, "target-app/src/app.ts")));
+  it("does not mutate the main checkout target-app/src", () => {
+    const hostSrc = path.join(REPO_ROOT, "target-app", "src");
+    const before = snapshotDirectory(hostSrc);
+    withIsolatedPrep("T04-setup", (config) => {
+      prepareBenchmark("T04", config);
+    });
+    assert.deepEqual(snapshotDirectory(hostSrc), before);
     const routes = fs.readFileSync(
-      path.join(REPO_ROOT, "target-app/src/tasks/task-routes.ts"),
+      path.join(hostSrc, "tasks/task-routes.ts"),
       "utf8",
     );
     assert.match(routes, /status: 404, body: \{ error: "task_not_found" \}/);
@@ -113,3 +143,18 @@ describe("benchmark setup", { concurrency: false }, () => {
     );
   });
 });
+
+function withIsolatedPrep(
+  id: string,
+  fn: (config: HarnessConfig) => void,
+): void {
+  const workspace = createWorkspace({
+    hostRepoRoot: REPO_ROOT,
+    id: `${id}-${Date.now()}`,
+  });
+  try {
+    fn(bindConfig(hostConfig(), workspace));
+  } finally {
+    cleanupWorkspace({ hostRepoRoot: REPO_ROOT, workspace });
+  }
+}

@@ -1,4 +1,4 @@
-import type { EvalResult, ProbeEval, Ratio } from "./types.ts";
+import type { EvalResult, IsolationEval, ProbeEval, Ratio } from "./types.ts";
 
 export function formatEvalReport(result: EvalResult): string {
   const cap = result.capability;
@@ -19,6 +19,10 @@ export function formatEvalReport(result: EvalResult): string {
     "Mechanism probes",
     formatProbe("R01 verification repair", result.probes.R01),
     formatProbe("REV01 independent review", result.probes.REV01),
+    "",
+    "Isolation",
+    formatIsolation("ISO01 workspace isolation", result.isolation.ISO01),
+    "(not included in capability first-pass / task-success denominators)",
     "",
     "Skills",
     ...result.runs.map(formatSkillLine),
@@ -71,6 +75,14 @@ function formatEscapedDefects(value: {
     return "n/a (grader = harness VERIFY; no independent ground truth)";
   }
   return `${value.count} / ${value.independentGroundTruthRuns}`;
+}
+
+function formatIsolation(label: string, probe: IsolationEval["ISO01"]): string {
+  const padded = label.padEnd(28);
+  if (!probe) {
+    return `${padded} (not in this eval)`;
+  }
+  return `${padded} ${probe.passed ? "PASS" : "FAIL"}`;
 }
 
 function formatProbe(

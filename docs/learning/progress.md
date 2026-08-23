@@ -16,7 +16,8 @@ Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + i
 
 - systematic measurement: `HarnessRunResult → RunMetrics → EvalResult`;
 - one reusable procedural Skill: `evidence-guided-repair`;
-- deterministic progressive disclosure: the Skill is loaded only for `repair` and `review_repair` episodes.
+- deterministic progressive disclosure: the Skill is loaded only for `repair` and `review_repair` episodes;
+- per-run Git worktree isolation for benchmark/eval execution (`Workspace` → bound `HarnessConfig`).
 
 Current execution flow:
 
@@ -57,18 +58,56 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 ## Next module
 
-**08 — Worktrees / Isolation**
-
-Why now:
-
-- the current `master-learning-plan.md` places **Worktrees / Isolation immediately after Skills** in Phase 2 — Reliable Autonomy;
-- the harness can now execute, repair, review and measure work, but all tasks still conceptually operate against shared mutable workspace state;
-- isolation is the next prerequisite for safely running autonomous or parallel task executions without cross-task filesystem/environment interference;
-- security remains the following module: this module should establish workspace/environment isolation without prematurely expanding into the full untrusted-input / credential / network threat model.
-
-Target after Module 08: **current V3 + measurement + Skills + a small per-task isolation/workspace boundary**, with evidence that task state does not leak or collide across isolated runs.
+**08 — Worktrees / Isolation** is implemented and has isolation + regression evidence. Formal closure still pending Topic Chat review.
 
 After Module 08, follow the current master plan with **09 — Security fundamentals**.
+
+---
+
+## Module: 08 — Worktrees / Isolation
+
+**Status:** implemented + evidence recorded; **not formally closed**.
+
+Theory: `docs/learning/lessons/08-worktrees-isolation/theory.md`  
+Practical notes + evidence: `docs/learning/lessons/08-worktrees-isolation/`
+
+### Built
+
+- `Workspace` with explicit id, worktree root, exact base SHA, and ref;
+- `createWorkspace` / `cleanupWorkspace` / `bindConfig` as the isolation boundary;
+- benchmark/eval runs prepare fixtures inside the task workspace, not the shared main `target-app/src`;
+- traces/evals stay on the host checkout;
+- skills and benchmark inputs are read from the workspace revision;
+- ISO01 mechanism probe: two worktrees from one SHA, mutate A only, verifier A FAIL / B PASS, main checkout unchanged, cleanup retry-safe.
+
+### Fresh evidence
+
+`docs/learning/lessons/08-worktrees-isolation/traces/2026-08-23T11-09-29-281Z.txt`
+
+```text
+Isolation
+ISO01  A and B from e5d77788…; A mutated; B and main untouched
+       verifier A FAIL / verifier B PASS
+       cleanup explicit + retry-safe
+
+Capability / Regression
+T01–T04 expected outcomes    4 / 4
+Executable first-pass        3 / 3
+Correct escalation T04       1 / 1
+R01 verification repair      PASS
+REV01 independent review     PASS
+All fixed V3 contracts       6 / 6
+Hard regressions             none
+```
+
+ISO01 is a mechanism probe and is **not** in capability first-pass / task-success denominators.
+
+### Known non-blocking limits
+
+1. Isolation is Git-worktree / filesystem only. No sandbox, network, secret, or container boundary.
+2. `target-app/node_modules` is shared via symlink; dependency install is not isolated.
+3. Manual `npm start` still uses the main checkout; isolated execution is the benchmark/eval path.
+4. Worktrees are created from the committed SHA, so uncommitted host edits are not part of the task workspace.
 
 ---
 

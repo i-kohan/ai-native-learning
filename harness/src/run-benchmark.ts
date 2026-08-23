@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import type { ContextMode } from "./context.ts";
+import type { HarnessConfig } from "./config.ts";
 import { REPO_ROOT, loadConfig } from "./config.ts";
 import { snapshotDirectory } from "./diff.ts";
 import {
@@ -13,14 +14,21 @@ import { aggregateRuns } from "./eval/aggregate.ts";
 import { normalizeRun } from "./eval/normalize.ts";
 import type { EvalResult, FixedTaskId } from "./eval/types.ts";
 import { writeEvalArtifact } from "./eval/write.ts";
+import {
+  isExpectedISO01Outcome,
+  printIsolationProbeSummary,
+  runIsolationProbe,
+} from "./iso01.ts";
 import { injectMissingTask500Fault } from "./r01-fault.ts";
 import { injectArch01CompleteTaskFault } from "./rev01-fault.ts";
 import { ARCH_01, isIntendedArch01Finding } from "./review.ts";
 import { runFinalVerification } from "./verify.ts";
-
-const BENCHMARKS_ROOT = path.join(REPO_ROOT, "benchmarks");
-const FIXTURE_SRC = path.join(BENCHMARKS_ROOT, "fixtures", "base-src");
-const TARGET_SRC = path.join(REPO_ROOT, "target-app", "src");
+import {
+  bindConfig,
+  cleanupWorkspace,
+  createWorkspace,
+  type Workspace,
+} from "./workspace.ts";
 
 const TASK_IDS = ["T01", "T02", "T03", "T04"] as const;
 type TaskId = (typeof TASK_IDS)[number];
@@ -37,10 +45,14 @@ export type BenchmarkRunLabel = {
   contextMode: ContextMode;
 };
 
-export function prepareBenchmark(taskId: TaskId): BenchmarkPrepResult {
-  restoreFixture();
+export function prepareBenchmark(
+  taskId: TaskId,
+  config: HarnessConfig,
+): BenchmarkPrepResult {
+  const benchmarksRoot = path.join(config.repoRoot, "benchmarks");
+  restoreFixture(config, benchmarksRoot);
 
-  const taskDir = path.join(BENCHMARKS_ROOT, taskId);
+  const taskDir = path.join(benchmarksRoot, taskId);
   const taskPath = path.join(taskDir, "task.md");
   if (!fs.existsSync(taskPath)) {
     throw new Error(`Missing task file: ${taskPath}`);
@@ -49,20 +61,10 @@ export function prepareBenchmark(taskId: TaskId): BenchmarkPrepResult {
 
   const patchPath = path.join(taskDir, "setup.patch");
   if (fs.existsSync(patchPath)) {
-    applyPatch(patchPath);
+    applyPatch(patchPath, config.targetSrcRoot);
   }
 
-  const verification = runFinalVerification({
-    apiKey: "unused",
-    model: "unused",
-    maxTurns: 0,
-    maxRepairAttempts: 2,
-    maxReviewRepairAttempts: 1,
-    repoRoot: REPO_ROOT,
-    targetAppRoot: path.join(REPO_ROOT, "target-app"),
-    targetSrcRoot: TARGET_SRC,
-    tracesDir: path.join(REPO_ROOT, "traces"),
-  });
+  const verification = runFinalVerification(config);
 
   return {
     taskId,
@@ -76,31 +78,35 @@ export async function runBenchmark(
   taskId: TaskId,
   contextMode: ContextMode = "baseline",
 ): Promise<HarnessRunResult> {
-  const prep = prepareBenchmark(taskId);
-
-  if (taskId !== "T04" && prep.initialTestsPassed) {
-    throw new Error(
-      `${taskId}: expected initial tests to FAIL after setup, but they passed.`,
-    );
-  }
-
-  console.log(`\n=== Preparing ${taskId} (${contextMode}) ===`);
-  console.log(`initial_tests: ${prep.initialTestsPassed ? "PASS" : "FAIL"}`);
-
-  const config = loadConfig();
-  const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
   const runId = `${taskId}-${contextMode}-${timestamp()}`;
+  return withIsolatedWorkspace(runId, async (config, workspace) => {
+    const prep = prepareBenchmark(taskId, config);
 
-  const result = await runV1Harness({
-    config,
-    task: prep.task,
-    runId,
-    beforeSnapshot,
-    contextMode,
+    if (taskId !== "T04" && prep.initialTestsPassed) {
+      throw new Error(
+        `${taskId}: expected initial tests to FAIL after setup, but they passed.`,
+      );
+    }
+
+    console.log(`\n=== Preparing ${taskId} (${contextMode}) ===`);
+    console.log(`initial_tests: ${prep.initialTestsPassed ? "PASS" : "FAIL"}`);
+    console.log(
+      `workspace: ${workspace.id} @ ${workspace.baseRevision.slice(0, 12)}`,
+    );
+
+    const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+    const result = await runV1Harness({
+      config,
+      task: prep.task,
+      runId,
+      beforeSnapshot,
+      contextMode,
+      workspace,
+    });
+
+    printHarnessResult(result);
+    return result;
   });
-
-  printHarnessResult(result);
-  return result;
 }
 
 export async function runContextExperiment(): Promise<
@@ -138,6 +144,9 @@ export function runIdFromTracePath(tracePath: string): string {
 }
 
 export async function runFixedSuite(): Promise<EvalResult> {
+  const isolation = runIsolationProbe();
+  printIsolationProbeSummary(isolation);
+
   const labeled: Array<{ taskId: FixedTaskId; result: HarnessRunResult }> = [];
 
   for (const taskId of TASK_IDS) {
@@ -157,7 +166,7 @@ export async function runFixedSuite(): Promise<EvalResult> {
       expectedOutcomeMet: scoreExpectedOutcome(taskId, result),
     }),
   );
-  const evalResult = aggregateRuns(metrics);
+  const evalResult = aggregateRuns(metrics, { isolation });
   const artifacts = writeEvalArtifact({
     evalsDir: path.join(REPO_ROOT, "evals"),
     result: evalResult,
@@ -191,68 +200,63 @@ export function isExpectedV1Outcome(
 }
 
 export async function runRepairProbe(): Promise<HarnessRunResult> {
-  restoreFixture();
-
-  const taskPath = path.join(BENCHMARKS_ROOT, "R01", "task.md");
-  if (!fs.existsSync(taskPath)) {
-    throw new Error(`Missing R01 task file: ${taskPath}`);
-  }
-  const task = fs.readFileSync(taskPath, "utf8").trim();
-
-  const initial = runFinalVerification({
-    apiKey: "unused",
-    model: "unused",
-    maxTurns: 0,
-    maxRepairAttempts: 2,
-    maxReviewRepairAttempts: 1,
-    repoRoot: REPO_ROOT,
-    targetAppRoot: path.join(REPO_ROOT, "target-app"),
-    targetSrcRoot: TARGET_SRC,
-    tracesDir: path.join(REPO_ROOT, "traces"),
-  });
-  if (!initial.passed) {
-    throw new Error(
-      `R01: expected green fixture tests to PASS before the probe, but they failed.\n${initial.output}`,
-    );
-  }
-
-  console.log("\n=== Preparing R01 (controlled repair probe) ===");
-  console.log(
-    "initial_tests: PASS (green fixture; defect injected after implementation)",
-  );
-
-  const config = loadConfig();
-  const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
   const runId = `R01-repair-${timestamp()}`;
-  let injected = false;
+  return withIsolatedWorkspace(runId, async (config, workspace) => {
+    restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
 
-  const result = await runV1Harness({
-    config,
-    task,
-    runId,
-    beforeSnapshot,
-    contextMode: "variant",
-    afterImplementationEpisode: () => {
-      if (injected) {
-        throw new Error("R01 fault injection ran more than once.");
-      }
-      injectMissingTask500Fault(config.targetSrcRoot);
-      injected = true;
-      console.log(
-        "R01: injected getTask missing-task 404 → 500 after implementation",
+    const taskPath = path.join(config.repoRoot, "benchmarks", "R01", "task.md");
+    if (!fs.existsSync(taskPath)) {
+      throw new Error(`Missing R01 task file: ${taskPath}`);
+    }
+    const task = fs.readFileSync(taskPath, "utf8").trim();
+
+    const initial = runFinalVerification(config);
+    if (!initial.passed) {
+      throw new Error(
+        `R01: expected green fixture tests to PASS before the probe, but they failed.\n${initial.output}`,
       );
-    },
-  });
+    }
 
-  if (!injected) {
-    throw new Error(
-      "R01: implementation episode finished without fault injection (spec likely did not start implementation).",
+    console.log("\n=== Preparing R01 (controlled repair probe) ===");
+    console.log(
+      "initial_tests: PASS (green fixture; defect injected after implementation)",
     );
-  }
+    console.log(
+      `workspace: ${workspace.id} @ ${workspace.baseRevision.slice(0, 12)}`,
+    );
 
-  printHarnessResult(result);
-  printRepairProbeSummary(result);
-  return result;
+    const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+    let injected = false;
+
+    const result = await runV1Harness({
+      config,
+      task,
+      runId,
+      beforeSnapshot,
+      contextMode: "variant",
+      workspace,
+      afterImplementationEpisode: () => {
+        if (injected) {
+          throw new Error("R01 fault injection ran more than once.");
+        }
+        injectMissingTask500Fault(config.targetSrcRoot);
+        injected = true;
+        console.log(
+          "R01: injected getTask missing-task 404 → 500 after implementation",
+        );
+      },
+    });
+
+    if (!injected) {
+      throw new Error(
+        "R01: implementation episode finished without fault injection (spec likely did not start implementation).",
+      );
+    }
+
+    printHarnessResult(result);
+    printRepairProbeSummary(result);
+    return result;
+  });
 }
 
 export function isExpectedR01Outcome(result: HarnessRunResult): boolean {
@@ -320,71 +324,71 @@ function printRepairProbeSummary(result: HarnessRunResult): void {
 }
 
 export async function runReviewProbe(): Promise<HarnessRunResult> {
-  restoreFixture();
-
-  const taskPath = path.join(BENCHMARKS_ROOT, "REV01", "task.md");
-  if (!fs.existsSync(taskPath)) {
-    throw new Error(`Missing REV01 task file: ${taskPath}`);
-  }
-  const task = fs.readFileSync(taskPath, "utf8").trim();
-
-  const initial = runFinalVerification({
-    apiKey: "unused",
-    model: "unused",
-    maxTurns: 0,
-    maxRepairAttempts: 2,
-    maxReviewRepairAttempts: 1,
-    repoRoot: REPO_ROOT,
-    targetAppRoot: path.join(REPO_ROOT, "target-app"),
-    targetSrcRoot: TARGET_SRC,
-    tracesDir: path.join(REPO_ROOT, "traces"),
-  });
-  if (!initial.passed) {
-    throw new Error(
-      `REV01: expected green fixture tests to PASS before the probe, but they failed.\n${initial.output}`,
-    );
-  }
-
-  console.log(
-    "\n=== Preparing REV01 (controlled independent review probe) ===",
-  );
-  console.log(
-    "initial_tests: PASS (green fixture; ARCH-01 defect injected after implementation)",
-  );
-
-  const config = loadConfig();
-  const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
   const runId = `REV01-review-${timestamp()}`;
-  let injected = false;
+  return withIsolatedWorkspace(runId, async (config, workspace) => {
+    restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
 
-  const result = await runV1Harness({
-    config,
-    task,
-    runId,
-    beforeSnapshot,
-    contextMode: "variant",
-    architectureConstraints: [ARCH_01],
-    afterImplementationEpisode: () => {
-      if (injected) {
-        throw new Error("REV01 fault injection ran more than once.");
-      }
-      injectArch01CompleteTaskFault(config.targetSrcRoot);
-      injected = true;
-      console.log(
-        "REV01: injected completeTask route-owned status/completedAt mutation after implementation",
-      );
-    },
-  });
-
-  if (!injected) {
-    throw new Error(
-      "REV01: implementation episode finished without fault injection (spec likely did not start implementation).",
+    const taskPath = path.join(
+      config.repoRoot,
+      "benchmarks",
+      "REV01",
+      "task.md",
     );
-  }
+    if (!fs.existsSync(taskPath)) {
+      throw new Error(`Missing REV01 task file: ${taskPath}`);
+    }
+    const task = fs.readFileSync(taskPath, "utf8").trim();
 
-  printHarnessResult(result);
-  printReviewProbeSummary(result);
-  return result;
+    const initial = runFinalVerification(config);
+    if (!initial.passed) {
+      throw new Error(
+        `REV01: expected green fixture tests to PASS before the probe, but they failed.\n${initial.output}`,
+      );
+    }
+
+    console.log(
+      "\n=== Preparing REV01 (controlled independent review probe) ===",
+    );
+    console.log(
+      "initial_tests: PASS (green fixture; ARCH-01 defect injected after implementation)",
+    );
+    console.log(
+      `workspace: ${workspace.id} @ ${workspace.baseRevision.slice(0, 12)}`,
+    );
+
+    const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+    let injected = false;
+
+    const result = await runV1Harness({
+      config,
+      task,
+      runId,
+      beforeSnapshot,
+      contextMode: "variant",
+      workspace,
+      architectureConstraints: [ARCH_01],
+      afterImplementationEpisode: () => {
+        if (injected) {
+          throw new Error("REV01 fault injection ran more than once.");
+        }
+        injectArch01CompleteTaskFault(config.targetSrcRoot);
+        injected = true;
+        console.log(
+          "REV01: injected completeTask route-owned status/completedAt mutation after implementation",
+        );
+      },
+    });
+
+    if (!injected) {
+      throw new Error(
+        "REV01: implementation episode finished without fault injection (spec likely did not start implementation).",
+      );
+    }
+
+    printHarnessResult(result);
+    printReviewProbeSummary(result);
+    return result;
+  });
 }
 
 export function isExpectedREV01Outcome(result: HarnessRunResult): boolean {
@@ -499,18 +503,35 @@ export function printExperimentSummary(
   }
 }
 
-function restoreFixture(): void {
-  fs.rmSync(TARGET_SRC, { recursive: true, force: true });
-  fs.mkdirSync(TARGET_SRC, { recursive: true });
-  copyDir(FIXTURE_SRC, TARGET_SRC);
+async function withIsolatedWorkspace<T>(
+  runId: string,
+  fn: (config: HarnessConfig, workspace: Workspace) => Promise<T>,
+): Promise<T> {
+  const workspace = createWorkspace({
+    hostRepoRoot: REPO_ROOT,
+    id: runId,
+  });
+  try {
+    const config = bindConfig(loadConfig(), workspace);
+    return await fn(config, workspace);
+  } finally {
+    cleanupWorkspace({ hostRepoRoot: REPO_ROOT, workspace });
+  }
 }
 
-function applyPatch(patchPath: string): void {
+function restoreFixture(config: HarnessConfig, benchmarksRoot: string): void {
+  const fixtureSrc = path.join(benchmarksRoot, "fixtures", "base-src");
+  fs.rmSync(config.targetSrcRoot, { recursive: true, force: true });
+  fs.mkdirSync(config.targetSrcRoot, { recursive: true });
+  copyDir(fixtureSrc, config.targetSrcRoot);
+}
+
+function applyPatch(patchPath: string, targetSrcRoot: string): void {
   const result = spawnSync(
     "patch",
     ["-p0", "--batch", "--forward", "-i", patchPath],
     {
-      cwd: TARGET_SRC,
+      cwd: targetSrcRoot,
       encoding: "utf8",
     },
   );
@@ -553,6 +574,7 @@ type CliOptions = {
   experiment: boolean;
   repairProbe: boolean;
   reviewProbe: boolean;
+  isolationProbe: boolean;
   evalSuite: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
@@ -569,6 +591,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: false,
       reviewProbe: false,
+      isolationProbe: false,
       evalSuite: true,
       contextMode,
     };
@@ -579,6 +602,18 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: true,
       repairProbe: false,
       reviewProbe: false,
+      isolationProbe: false,
+      evalSuite: false,
+      contextMode,
+    };
+  }
+  if (argv.includes("ISO01") || argv.includes("--isolation-probe")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: true,
       evalSuite: false,
       contextMode,
     };
@@ -589,6 +624,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: false,
       reviewProbe: true,
+      isolationProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -599,6 +635,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: true,
       reviewProbe: false,
+      isolationProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -609,6 +646,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: false,
       reviewProbe: false,
+      isolationProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -622,6 +660,7 @@ function parseArgs(argv: string[]): CliOptions {
       experiment: false,
       repairProbe: false,
       reviewProbe: false,
+      isolationProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -631,6 +670,7 @@ function parseArgs(argv: string[]): CliOptions {
     experiment: false,
     repairProbe: false,
     reviewProbe: false,
+    isolationProbe: false,
     evalSuite: false,
     taskId,
     contextMode,
@@ -643,10 +683,18 @@ async function main(): Promise<void> {
     experiment,
     repairProbe,
     reviewProbe,
+    isolationProbe,
     evalSuite,
     taskId,
     contextMode,
   } = parseArgs(process.argv.slice(2));
+
+  if (isolationProbe) {
+    const result = runIsolationProbe();
+    printIsolationProbeSummary(result);
+    process.exit(isExpectedISO01Outcome(result) ? 0 : 1);
+    return;
+  }
 
   if (evalSuite) {
     const evalResult = await runFixedSuite();
@@ -682,6 +730,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark:all [--baseline|--variant]");
     console.error("   or: npm run benchmark:experiment");
     console.error("   or: npm run benchmark:eval");
+    console.error("   or: npm run benchmark -- ISO01");
     console.error("   or: npm run benchmark -- R01");
     console.error("   or: npm run benchmark -- REV01");
     process.exit(1);

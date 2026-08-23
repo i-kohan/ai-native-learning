@@ -70,13 +70,13 @@ lessons/NN-short-name/
 
 ## Simple Git flow
 
-Until Worktrees / Isolation:
+Human learning flow stays sequential on `main`:
 
 ```text
 module → implementation → tests/experiment → review/understanding → lesson recap → progress update → commit → push
 ```
 
-No worktrees / complex branching / parallel development early.
+Harness benchmark/eval runs use per-run Git worktrees (Module 08). Do not use worktrees for parallel human module development.
 
 ## Module done when
 

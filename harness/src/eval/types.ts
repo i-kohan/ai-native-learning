@@ -3,7 +3,7 @@ import type { FindingDecisionKind, FindingSeverity } from "../review.ts";
 import type { SkillLoadRecord } from "../skills.ts";
 import type { SpecDecision } from "../spec.ts";
 
-export const SUITE_VERSION = "fixed-v3-m07";
+export const SUITE_VERSION = "fixed-v3-m08";
 
 export const CAPABILITY_TASK_IDS = ["T01", "T02", "T03", "T04"] as const;
 export const EXECUTABLE_CAPABILITY_TASK_IDS = ["T01", "T02", "T03"] as const;
@@ -183,12 +183,17 @@ export type ProbeEval = {
   REV01?: { mechanism: "independent_review_repair"; passed: boolean };
 };
 
+export type IsolationEval = {
+  ISO01?: { mechanism: "workspace_isolation"; passed: boolean };
+};
+
 export type EvalResult = {
   suiteVersion: string;
   runCount: number;
   allFixedContracts: Ratio;
   capability: CapabilityEval;
   probes: ProbeEval;
+  isolation: IsolationEval;
   recurringFindings: RecurringFinding[];
   regressions: string[];
   diagnostics: string[];

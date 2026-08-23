@@ -5,6 +5,7 @@ import { normalizeRun } from "../src/eval/normalize.ts";
 import type { FixedTaskId, RunMetrics } from "../src/eval/types.ts";
 import { emptyReviewRunState } from "../src/review.ts";
 import type { Finding, FindingDecisionRecord } from "../src/review.ts";
+import type { IsolationProbeResult } from "../src/iso01.ts";
 import { scoreExpectedOutcome } from "../src/run-benchmark.ts";
 import type { HarnessRunResult } from "../src/run.ts";
 import type { Spec } from "../src/spec.ts";
@@ -388,6 +389,34 @@ function rev01Probe(options?: {
   });
 }
 
+function isolationProbe(passed: boolean): IsolationProbeResult {
+  const workspace = {
+    id: "ISO01-A",
+    root: "/tmp/iso01-a",
+    baseRevision: "abc123",
+    ref: "HEAD",
+  };
+  return {
+    taskId: "ISO01",
+    taskKind: "mechanism_probe",
+    mechanism: "workspace_isolation",
+    passed,
+    baseRevision: "abc123",
+    workspaceA: workspace,
+    workspaceB: { ...workspace, id: "ISO01-B", root: "/tmp/iso01-b" },
+    initiallyEquivalent: passed,
+    mutationObservedInA: passed,
+    mutationAbsentInB: passed,
+    mainCheckoutUnchanged: passed,
+    verifierA: { passed: false, exitCode: 1 },
+    verifierB: { passed: true, exitCode: 0 },
+    cleanedUp: passed,
+    cleanupRetrySafe: passed,
+    assertions: { passed },
+    evidencePath: "/tmp/ISO01.json",
+  };
+}
+
 function repairSkillLoad(
   phase: "repair" | "review_repair",
 ): HarnessRunResult["skillLoads"][number] {
@@ -586,6 +615,73 @@ describe("EvalResult aggregation", () => {
     assert.match(suite.report, /REV01 independent review\s+PASS/);
     assert.match(suite.report, /All fixed benchmark contracts\s+6 \/ 6/);
     assert.doesNotMatch(suite.report, /task success rate/i);
+  });
+
+  it("reports ISO01 separately and keeps V3 contracts at 6/6", () => {
+    const withIso = aggregateRuns(
+      [
+        normalize("T01", t01FirstPass()),
+        normalize("T02", t02Recovered()),
+        normalize("T03", t03FirstPass()),
+        normalize("T04", t04Escalated()),
+        normalize("R01", r01Probe()),
+        normalize("REV01", rev01Probe()),
+      ],
+      { isolation: isolationProbe(true) },
+    );
+    assert.equal(withIso.isolation.ISO01?.mechanism, "workspace_isolation");
+    assert.equal(withIso.isolation.ISO01?.passed, true);
+    assert.deepEqual(withIso.allFixedContracts, { met: 6, total: 6 });
+    assert.deepEqual(withIso.capability.firstPassSuccess, { met: 2, total: 3 });
+    assert.deepEqual(withIso.capability.expectedOutcomesMet, {
+      met: 4,
+      total: 4,
+    });
+    assert.equal(withIso.capability.executableTaskCount, 3);
+    assert.equal(
+      withIso.runs.some((run) => run.identity.taskId === "T01"),
+      true,
+    );
+    assert.equal(
+      withIso.runs.some((run) => String(run.identity.taskId) === "ISO01"),
+      false,
+    );
+    assert.match(withIso.report, /ISO01 workspace isolation\s+PASS/);
+    assert.match(
+      withIso.report,
+      /not included in capability first-pass \/ task-success/,
+    );
+    assert.equal(withIso.regressions.length, 0);
+  });
+
+  it("treats ISO01 failure as an isolation regression, not a capability miss", () => {
+    const failed = aggregateRuns(
+      [
+        normalize("T01", t01FirstPass()),
+        normalize("T02", t02Recovered()),
+        normalize("T03", t03FirstPass()),
+        normalize("T04", t04Escalated()),
+        normalize("R01", r01Probe()),
+        normalize("REV01", rev01Probe()),
+      ],
+      { isolation: isolationProbe(false) },
+    );
+    assert.equal(failed.isolation.ISO01?.passed, false);
+    assert.deepEqual(failed.capability.expectedOutcomesMet, {
+      met: 4,
+      total: 4,
+    });
+    assert.deepEqual(failed.capability.firstPassSuccess, { met: 2, total: 3 });
+    assert.deepEqual(failed.allFixedContracts, { met: 6, total: 6 });
+    assert.ok(
+      failed.regressions.some((item) =>
+        item.includes("ISO01: workspace-isolation"),
+      ),
+    );
+    assert.equal(
+      failed.regressions.some((item) => item.includes("T01")),
+      false,
+    );
   });
 
   it("keeps REV01 probe fields out of generic reviewer precision metrics", () => {

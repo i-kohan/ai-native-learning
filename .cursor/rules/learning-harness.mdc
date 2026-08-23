@@ -7,6 +7,7 @@ This repository is my capstone project for learning AI-native / agentic software
 GitHub repository state is the only durable source of truth.
 
 Core learning documents:
+
 - docs/learning/master-learning-plan.md
 - docs/learning/learning-process.md
 - docs/learning/learning-cheatsheet.md
@@ -46,7 +47,7 @@ When implementing learning tasks:
 16. Keep `theory.md` short. Do not duplicate large sections from master/research docs.
 17. If a durable architecture/workflow decision emerges and matters to future modules, update the appropriate repository document; do not rely on chat history as durable state.
 18. Do not mark a module complete merely because the code works.
-19. Keep Git workflow simple until the Worktrees / Isolation module:
+19. Keep the human learning Git flow sequential on main:
     module → implementation → tests/experiment → review/understanding → lesson recap → progress update → commit → push.
-20. Do not introduce worktrees, complex branching, or parallel development before that module requires them.
+20. Harness benchmark/eval runs use per-run Git worktrees (Module 08). Do not introduce extra human worktrees, complex branching, or parallel module development unless a later module requires them.
 21. After the user reviews the learning-critical code and the Topic Chat closes the module, commit and push the completed module state to GitHub.

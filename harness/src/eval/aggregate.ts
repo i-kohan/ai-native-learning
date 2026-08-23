@@ -5,7 +5,9 @@ import {
 } from "./catalog.ts";
 import { formatEvalReport } from "./report.ts";
 import { EVIDENCE_GUIDED_REPAIR_SKILL_ID } from "../skills.ts";
+import type { IsolationProbeResult } from "../iso01.ts";
 import {
+  IsolationEval,
   SUITE_VERSION,
   type CapabilityEval,
   type EvalResult,
@@ -15,14 +17,18 @@ import {
   type RunMetrics,
 } from "./types.ts";
 
-export function aggregateRuns(runs: RunMetrics[]): EvalResult {
+export function aggregateRuns(
+  runs: RunMetrics[],
+  options?: { isolation?: IsolationProbeResult },
+): EvalResult {
   const capabilityRuns = runs.filter(
     (run) => run.identity.taskKind === "capability_regression",
   );
   const capability = capabilityEval(capabilityRuns);
   const probes = probeEval(runs);
+  const isolation = isolationEval(options?.isolation);
   const recurringFindings = recurringFindingAggregation(runs);
-  const regressions = hardRegressions(runs);
+  const regressions = hardRegressions(runs, options?.isolation);
   const diagnostics = diagnosticWarnings(runs, recurringFindings);
 
   const evalResult: EvalResult = {
@@ -31,6 +37,7 @@ export function aggregateRuns(runs: RunMetrics[]): EvalResult {
     allFixedContracts: ratio(runs, (run) => run.outcome.expectedOutcomeMet),
     capability,
     probes,
+    isolation,
     recurringFindings,
     regressions,
     diagnostics,
@@ -145,8 +152,26 @@ function recurringFindingAggregation(runs: RunMetrics[]): RecurringFinding[] {
   );
 }
 
-function hardRegressions(runs: RunMetrics[]): string[] {
+function isolationEval(result?: IsolationProbeResult): IsolationEval {
+  if (!result) {
+    return {};
+  }
+  return {
+    ISO01: {
+      mechanism: "workspace_isolation",
+      passed: result.passed,
+    },
+  };
+}
+
+function hardRegressions(
+  runs: RunMetrics[],
+  isolation?: IsolationProbeResult,
+): string[] {
   const regressions: string[] = [];
+  if (isolation && !isolation.passed) {
+    regressions.push("ISO01: workspace-isolation mechanism contract failed");
+  }
 
   for (const run of runs) {
     const { taskId } = run.identity;

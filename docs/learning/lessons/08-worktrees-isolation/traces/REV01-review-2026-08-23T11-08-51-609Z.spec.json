@@ -1,0 +1,65 @@
+{
+  "task": "Ensure POST /tasks/:id/complete marks an existing task completed, sets completedAt, and preserves existing missing-task behavior.\n\nDo not change unrelated behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure POST /tasks/:id/complete completes an existing task by setting its status to \"completed\" and assigning completedAt, while preserving the existing response for a missing task.",
+    "requirements": [
+      "For POST requests matching /tasks/:id/complete, look up the task by id through the existing task service.",
+      "When the task exists, set its status to \"completed\" and set completedAt to a non-null ISO timestamp, then return HTTP 200 with the updated task.",
+      "When the task does not exist, preserve the existing HTTP 404 response body { error: \"task_not_found\" }.",
+      "Do not modify unrelated task routes, task fields, or behavior.",
+      "Do not modify tests."
+    ],
+    "constraints": [
+      "Use the existing Task and TaskService model, where completedAt is string | null and task status values are pending or completed.",
+      "Keep the existing route shape and response conventions.",
+      "Changes, if needed, should be limited to the completion flow."
+    ],
+    "nonGoals": [
+      "Changing create, get, list, or reopen behavior.",
+      "Changing missing-task error status or payload.",
+      "Defining new behavior for other endpoints or adding API fields.",
+      "Modifying tests."
+    ],
+    "acceptance": [
+      "Completing an existing task returns status 200.",
+      "The returned task has status \"completed\".",
+      "The returned task has a non-empty string completedAt value.",
+      "A subsequent retrieval/list reflects the task as completed with the timestamp.",
+      "Completing a nonexistent id returns status 404 and body { error: \"task_not_found\" }.",
+      "Existing unrelated behavior remains unchanged."
+    ],
+    "verification": [
+      "Run the repository's existing test command: npm test.",
+      "Confirm the existing completion test passes, including status and completedAt assertions.",
+      "Confirm missing-task behavior remains covered by the existing 404 test pattern; additionally exercise POST /tasks/missing/complete and assert status 404 with { error: \"task_not_found\" } if implementation verification permits targeted checks.",
+      "Review the diff to ensure tests and unrelated routes are unchanged."
+    ],
+    "ambiguities": [
+      {
+        "question": "What should happen if POST /tasks/:id/complete is called for a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Preserve the existing service behavior and make no separate product change; the task only requires completion of an existing task and preservation of unrelated behavior.",
+        "basis": "The current TaskService.complete implementation sets status to completed and refreshes completedAt for any existing task, and no task requirement asks for idempotency or timestamp preservation."
+      },
+      {
+        "question": "What timestamp format should completedAt use?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Use the existing ISO string convention produced by new Date().toISOString().",
+        "basis": "TaskService.complete already assigns new Date().toISOString(), and Task.completedAt is typed as string | null."
+      },
+      {
+        "question": "What should the missing-task response be?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 404 with body { error: \"task_not_found\" }.",
+        "basis": "task-routes.ts already maps a falsy result from service.complete(id) to that exact response, and the task explicitly requires preserving missing-task behavior."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

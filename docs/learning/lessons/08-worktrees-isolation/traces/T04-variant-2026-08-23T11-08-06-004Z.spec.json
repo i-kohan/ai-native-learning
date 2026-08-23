@@ -1,0 +1,80 @@
+{
+  "task": "# T04 — Ambiguity probe\n\nMake the task list less cluttered by hiding completed tasks when appropriate.",
+  "decision": "needs_human_judgment",
+  "spec": {
+    "goal": "Reduce task-list clutter by hiding completed tasks under a product-defined condition, while preserving the existing task model and API unless the clarified behavior requires otherwise.",
+    "requirements": [
+      "The task list is exposed by GET /tasks and currently supports status=pending or status=completed filters.",
+      "Task records use status values pending/completed; completing and reopening update status and completedAt consistently.",
+      "The current behavior when status is omitted is to return all tasks, including completed tasks."
+    ],
+    "constraints": [
+      "Do not infer a new default visibility rule from the phrase “when appropriate.”",
+      "Existing explicit status filtering and validation should not be changed accidentally.",
+      "The repository contains no UI layer; the observable list behavior is the GET /tasks API response."
+    ],
+    "nonGoals": [
+      "No change to task creation, completion, reopening, or task data shape unless explicitly requested after clarification.",
+      "No assumption that completed tasks should be deleted; hiding should be non-destructive if that is the chosen behavior.",
+      "No assumption about a new query parameter, default filter, persistence, or user preference."
+    ],
+    "acceptance": [
+      "Pending and completed task visibility follows an explicitly chosen product rule for GET /tasks.",
+      "Explicit behavior for omitted status, status=pending, and status=completed is covered by tests.",
+      "Completed tasks remain retrievable through an explicitly defined mechanism if hiding is only a visibility change."
+    ],
+    "verification": [
+      "Add or update route tests covering mixed pending/completed data for the chosen default behavior.",
+      "Verify existing status=pending and status=completed semantics, including invalid status handling, unless the clarified task intentionally changes them.",
+      "Verify complete/reopen behavior remains consistent with list visibility."
+    ],
+    "ambiguities": [
+      {
+        "question": "What does “when appropriate” mean for completed-task visibility: should GET /tasks with no status parameter default to pending only, or should hiding be controlled by a new query parameter/other explicit mechanism?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "The raw task does not specify the trigger or default. The repository currently returns all tasks when status is omitted and already supports explicit status filters, but existing behavior cannot authorize a new behavior-change rule."
+      },
+      {
+        "question": "Should GET /tasks?status=completed continue to return completed tasks after the clutter-reduction change?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "Preserving an explicit completed filter is a plausible interpretation, but the task does not state whether completed tasks should merely be hidden from the default list or hidden from all list responses."
+      },
+      {
+        "question": "Is the requested change exclusively an API list behavior, given that the repository has no UI implementation?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Treat the change as GET /tasks behavior in this repository.",
+        "basis": "src/app.ts exposes only the task routes, src/tasks/task-routes.ts defines GET /tasks, and no UI files are present in the repository orientation or inspected source."
+      },
+      {
+        "question": "Should hidden completed tasks remain available through GET /tasks/:id and be reopenable?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Unless clarified otherwise, do not remove or alter single-task retrieval or reopening; hiding from a list is distinct from deletion.",
+        "basis": "The existing API has separate GET /tasks/:id and POST /tasks/:id/reopen operations, and the task wording says hiding rather than deleting."
+      }
+    ]
+  },
+  "unresolvedQuestions": [
+    {
+      "question": "What does “when appropriate” mean for completed-task visibility: should GET /tasks with no status parameter default to pending only, or should hiding be controlled by a new query parameter/other explicit mechanism?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "The raw task does not specify the trigger or default. The repository currently returns all tasks when status is omitted and already supports explicit status filters, but existing behavior cannot authorize a new behavior-change rule."
+    },
+    {
+      "question": "Should GET /tasks?status=completed continue to return completed tasks after the clutter-reduction change?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "Preserving an explicit completed filter is a plausible interpretation, but the task does not state whether completed tasks should merely be hidden from the default list or hidden from all list responses."
+    }
+  ],
+  "implementationStarted": false,
+  "workflowStatus": "needs_human_judgment"
+}

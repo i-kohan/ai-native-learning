@@ -1,8 +1,10 @@
 node_modules/
+.worktrees/
 dist/
 .env
 traces/*.jsonl
 traces/*.spec.json
+traces/*.json
 evals/*.json
 evals/*.txt
 *.log

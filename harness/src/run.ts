@@ -42,6 +42,7 @@ import {
 } from "./spec.ts";
 import { Tracer } from "./trace.ts";
 import { runFinalVerification, type VerificationResult } from "./verify.ts";
+import type { Workspace } from "./workspace.ts";
 
 export type WorkflowStatus = "success" | "failure" | "needs_human_judgment";
 
@@ -119,6 +120,7 @@ export type HarnessRunResult = {
   contextMode: ContextMode;
   contextMetrics: ContextRunMetrics;
   skillLoads: SkillLoadRecord[];
+  workspace?: Workspace;
 };
 
 export async function runV1Harness(options: {
@@ -130,6 +132,7 @@ export async function runV1Harness(options: {
   architectureConstraints?: ArchitectureConstraint[];
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
+  workspace?: Workspace;
 }): Promise<HarnessRunResult> {
   const { config, task, runId } = options;
   const contextMode = options.contextMode ?? "baseline";
@@ -160,6 +163,19 @@ export async function runV1Harness(options: {
     maxRepairAttempts: config.maxRepairAttempts,
     maxReviewRepairAttempts: config.maxReviewRepairAttempts,
     contextMode,
+    repoRoot: config.repoRoot,
+    targetAppRoot: config.targetAppRoot,
+    targetSrcRoot: config.targetSrcRoot,
+    ...(options.workspace
+      ? {
+          workspace: {
+            id: options.workspace.id,
+            root: options.workspace.root,
+            baseRevision: options.workspace.baseRevision,
+            ref: options.workspace.ref,
+          },
+        }
+      : {}),
   });
 
   const specPhase = await buildSpec({
@@ -201,6 +217,7 @@ export async function runV1Harness(options: {
       tracePath: tracer.tracePath,
       durationMs: Date.now() - startedAt,
       skillLoads: [],
+      workspace: options.workspace,
     });
     tracer.record("harness_gate", {
       action: "abort",
@@ -247,6 +264,7 @@ export async function runV1Harness(options: {
       tracePath: tracer.tracePath,
       durationMs: Date.now() - startedAt,
       skillLoads: [],
+      workspace: options.workspace,
     });
     await finishRun(tracer, result);
     return result;
@@ -389,6 +407,7 @@ export async function runV1Harness(options: {
     tracePath: tracer.tracePath,
     durationMs: Date.now() - startedAt,
     skillLoads,
+    workspace: options.workspace,
   });
   await finishRun(tracer, result);
   return result;
@@ -397,6 +416,12 @@ export async function runV1Harness(options: {
 export function printHarnessResult(result: HarnessRunResult): void {
   console.log("\n=== V3 Harness Result ===");
   console.log(`task: ${truncate(result.task, 200)}`);
+  if (result.workspace) {
+    console.log(
+      `workspace: ${result.workspace.id} @ ${result.workspace.baseRevision.slice(0, 12)}`,
+    );
+    console.log(`workspace_root: ${result.workspace.root}`);
+  }
   console.log(`workflow_status: ${result.workflowStatus}`);
   console.log(`spec_decision: ${result.specDecision?.status ?? "(none)"}`);
   console.log(`implementation_started: ${result.implementationStarted}`);
@@ -1134,6 +1159,7 @@ function baseResult(fields: {
   tracePath: string;
   durationMs: number;
   skillLoads?: SkillLoadRecord[];
+  workspace?: Workspace;
 }): HarnessRunResult {
   const implementation = fields.implementation;
   const implDiscovery = implementation?.discovery ?? null;
@@ -1255,6 +1281,7 @@ function baseResult(fields: {
     contextMode: fields.contextMode,
     contextMetrics,
     skillLoads: fields.skillLoads ?? [],
+    ...(fields.workspace ? { workspace: fields.workspace } : {}),
   };
 }
 
@@ -1273,6 +1300,16 @@ async function finishRun(
   tracer.record("run_completed", {
     version: "v3",
     workflowStatus: result.workflowStatus,
+    ...(result.workspace
+      ? {
+          workspace: {
+            id: result.workspace.id,
+            root: result.workspace.root,
+            baseRevision: result.workspace.baseRevision,
+            ref: result.workspace.ref,
+          },
+        }
+      : {}),
     specDecision: result.specDecision?.status ?? null,
     spec: result.specDecision?.spec ?? null,
     specPath: result.specPath,

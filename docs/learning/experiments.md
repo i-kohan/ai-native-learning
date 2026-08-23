@@ -721,13 +721,13 @@ Hard regressions: none
 Diagnostics: none
 ```
 
-| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall | skill |
-| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- | ----- |
-| T01   | capability | yes      | yes        | PASS      | 7 / 15      | 19871 / 1806  | ~32s | none |
-| T02   | capability | yes      | yes        | PASS      | 7 / 13      | 16372 / 1783  | ~28s | none |
-| T03   | capability | yes      | yes        | PASS      | 7 / 17      | 19331 / 1519  | ~25s | none |
-| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4445 / 835    | ~11s | none |
-| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 21     | 27703 / 2140  | ~34s | repair |
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall | skill         |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- | ------------- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 15      | 19871 / 1806  | ~32s | none          |
+| T02   | capability | yes      | yes        | PASS      | 7 / 13      | 16372 / 1783  | ~28s | none          |
+| T03   | capability | yes      | yes        | PASS      | 7 / 17      | 19331 / 1519  | ~25s | none          |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4445 / 835    | ~11s | none          |
+| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 21     | 27703 / 2140  | ~34s | repair        |
 | REV01 | probe      | yes      | no         | PASS→PASS | 11 / 21     | 28903 / 2789  | ~39s | review_repair |
 
 Trace-level progressive disclosure:
@@ -753,5 +753,142 @@ Hypothesis supported for this suite:
 
 This does **not** prove that more skills, model-selected routing, or a catalog would help. One repeated procedure was enough to test the abstraction.
 
-Module 07 experiment recorded; formal module closure still pending Topic Chat review.
+Module 07 experiment recorded; later formally closed by Master.
 
+---
+
+## Module 08 — Worktrees / Isolation (ISO01 mechanism probe + V3 regression)
+
+### Hypothesis
+
+A minimal per-run Git worktree can give two runs from the same exact base SHA independent mutable source state, bind existing V3 tools/verifier to that workspace, and leave the main checkout unpolluted — without changing V3 lifecycle or capability scoring.
+
+### What this experiment is
+
+Two separate evidence classes:
+
+1. **ISO01** — deterministic isolation mechanism probe, no LLM.
+2. **V3 regression** — existing fixed contracts T01–T04, R01, REV01 after isolation is integrated.
+
+ISO01 is classified as `mechanism_probe` / `workspace_isolation`. It is reported under Isolation and is not part of capability first-pass or task-success denominators. V3 contracts remain 6/6.
+
+### What this experiment is not
+
+- Not a security/sandbox study
+- Not parallel LLM agents
+- Not a worktree platform, scheduler, or environment orchestrator
+- Not a claim that isolation improved model quality
+
+### Variant
+
+```text
+resolve C0
+→ worktree A from C0
+→ worktree B from C0
+→ mutate only A (getTask 404 → 500)
+→ verifier(A) FAIL, verifier(B) PASS
+→ main checkout unchanged
+→ explicit cleanup, retry-safe
+
+then:
+T01–T04 / R01 / REV01 each get their own workspace
+→ fixture/setup inside that workspace
+→ existing V3 unchanged
+→ traces/evals on the host checkout
+```
+
+Commands:
+
+```bash
+cd harness && npm test
+cd harness && npm run benchmark:iso01
+cd harness && npm run benchmark:eval
+```
+
+Model/context for V3 runs: same family as prior modules (`gpt-5.6-luna`), `contextMode=variant`. Suite label: `fixed-v3-m08`.
+
+### Decision rule
+
+Isolation mechanism is supported only if all are true:
+
+1. A and B record the same exact base SHA;
+2. A observes the controlled mutation; B does not;
+3. the main checkout is not polluted;
+4. agent/tool paths bind to the intended workspace;
+5. deterministic verification runs against the intended workspace with an observable PASS/FAIL difference;
+6. cleanup is explicit and safe to retry;
+7. existing V3 fixed contracts do not regress.
+
+### Results
+
+Evidence:
+
+- isolation: `docs/learning/lessons/08-worktrees-isolation/traces/ISO01-isolation-2026-08-23T11-06-42-372Z.json`
+- report: `docs/learning/lessons/08-worktrees-isolation/traces/2026-08-23T11-09-29-281Z.txt`
+- normalized JSON: `docs/learning/lessons/08-worktrees-isolation/traces/2026-08-23T11-09-29-281Z.json`
+- raw V3 traces in the same folder
+
+```text
+Isolation
+ISO01 workspace isolation    PASS
+C0                           e5d77788c5ac69ebca6336447156ae292e4a4029
+A and B base SHA             both C0
+initially equivalent         yes
+A mutation / B isolated      yes / yes
+main checkout unchanged      yes
+verifier A / B               FAIL / PASS
+cleanup / retry-safe         yes / yes
+
+Capability / Regression
+Expected outcomes      4 / 4
+Executable first-pass  3 / 3
+Correct escalation T04 1 / 1
+R01 verification repair      PASS
+REV01 independent review     PASS
+All fixed V3 contracts       6 / 6
+Hard regressions             none
+```
+
+ISO01 verifier binding is observable, not just cwd: A failed `returns 404 when the task does not exist` with `500 !== 404` inside `.worktrees/ISO01-A-…/target-app`; B passed the same suite.
+
+T01 `run_started` recorded:
+
+```text
+repoRoot      .worktrees/T01-variant-…
+targetAppRoot .worktrees/T01-variant-…/target-app
+baseRevision  e5d77788c5ac69ebca6336447156ae292e4a4029
+```
+
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 14      | 19296 / 1794  | ~28s |
+| T02   | capability | yes      | yes        | PASS      | 7 / 15      | 19115 / 1774  | ~28s |
+| T03   | capability | yes      | yes        | PASS      | 7 / 15      | 19512 / 1589  | ~25s |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4444 / 900    | ~13s |
+| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 20     | 29203 / 2071  | ~31s |
+| REV01 | probe      | yes      | no         | PASS→PASS | 11 / 21     | 30218 / 2616  | ~37s |
+| ISO01 | isolation  | yes      | n/a        | FAIL/PASS | 0 / 0       | n/a           | ~2s  |
+
+Capability denominators stayed T01–T04 / T01–T03. ISO01 did not enter first-pass or all-fixed-contracts 6/6.
+
+Efficiency vs Module 07: no obvious major regression. Small token/wall movement is consistent with run noise plus worktree create/cleanup overhead, not a V3 behavior change.
+
+### Failures / unexpected behavior
+
+None against the Module 08 decision rule.
+
+Practical constraint: worktrees do not include `node_modules`, so isolated `npm test` uses a symlink to the host `target-app/node_modules`. Source state is isolated; dependency install is not.
+
+### Conclusion
+
+Hypothesis supported for this suite:
+
+- two workspaces from one exact SHA have independent mutable source;
+- the existing verifier observes that independence as FAIL vs PASS;
+- the main checkout is not the mutable task workspace;
+- V3 contracts remain 6/6 after isolation is integrated;
+- ISO01 is scored as isolation evidence, not capability.
+
+This does **not** prove security isolation, parallel agent safety, or that a generic workspace platform is needed.
+
+Module 08 experiment recorded; formal module closure still pending Topic Chat review.

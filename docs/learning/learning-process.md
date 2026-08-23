@@ -228,7 +228,7 @@ If implementation reveals a durable architecture/workflow decision, update the a
 
 ## 5. Git workflow
 
-Keep Git simple until the Worktrees / Isolation module:
+Human learning Git flow stays sequential on `main`:
 
 ```text
 module
@@ -241,9 +241,9 @@ module
 → push
 ```
 
-Do not introduce worktrees, complex branching strategies, or parallel development before they are the learning subject.
+Harness task execution now uses per-run Git worktrees (Module 08). That is isolation for agent/benchmark runs, not a new human branching workflow.
 
-When the roadmap reaches Worktrees / Isolation, change the workflow deliberately as part of that module.
+Do not introduce parallel human module development, long-lived feature branches, or extra worktrees for learning work unless a later module requires them.
 
 ---
 

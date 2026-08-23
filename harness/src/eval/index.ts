@@ -21,6 +21,7 @@ export type {
   EvalResult,
   FindingSummary,
   FixedTaskId,
+  IsolationEval,
   OutcomeMetrics,
   ProbeMetrics,
   Ratio,

@@ -1,0 +1,50 @@
+{
+  "taskId": "ISO01",
+  "taskKind": "mechanism_probe",
+  "mechanism": "workspace_isolation",
+  "passed": true,
+  "baseRevision": "e5d77788c5ac69ebca6336447156ae292e4a4029",
+  "workspaceA": {
+    "id": "ISO01-A-2026-08-23T11-06-40-657Z",
+    "root": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/ISO01-A-2026-08-23T11-06-40-657Z",
+    "baseRevision": "e5d77788c5ac69ebca6336447156ae292e4a4029",
+    "ref": "HEAD"
+  },
+  "workspaceB": {
+    "id": "ISO01-B-2026-08-23T11-06-40-657Z",
+    "root": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/ISO01-B-2026-08-23T11-06-40-657Z",
+    "baseRevision": "e5d77788c5ac69ebca6336447156ae292e4a4029",
+    "ref": "HEAD"
+  },
+  "initiallyEquivalent": true,
+  "mutationObservedInA": true,
+  "mutationAbsentInB": true,
+  "mainCheckoutUnchanged": true,
+  "verifierA": {
+    "passed": false,
+    "exitCode": 1,
+    "output": "> test\n> tsx --test tests/**/*.test.ts\n\n▶ GET /tasks/:id\n  ✖ returns 404 when the task does not exist (0.814334ms)\n  ✔ returns the task when it exists (0.149167ms)\n✖ GET /tasks/:id (1.387083ms)\n▶ complete and reopen\n  ✔ sets completedAt when a task becomes completed (0.879708ms)\n  ✔ clears completedAt when a completed task is reopened (0.192291ms)\n✔ complete and reopen (1.474125ms)\n▶ GET /tasks status filter\n  ✔ returns only matching tasks when status is provided (0.149459ms)\n  ✔ returns all tasks when status is omitted (0.059084ms)\n✔ GET /tasks status filter (0.269708ms)\nℹ tests 6\nℹ suites 3\nℹ pass 5\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 102.325083\n\n✖ failing tests:\n\ntest at tests/tasks.test.ts:6:3\n✖ returns 404 when the task does not exist (0.814334ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  500 !== 404\n  \n      at TestContext.<anonymous> (/Users/i.kohanvs/Desktop/ai-native/.worktrees/ISO01-A-2026-08-23T11-06-40-657Z/target-app/tests/tasks.test.ts:9:12)\n      at Test.runInAsyncScope (node:async_hooks:214:14)\n      at Test.run (node:internal/test_runner/test:1062:25)\n      at Test.start (node:internal/test_runner/test:959:17)\n      at node:internal/test_runner/test:1464:71\n      at node:internal/per_context/primordials:483:82\n      at new Promise (<anonymous>)\n      at new SafePromise (node:internal/per_context/primordials:451:29)\n      at node:internal/per_context/primordials:483:9\n      at Array.map (<anonymous>) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 500,\n    expected: 404,\n    operator: 'strictEqual'\n  }\nnpm warn Unknown env config \"devdir\". This will stop working in the next major version of npm.",
+    "durationMs": 359
+  },
+  "verifierB": {
+    "passed": true,
+    "exitCode": 0,
+    "output": "> test\n> tsx --test tests/**/*.test.ts\n\n▶ GET /tasks/:id\n  ✔ returns 404 when the task does not exist (0.563625ms)\n  ✔ returns the task when it exists (0.096875ms)\n✔ GET /tasks/:id (1.076958ms)\n▶ complete and reopen\n  ✔ sets completedAt when a task becomes completed (0.850166ms)\n  ✔ clears completedAt when a completed task is reopened (0.153833ms)\n✔ complete and reopen (1.082208ms)\n▶ GET /tasks status filter\n  ✔ returns only matching tasks when status is provided (0.157208ms)\n  ✔ returns all tasks when status is omitted (0.054833ms)\n✔ GET /tasks status filter (0.595708ms)\nℹ tests 6\nℹ suites 3\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 100.405875\nnpm warn Unknown env config \"devdir\". This will stop working in the next major version of npm.",
+    "durationMs": 400
+  },
+  "cleanedUp": true,
+  "cleanupRetrySafe": true,
+  "assertions": {
+    "sameBaseRevision": true,
+    "initiallyEquivalent": true,
+    "mutationObservedInA": true,
+    "mutationAbsentInB": true,
+    "mainUnchangedAfterMutation": true,
+    "verifierAFailed": true,
+    "verifierBPassed": true,
+    "cleanedUp": true,
+    "cleanupRetrySafe": true,
+    "mainCheckoutUnchanged": true
+  },
+  "evidencePath": "/Users/i.kohanvs/Desktop/ai-native/traces/ISO01-isolation-2026-08-23T11-06-42-372Z.json"
+}
