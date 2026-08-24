@@ -1,21 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import type { HarnessConfig } from "./config.ts";
 import { PathAccessError, resolveWithin, toRepoRelative } from "./paths.ts";
-import { childEnvWithoutTestContext } from "./verify.ts";
+import { spawnNpmTest } from "./verify.ts";
 
 export const TOOL_DEFINITIONS = [
   {
     type: "function" as const,
     name: "list_files",
-    description: "List files and directories under target-app/. Path is relative to target-app/.",
+    description:
+      "List files and directories under target-app/. Path is relative to target-app/.",
     parameters: {
       type: "object",
       properties: {
         path: {
           type: "string",
-          description: "Relative path inside target-app/. Use '.' for the root.",
+          description:
+            "Relative path inside target-app/. Use '.' for the root.",
         },
       },
       required: ["path"],
@@ -26,7 +27,8 @@ export const TOOL_DEFINITIONS = [
   {
     type: "function" as const,
     name: "read_file",
-    description: "Read a UTF-8 text file under target-app/. Path is relative to target-app/.",
+    description:
+      "Read a UTF-8 text file under target-app/. Path is relative to target-app/.",
     parameters: {
       type: "object",
       properties: {
@@ -118,7 +120,11 @@ export function executeTool(
       case "read_file":
         return readFile(config, String(args.path ?? ""));
       case "write_file":
-        return writeFile(config, String(args.path ?? ""), String(args.content ?? ""));
+        return writeFile(
+          config,
+          String(args.path ?? ""),
+          String(args.content ?? ""),
+        );
       case "run_command":
         return runCommand(config, String(args.command ?? ""));
       default:
@@ -131,7 +137,10 @@ export function executeTool(
 }
 
 function listFiles(config: HarnessConfig, relativePath: string): ToolExecution {
-  const target = resolveWithin(config.targetAppRoot, relativePath === "" ? "." : relativePath);
+  const target = resolveWithin(
+    config.targetAppRoot,
+    relativePath === "" ? "." : relativePath,
+  );
   if (!fs.existsSync(target)) {
     return { ok: false, output: `Path does not exist: ${relativePath}` };
   }
@@ -139,7 +148,10 @@ function listFiles(config: HarnessConfig, relativePath: string): ToolExecution {
   const entries = fs.readdirSync(target, { withFileTypes: true });
   const lines = entries
     .map((entry) => {
-      const rel = toRepoRelative(config.repoRoot, path.join(target, entry.name));
+      const rel = toRepoRelative(
+        config.repoRoot,
+        path.join(target, entry.name),
+      );
       return entry.isDirectory() ? `${rel}/` : rel;
     })
     .sort();
@@ -156,7 +168,11 @@ function readFile(config: HarnessConfig, relativePath: string): ToolExecution {
   return { ok: true, output: content };
 }
 
-function writeFile(config: HarnessConfig, relativePath: string, content: string): ToolExecution {
+function writeFile(
+  config: HarnessConfig,
+  relativePath: string,
+  content: string,
+): ToolExecution {
   const target = resolveWithin(config.targetSrcRoot, relativePath);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, content, "utf8");
@@ -175,11 +191,7 @@ function runCommand(config: HarnessConfig, command: string): ToolExecution {
     };
   }
 
-  const result = spawnSync("npm", ["test"], {
-    cwd: config.targetAppRoot,
-    encoding: "utf8",
-    env: childEnvWithoutTestContext(),
-  });
+  const result = spawnNpmTest(config.targetAppRoot);
 
   const stdout = result.stdout ?? "";
   const stderr = result.stderr ?? "";

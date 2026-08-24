@@ -1,0 +1,59 @@
+{
+  "task": "Ensure that GET /tasks/:id returns HTTP 404 with `{ \"error\": \"task_not_found\" }` when the task does not exist.\n\nDo not change unrelated behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure GET /tasks/:id returns HTTP 404 with body {\"error\":\"task_not_found\"} when the requested task does not exist, without changing unrelated behavior.",
+    "requirements": [
+      "For a GET request whose path matches /tasks/:id, call the task service lookup and return status 404 with exactly { error: \"task_not_found\" } when no task is found.",
+      "For an existing task, preserve the current successful GET behavior and response.",
+      "Preserve all other task routes and behaviors, including the generic 404 response for unmatched routes.",
+      "Do not modify tests."
+    ],
+    "constraints": [
+      "Use the existing HttpResponse shape and TaskService lookup behavior.",
+      "Keep the change scoped to the GET task-by-ID behavior; do not alter service data or unrelated route semantics.",
+      "The repository currently contains the requested behavior in getTask and an existing test covering the missing-task response, so implementation should preserve that contract rather than introduce a different error format."
+    ],
+    "nonGoals": [
+      "Changing POST /tasks, GET /tasks collection filtering, complete/reopen behavior, or unmatched-route handling.",
+      "Changing the test suite or adding unrelated API behavior."
+    ],
+    "acceptance": [
+      "GET /tasks/missing (or any nonexistent task ID) responds with status 404.",
+      "The response body is exactly { error: \"task_not_found\" }.",
+      "GET /tasks/:id for an existing task remains status 200 with that task.",
+      "Existing unrelated tests and route behavior remain unchanged."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Confirm the existing GET /tasks/:id missing-task test passes, including both status and exact body assertions.",
+      "Confirm the existing-task and unrelated task route tests continue to pass."
+    ],
+    "ambiguities": [
+      {
+        "question": "What response should GET /tasks/:id return when the task does not exist?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return status 404 and body { error: \"task_not_found\" }.",
+        "basis": "The raw task explicitly specifies this behavior; src/tasks/task-routes.ts already implements it in getTask, and tests/tasks.test.ts asserts both fields."
+      },
+      {
+        "question": "What should happen for an existing task and for unrelated routes?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Preserve the current successful task lookup and all other route behavior.",
+        "basis": "The raw task says not to change unrelated behavior; the route implementation and existing tests establish current behavior, including 200 for an existing task and generic 404 for unmatched routes."
+      },
+      {
+        "question": "Should tests be changed?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "No; leave tests unchanged.",
+        "basis": "The raw task explicitly says not to modify tests."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

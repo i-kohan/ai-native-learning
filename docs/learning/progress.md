@@ -19,7 +19,10 @@ Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + i
 - one reusable procedural Skill: `evidence-guided-repair`, selectively loaded only for `repair` / `review_repair`;
 - per-run Git worktree isolation for benchmark/eval execution;
 - exact workspace provenance via `baseRevision`;
-- workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace.
+- workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace;
+- verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`.
+
+This is **not** a sandbox: executed repository code can still touch host files, network, and subprocesses.
 
 Current execution flow:
 
@@ -61,20 +64,69 @@ HarnessRunResult / raw traces
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
 
-## Next module
+## Current module (not formally closed)
 
 **09 — Security fundamentals**
 
-Why now:
+Status: implemented and evidenced; **not complete** until Topic Chat inspects the learning-critical code and evidence.
 
-- the current `master-learning-plan.md` places Security fundamentals immediately after Worktrees / Isolation in Phase 2 — Reliable Autonomy;
-- Module 08 now gives each run separate mutable Git/filesystem state, but a worktree is explicitly **not** a security boundary;
-- the agent may still read hostile repository content, execute dangerous commands, access host files/secrets, use network access, or perform unauthorized side effects unless capabilities are constrained;
-- the next step is therefore to add a minimal explicit threat model + least-privilege capability/security boundary around the existing isolated execution, without prematurely building production sandbox infrastructure.
+Theory: `docs/learning/lessons/09-security-fundamentals/theory.md`  
+Practical notes + evidence: `docs/learning/lessons/09-security-fundamentals/`
 
-Target after Module 09: **V5-style safe-autonomy boundary** for this capstone: current V3 + measurement + Skills + worktree isolation + explicit practical security controls/threat model appropriate to the current harness.
+Why this slice:
 
-After Module 09, return to the current roadmap and enter Phase 3 with **Model Routing**. Do not start routing before Security is formally closed.
+- Module 08 isolates mutable Git/filesystem state, but a worktree is not a security boundary;
+- model-facing path/tool checks already constrain direct `read_file` / `write_file` / `run_command`;
+- the remaining material gap was transitive: agent-written source executed by `npm test` inherited almost all `process.env`.
+
+### Built
+
+- `verificationChildEnv()` positive allowlist (launch / temp / user-dir classes only);
+- shared `spawnNpmTest()` used by model-facing `run_command` and harness `runFinalVerification`;
+- SEC01 deterministic verification-secret-isolation probe;
+- eval/report `security.SEC01` separate from capability denominators and fixed V3 `6/6`.
+
+### SEC01 evidence
+
+`docs/learning/lessons/09-security-fundamentals/traces/SEC01-secret-isolation-2026-08-24T12-49-32-810Z.json`
+
+Observed:
+
+```text
+parent contains SEC01_SECRET          yes
+controlled app.ts executed            SEC01_PROBE_EXECUTED
+child observes SEC01_SECRET           no
+verification                          PASS
+sentinel in captured evidence         absent
+main checkout unchanged               yes
+cleanup / retry-safe                  yes / yes
+```
+
+This demonstrates only that unnecessary parent environment secrets are not inherited by verification execution. It does not prove filesystem, network, or process sandboxing.
+
+### Fresh regression evidence
+
+`docs/learning/lessons/09-security-fundamentals/traces/2026-08-24T12-52-23-876Z.txt`
+
+```text
+ISO01 workspace isolation    PASS
+SEC01 verification secret isolation  PASS
+T01–T04 expected outcomes    4 / 4
+Executable first-pass        3 / 3
+Correct escalation T04       1 / 1
+R01 verification repair      PASS
+REV01 independent review     PASS
+All fixed V3 contracts       6 / 6
+Hard regressions             none
+```
+
+SEC01 remains a security/mechanism result. It is not in `CAPABILITY_TASK_IDS` or first-pass denominators and does not turn `6/6` into `7/7`.
+
+### Not claimed
+
+Worktree + scoped tools still do **not** provide host filesystem containment for executed repository code, network containment, subprocess containment, or a sandbox for arbitrary hostile repositories.
+
+After Topic Chat closure, return to the roadmap and enter Phase 3 with **Model Routing**. Do not start routing before Security is formally closed.
 
 ---
 

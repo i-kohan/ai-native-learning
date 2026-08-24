@@ -10,6 +10,7 @@
     "benchmark:r01": "tsx src/run-benchmark.ts R01",
     "benchmark:rev01": "tsx src/run-benchmark.ts REV01",
     "benchmark:iso01": "tsx src/run-benchmark.ts ISO01",
+    "benchmark:sec01": "tsx src/run-benchmark.ts SEC01",
     "benchmark:eval": "tsx src/run-benchmark.ts --eval",
     "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },

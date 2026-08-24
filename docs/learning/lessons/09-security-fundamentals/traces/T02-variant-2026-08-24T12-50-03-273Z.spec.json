@@ -1,0 +1,51 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion lifecycle behavior so completed tasks receive a timestamp and reopened tasks clear it.",
+    "requirements": [
+      "In TaskService.complete, set completedAt to a non-empty timestamp string when the task is completed.",
+      "In TaskService.reopen, set completedAt to null when the task is reopened.",
+      "Preserve the existing task status transitions and HTTP response behavior for the complete and reopen routes.",
+      "Keep newly created tasks initialized with status \"pending\" and completedAt null."
+    ],
+    "constraints": [
+      "Use the existing Task.completedAt type of string | null.",
+      "Make the smallest change in src/tasks/task-service.ts; route contracts already expose the service result directly.",
+      "Do not alter unrelated task creation, lookup, listing, or validation behavior."
+    ],
+    "nonGoals": [
+      "No change to the HTTP endpoints, status codes, error payloads, or task filtering behavior.",
+      "No persistence, timezone, or timestamp display-format feature beyond storing a timestamp string."
+    ],
+    "acceptance": [
+      "Completing an existing task returns status \"completed\" and a non-empty string completedAt.",
+      "Reopening a completed task returns status \"pending\" and completedAt null.",
+      "A created task still has completedAt null before completion.",
+      "The existing task test suite passes."
+    ],
+    "verification": [
+      "Run the repository test command: npm test.",
+      "Confirm the complete/reopen tests pass, including their assertions on completedAt type/value."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp serialization format should completedAt use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a standard ISO timestamp string generated at completion, such as new Date().toISOString().",
+        "basis": "The public type requires a string, and the task requires a timestamp; ISO serialization is the conventional interoperable representation and existing tests only require a non-empty string."
+      },
+      {
+        "question": "What should happen if complete is called on an already completed task or reopen on an already pending task?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Keep the existing endpoint/service operations idempotent in status and ensure the resulting completedAt matches the resulting status; no new route behavior or error is required.",
+        "basis": "The current service unconditionally applies the requested status transition and routes return the resulting task, while the task only specifies the completed/reopened state invariants."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

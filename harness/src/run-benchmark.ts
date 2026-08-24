@@ -19,6 +19,11 @@ import {
   printIsolationProbeSummary,
   runIsolationProbe,
 } from "./iso01.ts";
+import {
+  isExpectedSEC01Outcome,
+  printSecurityProbeSummary,
+  runSecurityProbe,
+} from "./sec01.ts";
 import { injectMissingTask500Fault } from "./r01-fault.ts";
 import { injectArch01CompleteTaskFault } from "./rev01-fault.ts";
 import { ARCH_01, isIntendedArch01Finding } from "./review.ts";
@@ -146,6 +151,8 @@ export function runIdFromTracePath(tracePath: string): string {
 export async function runFixedSuite(): Promise<EvalResult> {
   const isolation = runIsolationProbe();
   printIsolationProbeSummary(isolation);
+  const security = runSecurityProbe();
+  printSecurityProbeSummary(security);
 
   const labeled: Array<{ taskId: FixedTaskId; result: HarnessRunResult }> = [];
 
@@ -166,7 +173,7 @@ export async function runFixedSuite(): Promise<EvalResult> {
       expectedOutcomeMet: scoreExpectedOutcome(taskId, result),
     }),
   );
-  const evalResult = aggregateRuns(metrics, { isolation });
+  const evalResult = aggregateRuns(metrics, { isolation, security });
   const artifacts = writeEvalArtifact({
     evalsDir: path.join(REPO_ROOT, "evals"),
     result: evalResult,
@@ -575,6 +582,7 @@ type CliOptions = {
   repairProbe: boolean;
   reviewProbe: boolean;
   isolationProbe: boolean;
+  securityProbe: boolean;
   evalSuite: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
@@ -592,6 +600,7 @@ function parseArgs(argv: string[]): CliOptions {
       repairProbe: false,
       reviewProbe: false,
       isolationProbe: false,
+      securityProbe: false,
       evalSuite: true,
       contextMode,
     };
@@ -603,6 +612,19 @@ function parseArgs(argv: string[]): CliOptions {
       repairProbe: false,
       reviewProbe: false,
       isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      contextMode,
+    };
+  }
+  if (argv.includes("SEC01") || argv.includes("--security-probe")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: true,
       evalSuite: false,
       contextMode,
     };
@@ -614,6 +636,7 @@ function parseArgs(argv: string[]): CliOptions {
       repairProbe: false,
       reviewProbe: false,
       isolationProbe: true,
+      securityProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -625,6 +648,7 @@ function parseArgs(argv: string[]): CliOptions {
       repairProbe: false,
       reviewProbe: true,
       isolationProbe: false,
+      securityProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -636,6 +660,7 @@ function parseArgs(argv: string[]): CliOptions {
       repairProbe: true,
       reviewProbe: false,
       isolationProbe: false,
+      securityProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -647,6 +672,7 @@ function parseArgs(argv: string[]): CliOptions {
       repairProbe: false,
       reviewProbe: false,
       isolationProbe: false,
+      securityProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -661,6 +687,7 @@ function parseArgs(argv: string[]): CliOptions {
       repairProbe: false,
       reviewProbe: false,
       isolationProbe: false,
+      securityProbe: false,
       evalSuite: false,
       contextMode,
     };
@@ -671,6 +698,7 @@ function parseArgs(argv: string[]): CliOptions {
     repairProbe: false,
     reviewProbe: false,
     isolationProbe: false,
+    securityProbe: false,
     evalSuite: false,
     taskId,
     contextMode,
@@ -684,10 +712,18 @@ async function main(): Promise<void> {
     repairProbe,
     reviewProbe,
     isolationProbe,
+    securityProbe,
     evalSuite,
     taskId,
     contextMode,
   } = parseArgs(process.argv.slice(2));
+
+  if (securityProbe) {
+    const result = runSecurityProbe();
+    printSecurityProbeSummary(result);
+    process.exit(isExpectedSEC01Outcome(result) ? 0 : 1);
+    return;
+  }
 
   if (isolationProbe) {
     const result = runIsolationProbe();
@@ -731,6 +767,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark:experiment");
     console.error("   or: npm run benchmark:eval");
     console.error("   or: npm run benchmark -- ISO01");
+    console.error("   or: npm run benchmark -- SEC01");
     console.error("   or: npm run benchmark -- R01");
     console.error("   or: npm run benchmark -- REV01");
     process.exit(1);

@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { aggregateRuns } from "../src/eval/aggregate.ts";
 import { normalizeRun } from "../src/eval/normalize.ts";
-import type { FixedTaskId, RunMetrics } from "../src/eval/types.ts";
+import { CAPABILITY_TASK_IDS, type FixedTaskId, type RunMetrics } from "../src/eval/types.ts";
 import { emptyReviewRunState } from "../src/review.ts";
 import type { Finding, FindingDecisionRecord } from "../src/review.ts";
 import type { IsolationProbeResult } from "../src/iso01.ts";
+import type { SecurityProbeResult } from "../src/sec01.ts";
 import { scoreExpectedOutcome } from "../src/run-benchmark.ts";
 import type { HarnessRunResult } from "../src/run.ts";
 import type { Spec } from "../src/spec.ts";
@@ -417,6 +418,32 @@ function isolationProbe(passed: boolean): IsolationProbeResult {
   };
 }
 
+function securityProbe(passed: boolean): SecurityProbeResult {
+  return {
+    taskId: "SEC01",
+    taskKind: "mechanism_probe",
+    mechanism: "verification_secret_isolation",
+    passed,
+    workspace: {
+      id: "SEC01",
+      root: "/tmp/sec01",
+      baseRevision: "abc123",
+      ref: "HEAD",
+    },
+    parentContainedSentinel: passed,
+    probeSourceInjected: passed,
+    probeExecuted: passed,
+    secretVisibleToChild: !passed,
+    verificationPassed: passed,
+    sentinelAbsentFromOutput: passed,
+    mainCheckoutUnchanged: passed,
+    cleanedUp: passed,
+    cleanupRetrySafe: passed,
+    assertions: { passed },
+    evidencePath: "/tmp/SEC01.json",
+  };
+}
+
 function repairSkillLoad(
   phase: "repair" | "review_repair",
 ): HarnessRunResult["skillLoads"][number] {
@@ -654,6 +681,37 @@ describe("EvalResult aggregation", () => {
     assert.equal(withIso.regressions.length, 0);
   });
 
+  it("reports SEC01 separately and keeps V3 contracts at 6/6", () => {
+    const withSec = aggregateRuns(
+      [
+        normalize("T01", t01FirstPass()),
+        normalize("T02", t02Recovered()),
+        normalize("T03", t03FirstPass()),
+        normalize("T04", t04Escalated()),
+        normalize("R01", r01Probe()),
+        normalize("REV01", rev01Probe()),
+      ],
+      { isolation: isolationProbe(true), security: securityProbe(true) },
+    );
+    assert.equal(
+      withSec.security.SEC01?.mechanism,
+      "verification_secret_isolation",
+    );
+    assert.equal(withSec.security.SEC01?.passed, true);
+    assert.deepEqual(withSec.allFixedContracts, { met: 6, total: 6 });
+    assert.deepEqual(withSec.capability.firstPassSuccess, { met: 2, total: 3 });
+    assert.equal(
+      withSec.runs.some((run) => String(run.identity.taskId) === "SEC01"),
+      false,
+    );
+    assert.equal(
+      (CAPABILITY_TASK_IDS as readonly string[]).includes("SEC01"),
+      false,
+    );
+    assert.match(withSec.report, /SEC01 verification secret isolation\s+PASS/);
+    assert.equal(withSec.regressions.length, 0);
+  });
+
   it("treats ISO01 failure as an isolation regression, not a capability miss", () => {
     const failed = aggregateRuns(
       [
@@ -676,6 +734,36 @@ describe("EvalResult aggregation", () => {
     assert.ok(
       failed.regressions.some((item) =>
         item.includes("ISO01: workspace-isolation"),
+      ),
+    );
+    assert.equal(
+      failed.regressions.some((item) => item.includes("T01")),
+      false,
+    );
+  });
+
+  it("treats SEC01 failure as a security regression, not a capability miss", () => {
+    const failed = aggregateRuns(
+      [
+        normalize("T01", t01FirstPass()),
+        normalize("T02", t02Recovered()),
+        normalize("T03", t03FirstPass()),
+        normalize("T04", t04Escalated()),
+        normalize("R01", r01Probe()),
+        normalize("REV01", rev01Probe()),
+      ],
+      { isolation: isolationProbe(true), security: securityProbe(false) },
+    );
+    assert.equal(failed.security.SEC01?.passed, false);
+    assert.deepEqual(failed.capability.expectedOutcomesMet, {
+      met: 4,
+      total: 4,
+    });
+    assert.deepEqual(failed.capability.firstPassSuccess, { met: 2, total: 3 });
+    assert.deepEqual(failed.allFixedContracts, { met: 6, total: 6 });
+    assert.ok(
+      failed.regressions.some((item) =>
+        item.includes("SEC01: verification-secret-isolation"),
       ),
     );
     assert.equal(

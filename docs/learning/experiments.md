@@ -891,4 +891,151 @@ Hypothesis supported for this suite:
 
 This does **not** prove security isolation, parallel agent safety, or that a generic workspace platform is needed.
 
-Module 08 experiment recorded; formal module closure still pending Topic Chat review.
+Module 08 experiment recorded; later formally closed by Master.
+
+---
+
+## Module 09 — Security fundamentals (SEC01 mechanism probe + V3 regression)
+
+### Hypothesis
+
+A positive/minimal environment allowlist on the shared verification spawn can stop parent harness secrets from being inherited by repository code executed through `npm test`, without building a general sandbox and without changing V3 capability scoring.
+
+### What this experiment is
+
+Two separate evidence classes:
+
+1. **SEC01** — deterministic verification-secret-isolation probe, no LLM.
+2. **V3 regression** — existing fixed contracts T01–T04, R01, REV01, plus ISO01, after the env allowlist is the only verification child environment.
+
+SEC01 is classified as `mechanism_probe` / `verification_secret_isolation`. It is reported under Security and is not part of capability first-pass or task-success denominators. V3 contracts remain 6/6.
+
+### What this experiment is not
+
+- Not a filesystem, network, or process sandbox study
+- Not a claim that worktrees became a security boundary
+- Not a secret manager, IAM, or container platform
+- Not a capability benchmark task
+
+### Variant
+
+```text
+parent process has SEC01_SECRET
+→ isolated worktree
+→ inject probe into target-app/src/app.ts
+→ real npm test via runFinalVerification
+   ├─ emit SEC01_PROBE_EXECUTED
+   ├─ fail with SEC01_SECRET_VISIBLE if sentinel is visible
+   └─ never print the sentinel value
+→ child must not observe SEC01_SECRET
+→ verification PASS
+→ main checkout unchanged
+→ cleanup
+
+then:
+T01–T04 / R01 / REV01 / ISO01
+→ existing V3 + isolation contracts
+→ traces/evals on the host checkout
+```
+
+Shared enforcement:
+
+```text
+verificationChildEnv() + spawnNpmTest()
+→ run_command("npm test")
+→ runFinalVerification()
+```
+
+Commands:
+
+```bash
+cd harness && npm test
+cd harness && npm run benchmark:sec01
+cd harness && npm run benchmark:iso01
+cd harness && npm run benchmark:eval
+```
+
+Model/context for V3 runs: same family as prior modules (`gpt-5.6-luna`), `contextMode=variant`. Suite label: `fixed-v3-m09`.
+
+### Decision rule
+
+Secret isolation is supported only if all are true:
+
+1. the parent process contains `SEC01_SECRET`;
+2. controlled repository code was actually executed;
+3. the child cannot observe `SEC01_SECRET`;
+4. verification succeeds;
+5. the raw sentinel value does not appear in captured output/evidence;
+6. the main checkout remains unchanged;
+7. workspace cleanup succeeds;
+8. existing V3 fixed contracts and ISO01 do not regress.
+
+A SEC01 miss is a security regression, not an ordinary task failure.
+
+### Results
+
+Evidence:
+
+- security: `docs/learning/lessons/09-security-fundamentals/traces/SEC01-secret-isolation-2026-08-24T12-49-32-810Z.json`
+- report: `docs/learning/lessons/09-security-fundamentals/traces/2026-08-24T12-52-23-876Z.txt`
+- normalized JSON: `docs/learning/lessons/09-security-fundamentals/traces/2026-08-24T12-52-23-876Z.json`
+- raw V3 traces in the same folder
+
+```text
+Security
+SEC01 verification secret isolation  PASS
+parent contained sentinel            yes
+probe executed                       yes
+secret visible to child              no
+verification                         PASS
+sentinel absent from evidence        yes
+main checkout unchanged              yes
+cleanup / retry-safe                 yes / yes
+
+Isolation
+ISO01 workspace isolation            PASS
+
+Capability / Regression
+Expected outcomes      4 / 4
+Executable first-pass  3 / 3
+Correct escalation T04 1 / 1
+R01 verification repair      PASS
+REV01 independent review     PASS
+All fixed V3 contracts       6 / 6
+Hard regressions             none
+```
+
+SEC01 verifier output contains `SEC01_PROBE_EXECUTED` and passing target-app tests. It does not contain the sentinel value.
+
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability | yes      | yes        | PASS      | 8 / 13      | 21115 / 1860  | ~30s |
+| T02   | capability | yes      | yes        | PASS      | 7 / 14      | 15915 / 1446  | ~23s |
+| T03   | capability | yes      | yes        | PASS      | 7 / 16      | 20034 / 1642  | ~24s |
+| T04   | capability | yes      | n/a        | n/a       | 3 / 8       | 7979 / 868    | ~13s |
+| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 22     | 29695 / 2080  | ~38s |
+| REV01 | probe      | yes      | no         | PASS→PASS | 11 / 21     | 28140 / 2660  | ~39s |
+| ISO01 | isolation  | yes      | n/a        | FAIL/PASS | 0 / 0       | n/a           | ~2s  |
+| SEC01 | security   | yes      | n/a        | PASS      | 0 / 0       | n/a           | ~1s  |
+
+Capability denominators stayed T01–T04 / T01–T03. SEC01 did not enter first-pass or all-fixed-contracts 6/6.
+
+### Failures / unexpected behavior
+
+None against the Module 09 decision rule.
+
+Harness unit tests: 86 passed, including allowlist tests, SEC01, ISO01, and eval semantics.
+
+### Conclusion
+
+Hypothesis supported for this suite:
+
+- verification execution no longer inherits unrelated parent secrets;
+- one allowlist/spawn boundary covers both `run_command` and harness VERIFY;
+- SEC01 makes the property observable without relying on the model;
+- V3 contracts remain 6/6; ISO01 remains PASS;
+- SEC01 is scored as security evidence, not capability.
+
+This does **not** prove host filesystem containment, network containment, subprocess containment, or a sandbox for arbitrary hostile repositories.
+
+Module 09 experiment recorded; formal module closure still pending Topic Chat review.

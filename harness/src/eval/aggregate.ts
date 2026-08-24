@@ -6,6 +6,7 @@ import {
 import { formatEvalReport } from "./report.ts";
 import { EVIDENCE_GUIDED_REPAIR_SKILL_ID } from "../skills.ts";
 import type { IsolationProbeResult } from "../iso01.ts";
+import type { SecurityProbeResult } from "../sec01.ts";
 import {
   IsolationEval,
   SUITE_VERSION,
@@ -15,11 +16,15 @@ import {
   type Ratio,
   type RecurringFinding,
   type RunMetrics,
+  type SecurityEval,
 } from "./types.ts";
 
 export function aggregateRuns(
   runs: RunMetrics[],
-  options?: { isolation?: IsolationProbeResult },
+  options?: {
+    isolation?: IsolationProbeResult;
+    security?: SecurityProbeResult;
+  },
 ): EvalResult {
   const capabilityRuns = runs.filter(
     (run) => run.identity.taskKind === "capability_regression",
@@ -27,8 +32,13 @@ export function aggregateRuns(
   const capability = capabilityEval(capabilityRuns);
   const probes = probeEval(runs);
   const isolation = isolationEval(options?.isolation);
+  const security = securityEval(options?.security);
   const recurringFindings = recurringFindingAggregation(runs);
-  const regressions = hardRegressions(runs, options?.isolation);
+  const regressions = hardRegressions(
+    runs,
+    options?.isolation,
+    options?.security,
+  );
   const diagnostics = diagnosticWarnings(runs, recurringFindings);
 
   const evalResult: EvalResult = {
@@ -38,6 +48,7 @@ export function aggregateRuns(
     capability,
     probes,
     isolation,
+    security,
     recurringFindings,
     regressions,
     diagnostics,
@@ -164,13 +175,31 @@ function isolationEval(result?: IsolationProbeResult): IsolationEval {
   };
 }
 
+function securityEval(result?: SecurityProbeResult): SecurityEval {
+  if (!result) {
+    return {};
+  }
+  return {
+    SEC01: {
+      mechanism: "verification_secret_isolation",
+      passed: result.passed,
+    },
+  };
+}
+
 function hardRegressions(
   runs: RunMetrics[],
   isolation?: IsolationProbeResult,
+  security?: SecurityProbeResult,
 ): string[] {
   const regressions: string[] = [];
   if (isolation && !isolation.passed) {
     regressions.push("ISO01: workspace-isolation mechanism contract failed");
+  }
+  if (security && !security.passed) {
+    regressions.push(
+      "SEC01: verification-secret-isolation mechanism contract failed",
+    );
   }
 
   for (const run of runs) {

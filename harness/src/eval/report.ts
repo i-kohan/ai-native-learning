@@ -1,4 +1,10 @@
-import type { EvalResult, IsolationEval, ProbeEval, Ratio } from "./types.ts";
+import type {
+  EvalResult,
+  IsolationEval,
+  ProbeEval,
+  Ratio,
+  SecurityEval,
+} from "./types.ts";
 
 export function formatEvalReport(result: EvalResult): string {
   const cap = result.capability;
@@ -22,6 +28,13 @@ export function formatEvalReport(result: EvalResult): string {
     "",
     "Isolation",
     formatIsolation("ISO01 workspace isolation", result.isolation.ISO01),
+    "(not included in capability first-pass / task-success denominators)",
+    "",
+    "Security",
+    formatSecurity(
+      "SEC01 verification secret isolation",
+      result.security.SEC01,
+    ),
     "(not included in capability first-pass / task-success denominators)",
     "",
     "Skills",
@@ -79,6 +92,14 @@ function formatEscapedDefects(value: {
 
 function formatIsolation(label: string, probe: IsolationEval["ISO01"]): string {
   const padded = label.padEnd(28);
+  if (!probe) {
+    return `${padded} (not in this eval)`;
+  }
+  return `${padded} ${probe.passed ? "PASS" : "FAIL"}`;
+}
+
+function formatSecurity(label: string, probe: SecurityEval["SEC01"]): string {
+  const padded = label.padEnd(40);
   if (!probe) {
     return `${padded} (not in this eval)`;
   }

@@ -27,5 +27,6 @@ export type {
   Ratio,
   RecurringFinding,
   RunMetrics,
+  SecurityEval,
 } from "./types.ts";
 export { writeEvalArtifact } from "./write.ts";

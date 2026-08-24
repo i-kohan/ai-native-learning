@@ -1,0 +1,62 @@
+{
+  "task": "# T03 — Filter tasks by status\n\n`GET /tasks` should support:\n\n- `?status=pending`\n- `?status=completed`\n\nWhen `status` is provided, return only matching tasks.\nWithout `status`, preserve existing behavior (return all tasks).\n\nImplement the missing behavior and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Implement status filtering for GET /tasks so callers can retrieve pending or completed tasks while preserving the existing unfiltered list behavior, and verify the behavior with automated tests.",
+    "requirements": [
+      "When GET /tasks includes status=pending, return HTTP 200 with only tasks whose status is pending.",
+      "When GET /tasks includes status=completed, return HTTP 200 with only tasks whose status is completed.",
+      "When GET /tasks omits the status query parameter, return HTTP 200 with all tasks, preserving the current task collection ordering and behavior.",
+      "Use the existing TaskStatus type and route/service boundary: the route already extracts and validates the supported status values, and the task service must apply the optional status filter.",
+      "Retain the existing response shape and existing invalid-status behavior: unsupported provided status values return HTTP 400 with { error: \"invalid_status\" }.",
+      "Add or maintain automated coverage for both supported filters and for the omitted-status case, including a mixed pending/completed task set."
+    ],
+    "constraints": [
+      "Do not change task creation, completion, reopening, or task response shapes.",
+      "Only pending and completed are valid status values, as defined by TaskStatus and the existing route validation.",
+      "Filtering should be performed against the in-memory tasks represented by TaskService and should not mutate stored tasks.",
+      "Preserve insertion order of tasks in returned arrays, consistent with the existing Map-backed list behavior."
+    ],
+    "nonGoals": [
+      "No new status values or filtering criteria.",
+      "No pagination, sorting, search, or changes to task lifecycle semantics.",
+      "No changes to endpoint paths, HTTP methods, or error contracts beyond implementing the requested filter."
+    ],
+    "acceptance": [
+      "A mixed set containing pending and completed tasks produces only pending tasks for /tasks?status=pending.",
+      "The same mixed set produces only completed tasks for /tasks?status=completed.",
+      "GET /tasks without a status parameter returns both task statuses.",
+      "The existing test suite passes, including the status-filter tests."
+    ],
+    "verification": [
+      "Run the repository test command: npm test.",
+      "Confirm the status-filter tests exercise both status values and the omitted-status behavior, and that all tests pass."
+    ],
+    "ambiguities": [
+      {
+        "question": "How should unsupported or empty status query values be handled?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Preserve the existing route behavior: any non-null value other than pending or completed returns HTTP 400 with { error: \"invalid_status\" }.",
+        "basis": "src/tasks/task-routes.ts explicitly validates statusParam and returns the invalid_status response."
+      },
+      {
+        "question": "What ordering should filtered results use?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Preserve insertion order from the TaskService Map, applying the filter without reordering.",
+        "basis": "TaskService stores tasks in a Map and its current list implementation returns [...this.tasks.values()]; filtering that sequence preserves the established behavior."
+      },
+      {
+        "question": "Where is the missing behavior located?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Implement the optional status predicate in TaskService.list; the route already passes the parsed status to service.list.",
+        "basis": "src/tasks/task-routes.ts calls service.list(status ?? undefined), while src/tasks/task-service.ts currently ignores its _status parameter and documents the filter gap."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}
