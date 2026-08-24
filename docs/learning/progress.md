@@ -12,6 +12,7 @@ Completed modules:
 6. ✅ 06 — Tracing & Evals
 7. ✅ 07 — Skills
 8. ✅ 08 — Worktrees / Isolation
+9. ✅ 09 — Security Fundamentals
 
 Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with:
 
@@ -64,16 +65,20 @@ HarnessRunResult / raw traces
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
 
-## Current module (not formally closed)
+## Next module
 
-**09 — Security fundamentals**
+**Model Routing** — enter Phase 3 only from the Master/Roadmap chat. Do not start routing from a completed Topic Chat without a fresh roadmap decision.
 
-Status: implemented and evidenced; **not complete** until Topic Chat inspects the learning-critical code and evidence.
+---
+
+## Module: 09 — Security Fundamentals
+
+**Status:** ✅ COMPLETED — formally closed by Topic Chat on 2026-08-24 after code/evidence review.
 
 Theory: `docs/learning/lessons/09-security-fundamentals/theory.md`  
 Practical notes + evidence: `docs/learning/lessons/09-security-fundamentals/`
 
-Why this slice:
+### Why this slice
 
 - Module 08 isolates mutable Git/filesystem state, but a worktree is not a security boundary;
 - model-facing path/tool checks already constrain direct `read_file` / `write_file` / `run_command`;
@@ -94,12 +99,12 @@ Observed:
 
 ```text
 parent contains SEC01_SECRET          yes
-controlled app.ts executed            SEC01_PROBE_EXECUTED
-child observes SEC01_SECRET           no
-verification                          PASS
-sentinel in captured evidence         absent
-main checkout unchanged               yes
-cleanup / retry-safe                  yes / yes
+controlled app.ts executed           SEC01_PROBE_EXECUTED
+child observes SEC01_SECRET          no
+verification                         PASS
+sentinel in captured evidence        absent
+main checkout unchanged              yes
+cleanup / retry-safe                 yes / yes
 ```
 
 This demonstrates only that unnecessary parent environment secrets are not inherited by verification execution. It does not prove filesystem, network, or process sandboxing.
@@ -109,24 +114,43 @@ This demonstrates only that unnecessary parent environment secrets are not inher
 `docs/learning/lessons/09-security-fundamentals/traces/2026-08-24T12-52-23-876Z.txt`
 
 ```text
-ISO01 workspace isolation    PASS
+ISO01 workspace isolation            PASS
 SEC01 verification secret isolation  PASS
-T01–T04 expected outcomes    4 / 4
-Executable first-pass        3 / 3
-Correct escalation T04       1 / 1
-R01 verification repair      PASS
-REV01 independent review     PASS
-All fixed V3 contracts       6 / 6
-Hard regressions             none
+T01–T04 expected outcomes             4 / 4
+Executable first-pass                 3 / 3
+Correct escalation T04                1 / 1
+R01 verification repair               PASS
+REV01 independent review              PASS
+All fixed V3 contracts                6 / 6
+Hard regressions                      none
 ```
 
 SEC01 remains a security/mechanism result. It is not in `CAPABILITY_TASK_IDS` or first-pass denominators and does not turn `6/6` into `7/7`.
 
-### Not claimed
+### Closure
 
-Worktree + scoped tools still do **not** provide host filesystem containment for executed repository code, network containment, subprocess containment, or a sandbox for arbitrary hostile repositories.
+Module 09 satisfies the intended Security Fundamentals goal:
 
-After Topic Chat closure, return to the roadmap and enter Phase 3 with **Model Routing**. Do not start routing before Security is formally closed.
+- the threat model distinguishes assets, attack paths, trust boundaries and enforcement points;
+- provenance is separated from scoped authority;
+- model instructions are separated from harness policy, tool capability and OS/sandbox containment;
+- direct model-facing capability is distinguished from transitive/effective capability through executed repository code;
+- the real inherited-environment gap was fixed with a least-privilege positive allowlist shared by both verification paths;
+- SEC01 proves the targeted property through real execution rather than model cooperation;
+- security evidence remains semantically separate from capability scoring;
+- the implementation deliberately does not overclaim a general sandbox.
+
+No additional security infrastructure is required for the current trusted learning-repository scope.
+
+### Known non-blocking limits
+
+1. Executed repository code still has host filesystem access allowed by the OS/process account.
+2. Executed repository code can still use host network access.
+3. Executed repository code can still spawn subprocesses.
+4. `target-app/node_modules` remains shared with the host via symlink.
+5. Arbitrary hostile-repository execution would justify a stronger process/filesystem/network sandbox boundary later.
+
+Return to Master/Roadmap before entering the next module.
 
 ---
 
