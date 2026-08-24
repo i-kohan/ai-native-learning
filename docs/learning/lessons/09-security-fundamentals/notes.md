@@ -1,6 +1,6 @@
 # 09 — Security fundamentals
 
-Практический журнал. Минимальный verification env allowlist + SEC01. Formal closure остаётся за Topic Chat / Master.
+Практический журнал. Минимальный verification env allowlist + SEC01. Module 09 formally closed after Topic Chat code/evidence review on 2026-08-24.
 
 ## Что это за урок одной фразой
 
@@ -86,4 +86,15 @@ Hard regressions            none
 
 ## Topic Chat review
 
-Pending. Implementation и evidence готовы к inspection; модуль не закрывать только потому, что тесты зелёные.
+Completed on 2026-08-24.
+
+Accepted:
+
+- shared enforcement boundary for both verification paths;
+- positive allowlist instead of secret denylist;
+- deterministic SEC01 through real verification execution;
+- SEC01 separated from capability denominators;
+- fixed V3 regression remains 6/6, ISO01 PASS, SEC01 PASS;
+- claims remain narrow: no filesystem/network/subprocess sandbox is implied.
+
+No additional Module 09 implementation or experiment is required before returning to Master/Roadmap.
