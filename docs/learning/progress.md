@@ -96,17 +96,17 @@ Command: `cd harness && npm run benchmark:routing`
 
 Quality SLO (defined before the run): 3/3 valid R01 trials per model must satisfy the existing R01 repair contract.
 
-| Arm | Repair model | Valid / attempted | Contaminated | SLO |
-| --- | ------------ | ----------------- | ------------ | --- |
-| BASELINE | `gpt-5.6-luna` | 3 / 3 | 0 | MET 3/3 |
-| VARIANT | `gpt-5.6-terra` | 3 / 3 | 0 | MET 3/3 |
+| Arm      | Repair model    | Valid / attempted | Contaminated | SLO     |
+| -------- | --------------- | ----------------- | ------------ | ------- |
+| BASELINE | `gpt-5.6-luna`  | 3 / 3             | 0            | MET 3/3 |
+| VARIANT  | `gpt-5.6-terra` | 3 / 3             | 0            | MET 3/3 |
 
 Repair averages (valid trials):
 
-| Arm | calls/tools | tokens in/out | wall |
-| --- | ----------- | ------------- | ---- |
-| Luna | 4 / 6 | 17130 / 1031 | ~12.2s |
-| Terra | 4 / 7 | 17254 / 1009 | ~10.5s |
+| Arm   | calls/tools | tokens in/out | wall   |
+| ----- | ----------- | ------------- | ------ |
+| Luna  | 4 / 6       | 17130 / 1031  | ~12.2s |
+| Terra | 4 / 7       | 17254 / 1009  | ~10.5s |
 
 This report does **not** choose a permanent policy. Both models met the quality SLO.
 
