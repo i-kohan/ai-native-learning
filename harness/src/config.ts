@@ -12,6 +12,8 @@ dotenv.config({ path: path.join(REPO_ROOT, ".env") });
 export type HarnessConfig = {
   apiKey: string;
   model: string;
+  /** Optional override used only for the verification-repair episode. */
+  repairModel?: string;
   maxTurns: number;
   maxRepairAttempts: number;
   maxReviewRepairAttempts: number;
@@ -24,6 +26,7 @@ export type HarnessConfig = {
 export function loadConfig(): HarnessConfig {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim();
+  const repairModel = process.env.OPENAI_REPAIR_MODEL?.trim();
 
   if (!apiKey) {
     throw new Error(
@@ -41,6 +44,7 @@ export function loadConfig(): HarnessConfig {
   return {
     apiKey,
     model,
+    ...(repairModel ? { repairModel } : {}),
     maxTurns: 20,
     maxRepairAttempts: DEFAULT_MAX_REPAIR_ATTEMPTS,
     maxReviewRepairAttempts: DEFAULT_MAX_REVIEW_REPAIR_ATTEMPTS,

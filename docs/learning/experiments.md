@@ -1039,3 +1039,164 @@ Hypothesis supported for this suite:
 This does **not** prove host filesystem containment, network containment, subprocess containment, or a sandbox for arbitrary hostile repositories.
 
 Module 09 experiment recorded; formal module closure still pending Topic Chat review.
+
+---
+
+## Module 10 — Model Routing (repair-only override)
+
+### Hypothesis
+
+An explicit, deterministic phase→model resolver can route only the bounded verification-repair episode onto a stronger model, without changing tools, VERIFY, review, repair bounds, or other authority — and a controlled R01 comparison can show whether Terra is worth the extra cost on that episode, or whether Luna is already sufficient.
+
+No assumption that heterogeneous routing must win. "No routing justified by evidence" is a valid result.
+
+### Chosen routing axis
+
+Deterministic `phase` / semantic episode. Not task-class, not LLM-selected, not complexity prediction.
+
+### Why repair first
+
+R01 is already a controlled FAIL→repair→PASS probe with normalized failure evidence and a fixed quality contract. It isolates the repair episode better than a whole-workflow Luna-vs-Terra comparison.
+
+### Baseline
+
+```text
+OPENAI_MODEL=gpt-5.6-luna
+OPENAI_REPAIR_MODEL absent
+→ spec / implementation / repair / review / review_repair all use Luna
+```
+
+3 independent valid R01 trials.
+
+### Variant
+
+```text
+OPENAI_MODEL=gpt-5.6-luna
+OPENAI_REPAIR_MODEL=gpt-5.6-terra
+→ spec / implementation / review / review_repair: Luna
+→ repair: Terra
+```
+
+3 independent valid R01 trials. Not Luna-everywhere vs Terra-everywhere.
+
+### Quality SLO (defined before the experiment)
+
+For each model: 3 independent valid R01 repair trials.
+
+A model meets the SLO only if **all** 3/3 valid trials satisfy the existing R01 repair contract:
+
+- exactly one bounded verification-repair episode;
+- first verification FAIL;
+- next verification PASS;
+- final verification PASS;
+- no repeated failure;
+- workflow success;
+- repair changes only allowed source scope;
+- no modification of tests/spec/verify/harness artifacts by the repair.
+
+### Controlled variables
+
+Same R01 task, green fixture, workspace isolation, deterministic 404→500 fault, VERIFY, repair bounds, tools, prompts, and review path. Only the repair-episode model differs.
+
+### Trial-validity rule
+
+A trial counts for the repair comparison only if:
+
+1. R01 controlled fault was injected;
+2. first post-injection VERIFY is FAIL;
+3. normalized failure exists;
+4. failure matches the intended R01 404→500 defect;
+5. the repair episode actually starts.
+
+Otherwise the trial is contaminated, not a model-quality failure, and is replaced until 3 valid trials exist (cap 6 attempts/arm).
+
+### Measurements
+
+Per valid trial: repair model / routing reason / phase; R01 expectedOutcomeMet; first/second verify; repair success; workflow success; repeated failure; repair/verification attempts; repair model/tool calls, tokens, wall time; whole-workflow calls/tokens/wall time when available. No fabricated tokens. No hardcoded monetary pricing.
+
+### Results
+
+Command: `cd harness && npm run benchmark:routing`
+
+Evidence:
+
+- report: `docs/learning/lessons/10-model-routing/traces/routing-m10-2026-08-25T10-54-03-280Z.txt`
+- json: `docs/learning/lessons/10-model-routing/traces/routing-m10-2026-08-25T10-54-03-280Z.json`
+- raw trial traces in the same folder
+
+Contaminated trials: **none** (3/3 attempted valid on both arms).
+
+#### BASELINE — Luna repair
+
+| Trial | expected | verify | repair calls/tools | repair tokens in/out | repair ms | workflow calls | workflow tokens in/out | wall ms |
+| ----- | -------- | ------ | ------------------ | -------------------- | --------- | -------------- | ---------------------- | ------- |
+| 1 | yes | FAIL→PASS | 4 / 6 | 14911 / 1030 | 13761 | 10 | 26864 / 2017 | 34930 |
+| 2 | yes | FAIL→PASS | 4 / 7 | 18422 / 1032 | 11240 | 10 | 31184 / 2144 | 29300 |
+| 3 | yes | FAIL→PASS | 4 / 6 | 18058 / 1031 | 11687 | 10 | 30362 / 2078 | 29496 |
+| avg | 3/3 SLO MET | | 4 / 6 | 17130 / 1031 | 12229 | 10 | 29470 / 2080 | 31242 |
+
+Routing: `phase=repair`, `model=gpt-5.6-luna`, `reason=default`.
+
+#### VARIANT — Terra repair
+
+| Trial | expected | verify | repair calls/tools | repair tokens in/out | repair ms | workflow calls | workflow tokens in/out | wall ms |
+| ----- | -------- | ------ | ------------------ | -------------------- | --------- | -------------- | ---------------------- | ------- |
+| 1 | yes | FAIL→PASS | 4 / 7 | 18281 / 1017 | 10983 | 11 | 33828 / 2079 | 31332 |
+| 2 | yes | FAIL→PASS | 4 / 7 | 18291 / 1016 | 10173 | 10 | 30739 / 2122 | 31544 |
+| 3 | yes | FAIL→PASS | 4 / 6 | 15191 / 994 | 10460 | 10 | 29321 / 2064 | 28578 |
+| avg | 3/3 SLO MET | | 4 / 7 | 17254 / 1009 | 10539 | 10 | 31296 / 2088 | 30485 |
+
+Routing: `phase=repair`, `model=gpt-5.6-terra`, `reason=repair_override`. Spec/implementation/review stayed on Luna.
+
+### Predefined decision rule (not applied by this report)
+
+1. Luna 3/3, Terra 3/3: compare efficiency. Stronger routing is justified only if Terra provides a meaningful reliability/latency/workflow benefit that offsets its substantially higher token price.
+2. Luna <3/3, Terra 3/3: `repair → Terra` becomes an evidence-supported routing candidate.
+3. both <3/3: do not conclude routing solves the problem.
+4. noisy / insufficient evidence: no permanent routing decision.
+
+Observed against that rule: **both 3/3**. Quality did not separate the models on this probe. Repair token counts were similar; Terra repair wall time was slightly lower on this sample (~10.5s vs ~12.2s). This report does **not** select a permanent routing policy.
+
+### Fixed regression (kept separate from routing trials)
+
+`docs/learning/lessons/10-model-routing/traces/2026-08-25T11-00-45-136Z.txt`  
+Suite label remains `fixed-v3-m09`.
+
+```text
+T01–T04 expected outcomes   4 / 4
+Executable first-pass       3 / 3
+Correct escalation T04      1 / 1
+R01 verification repair     PASS
+REV01 independent review    PASS
+All fixed V3 contracts      6 / 6
+ISO01                       PASS
+SEC01                       PASS
+Hard regressions            none
+```
+
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 13      | 19003 / 1863  | ~25s |
+| T02   | capability | yes      | yes        | PASS      | 8 / 15      | 18563 / 1775  | ~28s |
+| T03   | capability | yes      | yes        | PASS      | 7 / 14      | 18729 / 1477  | ~29s |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4444 / 925    | ~20s |
+| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 21     | 32599 / 2196  | ~38s |
+| REV01 | probe      | yes      | no         | PASS→PASS | 11 / 21     | 29126 / 2539  | ~51s |
+
+Routing comparison runs were not added to this 6/6 denominator.
+
+Harness unit tests: 94 passed.
+
+### Failures / unexpected behavior
+
+None against the routing mechanism or R01 validity rule. No contaminated trials. Variant trial 1 used 11 whole-workflow model calls instead of 10 (one extra non-repair turn); repair-episode call count stayed at 4.
+
+### Conclusion
+
+Hypothesis about the **mechanism** is supported: one explicit resolver can change only the repair model, leave `review_repair` on the default, and keep existing V3 contracts at 6/6.
+
+On this R01 probe, both Luna and Terra met the predefined quality SLO 3/3. That is rule (1): efficiency comparison is available; it is **not** an automatic decision to keep or drop the Terra override.
+
+This does **not** prove routing helps on naturally occurring repairs, other episodes, or other models.
+
+Module 10 experiment recorded; formal module closure and any permanent routing policy remain for Topic Chat.

@@ -21,7 +21,8 @@ Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + i
 - per-run Git worktree isolation for benchmark/eval execution;
 - exact workspace provenance via `baseRevision`;
 - workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace;
-- verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`.
+- verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`;
+- optional deterministic model routing: `resolveModel(episode, config)` with an optional `OPENAI_REPAIR_MODEL` override that applies only to the verification-repair episode.
 
 This is **not** a sandbox: executed repository code can still touch host files, network, and subprocesses.
 
@@ -65,9 +66,69 @@ HarnessRunResult / raw traces
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
 
-## Next module
+## Current module (not formally closed)
 
-**Model Routing** — enter Phase 3 only from the Master/Roadmap chat. Do not start routing from a completed Topic Chat without a fresh roadmap decision.
+**10 — Model Routing**
+
+Status: implemented and evidenced; **not complete** until Topic Chat inspects the learning-critical code and evidence. No permanent routing policy has been selected.
+
+Practical notes + evidence: `docs/learning/lessons/10-model-routing/`  
+Do not treat `theory.md` as written yet.
+
+Why this slice:
+
+- evals exist, so routing can be measured instead of guessed;
+- the first axis is deterministic `phase`;
+- the first target episode is bounded verification-repair (`repair` only);
+- `review_repair` is a different episode and must not inherit the repair override.
+
+### Built
+
+- `resolveModel(episode, config)` — selects only the model;
+- optional `OPENAI_REPAIR_MODEL`; absent → every LLM episode uses `OPENAI_MODEL`;
+- present → only `phase === "repair"` uses the override;
+- traces record `episode`, `model`, `routingReason` (`default` | `repair_override`);
+- separate `npm run benchmark:routing` experiment (not folded into fixed 6/6).
+
+### Routing experiment
+
+Command: `cd harness && npm run benchmark:routing`
+
+Quality SLO (defined before the run): 3/3 valid R01 trials per model must satisfy the existing R01 repair contract.
+
+| Arm | Repair model | Valid / attempted | Contaminated | SLO |
+| --- | ------------ | ----------------- | ------------ | --- |
+| BASELINE | `gpt-5.6-luna` | 3 / 3 | 0 | MET 3/3 |
+| VARIANT | `gpt-5.6-terra` | 3 / 3 | 0 | MET 3/3 |
+
+Repair averages (valid trials):
+
+| Arm | calls/tools | tokens in/out | wall |
+| --- | ----------- | ------------- | ---- |
+| Luna | 4 / 6 | 17130 / 1031 | ~12.2s |
+| Terra | 4 / 7 | 17254 / 1009 | ~10.5s |
+
+This report does **not** choose a permanent policy. Both models met the quality SLO.
+
+### Fresh regression evidence
+
+`docs/learning/lessons/10-model-routing/traces/2026-08-25T11-00-45-136Z.txt`
+
+```text
+ISO01 workspace isolation    PASS
+SEC01 verification secret isolation  PASS
+T01–T04 expected outcomes    4 / 4
+Executable first-pass        3 / 3
+Correct escalation T04       1 / 1
+R01 verification repair      PASS
+REV01 independent review     PASS
+All fixed V3 contracts       6 / 6
+Hard regressions             none
+```
+
+Suite version remains `fixed-v3-m09`. Routing trials were not added to the 6/6 denominator.
+
+Harness unit tests: 94 passed.
 
 ---
 
@@ -149,8 +210,6 @@ No additional security infrastructure is required for the current trusted learni
 3. Executed repository code can still spawn subprocesses.
 4. `target-app/node_modules` remains shared with the host via symlink.
 5. Arbitrary hostile-repository execution would justify a stronger process/filesystem/network sandbox boundary later.
-
-Return to Master/Roadmap before entering the next module.
 
 ---
 

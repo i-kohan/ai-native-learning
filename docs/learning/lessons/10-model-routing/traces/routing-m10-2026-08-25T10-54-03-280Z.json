@@ -1,0 +1,253 @@
+{
+  "experimentId": "m10-repair-routing",
+  "generatedAt": "2026-08-25T10:54:03.280Z",
+  "defaultModel": "gpt-5.6-luna",
+  "qualitySlo": "3/3 valid R01 trials satisfy the existing R01 repair contract (one verification-repair, FAIL then PASS, final PASS, no repeated failure, workflow success, source-only repair).",
+  "decisionRule": "Predefined decision rule (not applied by this report):\n1. Luna 3/3, Terra 3/3: compare efficiency. Stronger routing is justified only if Terra provides a meaningful reliability/latency/workflow benefit that offsets its substantially higher token price.\n2. Luna <3/3, Terra 3/3: repair → Terra becomes an evidence-supported routing candidate.\n3. both <3/3: do not conclude routing solves the problem.\n4. noisy / insufficient evidence: no permanent routing decision.",
+  "policyConclusion": "not_applied",
+  "baseline": {
+    "id": "baseline",
+    "label": "BASELINE — Luna repair",
+    "repairModel": "gpt-5.6-luna",
+    "routingReason": "default",
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "sloMet": true,
+    "trials": [
+      {
+        "arm": "baseline",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "R01-routing-baseline-1-2026-08-25T10-54-03-281Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/R01-routing-baseline-1-2026-08-25T10-54-03-281Z.jsonl",
+        "metrics": {
+          "repairModel": "gpt-5.6-luna",
+          "routingReason": "default",
+          "phase": "repair",
+          "expectedOutcomeMet": true,
+          "firstVerify": "FAIL",
+          "secondVerify": "PASS",
+          "repairSuccess": true,
+          "eventualWorkflowSuccess": true,
+          "repeatedFailure": false,
+          "repairAttempts": 1,
+          "verificationAttempts": 2,
+          "repairModelCalls": 4,
+          "repairToolCalls": 6,
+          "repairInputTokens": 14911,
+          "repairOutputTokens": 1030,
+          "repairWallTimeMs": 13761,
+          "workflowModelCalls": 10,
+          "workflowInputTokens": 26864,
+          "workflowOutputTokens": 2017,
+          "workflowWallTimeMs": 34930
+        }
+      },
+      {
+        "arm": "baseline",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "R01-routing-baseline-2-2026-08-25T10-54-38-952Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/R01-routing-baseline-2-2026-08-25T10-54-38-952Z.jsonl",
+        "metrics": {
+          "repairModel": "gpt-5.6-luna",
+          "routingReason": "default",
+          "phase": "repair",
+          "expectedOutcomeMet": true,
+          "firstVerify": "FAIL",
+          "secondVerify": "PASS",
+          "repairSuccess": true,
+          "eventualWorkflowSuccess": true,
+          "repeatedFailure": false,
+          "repairAttempts": 1,
+          "verificationAttempts": 2,
+          "repairModelCalls": 4,
+          "repairToolCalls": 7,
+          "repairInputTokens": 18422,
+          "repairOutputTokens": 1032,
+          "repairWallTimeMs": 11240,
+          "workflowModelCalls": 10,
+          "workflowInputTokens": 31184,
+          "workflowOutputTokens": 2144,
+          "workflowWallTimeMs": 29300
+        }
+      },
+      {
+        "arm": "baseline",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "R01-routing-baseline-3-2026-08-25T10-55-08-982Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/R01-routing-baseline-3-2026-08-25T10-55-08-982Z.jsonl",
+        "metrics": {
+          "repairModel": "gpt-5.6-luna",
+          "routingReason": "default",
+          "phase": "repair",
+          "expectedOutcomeMet": true,
+          "firstVerify": "FAIL",
+          "secondVerify": "PASS",
+          "repairSuccess": true,
+          "eventualWorkflowSuccess": true,
+          "repeatedFailure": false,
+          "repairAttempts": 1,
+          "verificationAttempts": 2,
+          "repairModelCalls": 4,
+          "repairToolCalls": 6,
+          "repairInputTokens": 18058,
+          "repairOutputTokens": 1031,
+          "repairWallTimeMs": 11687,
+          "workflowModelCalls": 10,
+          "workflowInputTokens": 30362,
+          "workflowOutputTokens": 2078,
+          "workflowWallTimeMs": 29496
+        }
+      }
+    ],
+    "contaminated": [],
+    "averages": {
+      "repairModelCalls": 4,
+      "repairToolCalls": 6,
+      "repairInputTokens": 17130,
+      "repairOutputTokens": 1031,
+      "repairWallTimeMs": 12229,
+      "workflowModelCalls": 10,
+      "workflowInputTokens": 29470,
+      "workflowOutputTokens": 2080,
+      "workflowWallTimeMs": 31242
+    }
+  },
+  "variant": {
+    "id": "variant",
+    "label": "VARIANT — Terra repair",
+    "repairModel": "gpt-5.6-terra",
+    "routingReason": "repair_override",
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "sloMet": true,
+    "trials": [
+      {
+        "arm": "variant",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "R01-routing-variant-1-2026-08-25T10-55-39-211Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/R01-routing-variant-1-2026-08-25T10-55-39-211Z.jsonl",
+        "metrics": {
+          "repairModel": "gpt-5.6-terra",
+          "routingReason": "repair_override",
+          "phase": "repair",
+          "expectedOutcomeMet": true,
+          "firstVerify": "FAIL",
+          "secondVerify": "PASS",
+          "repairSuccess": true,
+          "eventualWorkflowSuccess": true,
+          "repeatedFailure": false,
+          "repairAttempts": 1,
+          "verificationAttempts": 2,
+          "repairModelCalls": 4,
+          "repairToolCalls": 7,
+          "repairInputTokens": 18281,
+          "repairOutputTokens": 1017,
+          "repairWallTimeMs": 10983,
+          "workflowModelCalls": 11,
+          "workflowInputTokens": 33828,
+          "workflowOutputTokens": 2079,
+          "workflowWallTimeMs": 31332
+        }
+      },
+      {
+        "arm": "variant",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "R01-routing-variant-2-2026-08-25T10-56-11-271Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/R01-routing-variant-2-2026-08-25T10-56-11-271Z.jsonl",
+        "metrics": {
+          "repairModel": "gpt-5.6-terra",
+          "routingReason": "repair_override",
+          "phase": "repair",
+          "expectedOutcomeMet": true,
+          "firstVerify": "FAIL",
+          "secondVerify": "PASS",
+          "repairSuccess": true,
+          "eventualWorkflowSuccess": true,
+          "repeatedFailure": false,
+          "repairAttempts": 1,
+          "verificationAttempts": 2,
+          "repairModelCalls": 4,
+          "repairToolCalls": 7,
+          "repairInputTokens": 18291,
+          "repairOutputTokens": 1016,
+          "repairWallTimeMs": 10173,
+          "workflowModelCalls": 10,
+          "workflowInputTokens": 30739,
+          "workflowOutputTokens": 2122,
+          "workflowWallTimeMs": 31544
+        }
+      },
+      {
+        "arm": "variant",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "R01-routing-variant-3-2026-08-25T10-56-43-551Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/R01-routing-variant-3-2026-08-25T10-56-43-551Z.jsonl",
+        "metrics": {
+          "repairModel": "gpt-5.6-terra",
+          "routingReason": "repair_override",
+          "phase": "repair",
+          "expectedOutcomeMet": true,
+          "firstVerify": "FAIL",
+          "secondVerify": "PASS",
+          "repairSuccess": true,
+          "eventualWorkflowSuccess": true,
+          "repeatedFailure": false,
+          "repairAttempts": 1,
+          "verificationAttempts": 2,
+          "repairModelCalls": 4,
+          "repairToolCalls": 6,
+          "repairInputTokens": 15191,
+          "repairOutputTokens": 994,
+          "repairWallTimeMs": 10460,
+          "workflowModelCalls": 10,
+          "workflowInputTokens": 29321,
+          "workflowOutputTokens": 2064,
+          "workflowWallTimeMs": 28578
+        }
+      }
+    ],
+    "contaminated": [],
+    "averages": {
+      "repairModelCalls": 4,
+      "repairToolCalls": 7,
+      "repairInputTokens": 17254,
+      "repairOutputTokens": 1009,
+      "repairWallTimeMs": 10539,
+      "workflowModelCalls": 10,
+      "workflowInputTokens": 31296,
+      "workflowOutputTokens": 2088,
+      "workflowWallTimeMs": 30485
+    }
+  },
+  "report": "=== Model Routing Experiment (m10-repair-routing) ===\n\ndefault_model: gpt-5.6-luna\naxis: deterministic phase\nfirst_target_episode: repair\nquality_slo: 3/3 valid R01 trials satisfy the existing R01 repair contract (one verification-repair, FAIL then PASS, final PASS, no repeated failure, workflow success, source-only repair).\npolicy_conclusion: not applied by this report\n\nPredefined decision rule (not applied by this report):\n1. Luna 3/3, Terra 3/3: compare efficiency. Stronger routing is justified only if Terra provides a meaningful reliability/latency/workflow benefit that offsets its substantially higher token price.\n2. Luna <3/3, Terra 3/3: repair → Terra becomes an evidence-supported routing candidate.\n3. both <3/3: do not conclude routing solves the problem.\n4. noisy / insufficient evidence: no permanent routing decision.\n\nBASELINE — Luna repair\nrepair_model: gpt-5.6-luna\nrouting_reason: default\nvalid_trials: 3 / attempted 3\ncontaminated: 0\nslo: MET 3/3\n  valid#1 model=gpt-5.6-luna reason=default phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/6 repair_tokens=14911/1030 repair_ms=13761 workflow_calls=10 workflow_tokens=26864/2017 workflow_ms=34930\n  valid#2 model=gpt-5.6-luna reason=default phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/7 repair_tokens=18422/1032 repair_ms=11240 workflow_calls=10 workflow_tokens=31184/2144 workflow_ms=29300\n  valid#3 model=gpt-5.6-luna reason=default phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/6 repair_tokens=18058/1031 repair_ms=11687 workflow_calls=10 workflow_tokens=30362/2078 workflow_ms=29496\n  averages: repair_calls=4/6 repair_tokens=17130/1031 repair_ms=12229 workflow_calls=10 workflow_tokens=29470/2080 workflow_ms=31242\n\nVARIANT — Terra repair\nrepair_model: gpt-5.6-terra\nrouting_reason: repair_override\nvalid_trials: 3 / attempted 3\ncontaminated: 0\nslo: MET 3/3\n  valid#1 model=gpt-5.6-terra reason=repair_override phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/7 repair_tokens=18281/1017 repair_ms=10983 workflow_calls=11 workflow_tokens=33828/2079 workflow_ms=31332\n  valid#2 model=gpt-5.6-terra reason=repair_override phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/7 repair_tokens=18291/1016 repair_ms=10173 workflow_calls=10 workflow_tokens=30739/2122 workflow_ms=31544\n  valid#3 model=gpt-5.6-terra reason=repair_override phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/6 repair_tokens=15191/994 repair_ms=10460 workflow_calls=10 workflow_tokens=29321/2064 workflow_ms=28578\n  averages: repair_calls=4/7 repair_tokens=17254/1009 repair_ms=10539 workflow_calls=10 workflow_tokens=31296/2088 workflow_ms=30485"
+}

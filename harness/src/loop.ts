@@ -17,6 +17,7 @@ import {
   toSkillLoadRecord,
   type SkillLoadRecord,
 } from "./skills.ts";
+import { resolveModel, routingTraceFields } from "./model-routing.ts";
 import { TOOL_DEFINITIONS, executeTool } from "./tools.ts";
 import { Tracer } from "./trace.ts";
 import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
@@ -82,6 +83,7 @@ export async function runAgentLoop(options: {
     options.beforeSnapshot ?? snapshotDirectory(config.targetSrcRoot);
   const discovery = new DiscoveryTracker();
   let tokenUsage: TokenUsageSummary | null = null;
+  const selection = resolveModel(phase, config);
 
   const client = new OpenAI({ apiKey: config.apiKey });
   const instructions =
@@ -127,13 +129,14 @@ export async function runAgentLoop(options: {
   if (!nested) {
     tracer.record("run_started", {
       task,
-      model: config.model,
+      ...routingTraceFields(selection),
       maxTurns: config.maxTurns,
       phase,
       ...(spec ? { specStatus: "provided" } : {}),
     });
   } else if (phase === "implementation") {
     tracer.record("implementation_started", {
+      ...routingTraceFields(selection),
       specGoal: spec?.goal ?? null,
       requirementCount: spec?.requirements.length ?? 0,
       reusableContextProvided: Boolean(reusableContext),
@@ -148,13 +151,13 @@ export async function runAgentLoop(options: {
 
       tracer.record(
         "model_call_started",
-        { model: config.model, phase },
+        { ...routingTraceFields(selection), phase },
         turns,
       );
       const callStarted = Date.now();
 
       const response = await client.responses.create({
-        model: config.model,
+        model: selection.model,
         instructions,
         input: input as never,
         tools: TOOL_DEFINITIONS as never,

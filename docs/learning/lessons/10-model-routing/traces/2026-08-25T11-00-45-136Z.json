@@ -1,0 +1,716 @@
+{
+  "suiteVersion": "fixed-v3-m09",
+  "runCount": 6,
+  "allFixedContracts": {
+    "met": 6,
+    "total": 6
+  },
+  "capability": {
+    "expectedOutcomesMet": {
+      "met": 4,
+      "total": 4
+    },
+    "executableTaskCount": 3,
+    "firstPassSuccess": {
+      "met": 3,
+      "total": 3
+    },
+    "eventualSuccess": {
+      "met": 3,
+      "total": 3
+    },
+    "recoveredSuccess": {
+      "met": 0,
+      "total": 3
+    },
+    "correctEscalations": {
+      "met": 1,
+      "total": 1
+    },
+    "autonomousCompletion": {
+      "met": 3,
+      "total": 4
+    },
+    "humanEscalation": {
+      "met": 1,
+      "total": 4
+    },
+    "knownEscapedDefects": {
+      "count": 0,
+      "independentGroundTruthRuns": 0
+    }
+  },
+  "probes": {
+    "R01": {
+      "mechanism": "verification_repair",
+      "passed": true
+    },
+    "REV01": {
+      "mechanism": "independent_review_repair",
+      "passed": true
+    }
+  },
+  "isolation": {
+    "ISO01": {
+      "mechanism": "workspace_isolation",
+      "passed": true
+    }
+  },
+  "security": {
+    "SEC01": {
+      "mechanism": "verification_secret_isolation",
+      "passed": true
+    }
+  },
+  "recurringFindings": [
+    {
+      "findingKey": "completion-transition-bypasses-service",
+      "category": "architecture",
+      "observed": 1,
+      "acceptedBlocking": 1,
+      "acceptedNonBlocking": 0,
+      "rejected": 0,
+      "repeatedAfterRepair": 0
+    }
+  ],
+  "regressions": [],
+  "diagnostics": [],
+  "runs": [
+    {
+      "identity": {
+        "runId": "T01-variant-2026-08-25T10-57-29-579Z",
+        "taskId": "T01",
+        "taskKind": "capability_regression",
+        "suiteVersion": "fixed-v3-m09"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": null,
+        "grader": {
+          "name": "target-app npm test",
+          "passed": true,
+          "independentOfHarnessVerify": false
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 7,
+        "toolCalls": 13,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 9
+        },
+        "inputTokens": 19003,
+        "outputTokens": 1863,
+        "wallTimeMs": 25078,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4497,
+            "outputTokens": 803,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 4,
+            "toolCalls": 5,
+            "inputTokens": 12517,
+            "outputTokens": 1005,
+            "wallTimeMs": 11877
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 415
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 1989,
+            "outputTokens": 55,
+            "wallTimeMs": 1493
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "T02-variant-2026-08-25T10-57-55-444Z",
+        "taskId": "T02",
+        "taskKind": "capability_regression",
+        "suiteVersion": "fixed-v3-m09"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": null,
+        "grader": {
+          "name": "target-app npm test",
+          "passed": true,
+          "independentOfHarnessVerify": false
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 8,
+        "toolCalls": 15,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 11
+        },
+        "inputTokens": 18563,
+        "outputTokens": 1775,
+        "wallTimeMs": 27818,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4514,
+            "outputTokens": 1171,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 4,
+            "toolCalls": 7,
+            "inputTokens": 10805,
+            "outputTokens": 578,
+            "wallTimeMs": 10110
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 421
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 2,
+            "toolCalls": 1,
+            "inputTokens": 3244,
+            "outputTokens": 26,
+            "wallTimeMs": 2120
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "T03-variant-2026-08-25T10-58-24-039Z",
+        "taskId": "T03",
+        "taskKind": "capability_regression",
+        "suiteVersion": "fixed-v3-m09"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": null,
+        "grader": {
+          "name": "target-app npm test",
+          "passed": true,
+          "independentOfHarnessVerify": false
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 7,
+        "toolCalls": 14,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 10
+        },
+        "inputTokens": 18729,
+        "outputTokens": 1477,
+        "wallTimeMs": 29317,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4512,
+            "outputTokens": 853,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 4,
+            "toolCalls": 6,
+            "inputTokens": 12419,
+            "outputTokens": 523,
+            "wallTimeMs": 15621
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 464
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 1798,
+            "outputTokens": 101,
+            "wallTimeMs": 2034
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "T04-variant-2026-08-25T10-58-54-172Z",
+        "taskId": "T04",
+        "taskKind": "capability_regression",
+        "suiteVersion": "fixed-v3-m09"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "needs_human_judgment",
+        "failureLayer": null,
+        "autonomousCompletion": false,
+        "humanEscalation": true,
+        "specDecision": "needs_human_judgment",
+        "implementationStarted": false,
+        "firstPassSuccess": null,
+        "eventualSuccess": null,
+        "recoveredSuccess": null,
+        "escapedDefect": null,
+        "grader": {
+          "name": "none",
+          "passed": null,
+          "independentOfHarnessVerify": false
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": null,
+        "verificationAttempts": 0,
+        "verificationSequence": [],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 0,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 2,
+        "toolCalls": 7,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 6
+        },
+        "inputTokens": 4444,
+        "outputTokens": 925,
+        "wallTimeMs": 19888,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4444,
+            "outputTokens": 925,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "verification": {
+            "attempts": 0,
+            "wallTimeMs": 0
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "R01-repair-2026-08-25T10-59-14-858Z",
+        "taskId": "R01",
+        "taskKind": "mechanism_probe",
+        "mechanism": "verification_repair",
+        "suiteVersion": "fixed-v3-m09"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": false,
+        "eventualSuccess": true,
+        "recoveredSuccess": true,
+        "escapedDefect": null,
+        "grader": {
+          "name": "target-app npm test",
+          "passed": true,
+          "independentOfHarnessVerify": false
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": false,
+        "verificationAttempts": 2,
+        "verificationSequence": [
+          "FAIL",
+          "PASS"
+        ],
+        "verificationRepairAttempts": 1,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 10,
+        "toolCalls": 21,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 10
+        },
+        "inputTokens": 32599,
+        "outputTokens": 2196,
+        "wallTimeMs": 37734,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4481,
+            "outputTokens": 854,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 3,
+            "toolCalls": 5,
+            "inputTokens": 8365,
+            "outputTokens": 227,
+            "wallTimeMs": 6180
+          },
+          "verification": {
+            "attempts": 2,
+            "wallTimeMs": 852
+          },
+          "repair": {
+            "modelCalls": 4,
+            "toolCalls": 8,
+            "inputTokens": 18504,
+            "outputTokens": 1066,
+            "wallTimeMs": 18703
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 1249,
+            "outputTokens": 49,
+            "wallTimeMs": 1511
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": [
+          {
+            "skillId": "evidence-guided-repair",
+            "phase": "repair",
+            "contentHash": "efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25"
+          }
+        ]
+      },
+      "probe": {
+        "mechanism": "verification_repair",
+        "succeeded": true,
+        "controlledFailureTriggered": true
+      }
+    },
+    {
+      "identity": {
+        "runId": "REV01-review-2026-08-25T10-59-53-325Z",
+        "taskId": "REV01",
+        "taskKind": "mechanism_probe",
+        "mechanism": "independent_review_repair",
+        "suiteVersion": "fixed-v3-m09"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": false,
+        "eventualSuccess": true,
+        "recoveredSuccess": true,
+        "escapedDefect": null,
+        "grader": {
+          "name": "target-app npm test",
+          "passed": true,
+          "independentOfHarnessVerify": false
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 2,
+        "verificationSequence": [
+          "PASS",
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 2,
+        "reviewRepairAttempts": 1,
+        "repeatedFinding": false,
+        "findingsObserved": 1,
+        "acceptedBlocking": 1,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": [
+          {
+            "findingKey": "completion-transition-bypasses-service",
+            "category": "architecture",
+            "severity": "high",
+            "decision": "accepted_blocking",
+            "reviewRound": 1,
+            "repeatedAfterRepair": false
+          }
+        ]
+      },
+      "efficiency": {
+        "modelCalls": 11,
+        "toolCalls": 21,
+        "repoDiscoveryToolCalls": {
+          "list_files": 1,
+          "read_file": 10
+        },
+        "inputTokens": 29126,
+        "outputTokens": 2539,
+        "wallTimeMs": 51095,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4471,
+            "outputTokens": 968,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 3,
+            "toolCalls": 6,
+            "inputTokens": 7121,
+            "outputTokens": 245,
+            "wallTimeMs": 6504
+          },
+          "verification": {
+            "attempts": 2,
+            "wallTimeMs": 882
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 2,
+            "toolCalls": 2,
+            "inputTokens": 3595,
+            "outputTokens": 299,
+            "wallTimeMs": 6559
+          },
+          "review_repair": {
+            "modelCalls": 4,
+            "toolCalls": 6,
+            "inputTokens": 13939,
+            "outputTokens": 1027,
+            "wallTimeMs": 22780
+          }
+        }
+      },
+      "skills": {
+        "loads": [
+          {
+            "skillId": "evidence-guided-repair",
+            "phase": "review_repair",
+            "contentHash": "efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25"
+          }
+        ]
+      },
+      "probe": {
+        "mechanism": "independent_review_repair",
+        "succeeded": true,
+        "intendedFindingDetected": true,
+        "unexpectedBlockingFindings": 0
+      }
+    }
+  ],
+  "report": "=== Eval Report (fixed-v3-m09) ===\n\nCapability / Regression\nExpected outcomes      4 / 4\nExecutable tasks        3\nFirst-pass success     3 / 3\nEventual success       3 / 3\nRecovered success      0 / 3\nCorrect escalations    1 / 1\nAutonomous completion  3 / 4\nHuman escalation       1 / 4\nKnown escaped defects   n/a (grader = harness VERIFY; no independent ground truth)\n\nMechanism probes\nR01 verification repair      PASS\nREV01 independent review     PASS\n\nIsolation\nISO01 workspace isolation    PASS\n(not included in capability first-pass / task-success denominators)\n\nSecurity\nSEC01 verification secret isolation      PASS\n(not included in capability first-pass / task-success denominators)\n\nSkills\nT01   (none)\nT02   (none)\nT03   (none)\nT04   (none)\nR01   evidence-guided-repair@repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\nREV01 evidence-guided-repair@review_repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\n\nAll fixed benchmark contracts  6 / 6\n(qualified: capability expected outcomes + probe contracts, not an overall success rate)\n\nHard regressions\n- (none)\n\nDiagnostics (not correctness regressions)\n- (none)\n\nPer-run\nT01  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none\nT02  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none\nT03  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none\nT04  capability_regression  expected=yes  first_pass=n/a  autonomous=false  escalate=true  verify=n/a  skills=none\nR01  mechanism_probe/verification_repair  expected=yes  first_pass=no  autonomous=true  escalate=false  verify=FAIL→PASS  skills=evidence-guided-repair@repair controlled_fail=true\nREV01  mechanism_probe/independent_review_repair  expected=yes  first_pass=no  autonomous=true  escalate=false  verify=PASS→PASS  skills=evidence-guided-repair@review_repair intended=true unexpected_blocking=0",
+  "generatedAt": "2026-08-25T11:00:45.136Z"
+}

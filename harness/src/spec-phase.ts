@@ -22,6 +22,7 @@ import {
   type RepositoryMap,
   type TokenUsageSummary,
 } from "./context.ts";
+import { resolveModel, routingTraceFields } from "./model-routing.ts";
 import { READ_ONLY_TOOL_DEFINITIONS, executeReadOnlyTool } from "./tools.ts";
 import type { Tracer } from "./trace.ts";
 
@@ -62,6 +63,7 @@ export async function buildSpec(options: {
   const { config, task, tracer } = options;
   const contextMode = options.contextMode ?? "baseline";
   const startedAt = Date.now();
+  const selection = resolveModel("spec", config);
   const client = new OpenAI({ apiKey: config.apiKey });
   const discovery = new DiscoveryTracker();
   let tokenUsage: TokenUsageSummary | null = null;
@@ -87,7 +89,7 @@ export async function buildSpec(options: {
 
   tracer.record("spec_phase_started", {
     task,
-    model: config.model,
+    ...routingTraceFields(selection),
     tools: SPEC_TOOLS.map((tool) => tool.name),
     contextMode,
     repositoryMapProvided: Boolean(options.repositoryMap),
@@ -98,11 +100,15 @@ export async function buildSpec(options: {
       turns += 1;
       modelCalls += 1;
 
-      tracer.record("spec_model_call_started", { model: config.model }, turns);
+      tracer.record(
+        "spec_model_call_started",
+        routingTraceFields(selection),
+        turns,
+      );
       const callStarted = Date.now();
 
       const response = await client.responses.create({
-        model: config.model,
+        model: selection.model,
         instructions: SPEC_INSTRUCTIONS,
         input: input as never,
         tools: SPEC_TOOLS as never,

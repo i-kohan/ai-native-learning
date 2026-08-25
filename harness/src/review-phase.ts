@@ -5,6 +5,7 @@ import type {
 } from "openai/resources/responses/responses.js";
 import type { HarnessConfig } from "./config.ts";
 import { mergeTokenUsage, type TokenUsageSummary } from "./context.ts";
+import { resolveModel, routingTraceFields } from "./model-routing.ts";
 import { REVIEWER_INSTRUCTIONS } from "./review-instructions.ts";
 import {
   SUBMIT_REVIEW_TOOL,
@@ -44,6 +45,7 @@ export async function runIndependentReview(options: {
 }): Promise<ReviewPhaseResult> {
   const { config, context, tracer, round } = options;
   const startedAt = Date.now();
+  const selection = resolveModel("review", config);
   const client = new OpenAI({ apiKey: config.apiKey });
   let tokenUsage: TokenUsageSummary | null = null;
 
@@ -63,6 +65,7 @@ export async function runIndependentReview(options: {
 
   tracer.record("review_started", {
     round,
+    ...routingTraceFields(selection),
     changedFiles: context.changedFiles,
     constraintIds: context.architectureConstraints.map((item) => item.id),
     verificationPassed: context.verificationEvidence.passed,
@@ -79,13 +82,13 @@ export async function runIndependentReview(options: {
 
       tracer.record(
         "review_model_call_started",
-        { model: config.model, round },
+        { ...routingTraceFields(selection), round },
         turns,
       );
       const callStarted = Date.now();
 
       const response = await client.responses.create({
-        model: config.model,
+        model: selection.model,
         instructions: REVIEWER_INSTRUCTIONS,
         input: input as never,
         tools: [SUBMIT_REVIEW_TOOL] as never,

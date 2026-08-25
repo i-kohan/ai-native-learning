@@ -13,6 +13,38 @@ const GET_TASK_NOT_FOUND_500 = `function getTask(service: TaskService, id: strin
     return { status: 500, body: { error: "task_not_found" } };
   }`;
 
+export const R01_CONTROLLED_FAILED_TEST =
+  "returns 404 when the task does not exist";
+export const R01_CONTROLLED_ASSERTION = "500 !== 404";
+
+/**
+ * True when normalized VERIFY evidence matches the R01 404→500 fault,
+ * not an incidental upstream failure.
+ */
+export function isIntendedR01ControlledFailure(
+  failure:
+    | {
+        failedTests: string[];
+        assertionMessages: string[];
+        outputPreview: string;
+      }
+    | null
+    | undefined,
+): boolean {
+  if (!failure) {
+    return false;
+  }
+  const failedTestsMatch =
+    failure.failedTests.some((name) =>
+      name.includes(R01_CONTROLLED_FAILED_TEST),
+    ) || failure.outputPreview.includes(R01_CONTROLLED_FAILED_TEST);
+  const assertionMatch =
+    failure.assertionMessages.some((message) =>
+      message.includes(R01_CONTROLLED_ASSERTION),
+    ) || failure.outputPreview.includes(R01_CONTROLLED_ASSERTION);
+  return failedTestsMatch && assertionMatch;
+}
+
 /**
  * Benchmark-only controlled defect for R01.
  * Must run once after initial implementation and never as production harness behavior.

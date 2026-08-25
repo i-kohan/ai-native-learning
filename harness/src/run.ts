@@ -40,6 +40,7 @@ import {
   type Spec,
   type SpecDecision,
 } from "./spec.ts";
+import { resolveModel, routingTraceFields } from "./model-routing.ts";
 import { Tracer } from "./trace.ts";
 import { runFinalVerification, type VerificationResult } from "./verify.ts";
 import type { Workspace } from "./workspace.ts";
@@ -159,6 +160,7 @@ export async function runV1Harness(options: {
     version: "v3",
     task,
     model: config.model,
+    repairModel: config.repairModel ?? null,
     maxTurns: config.maxTurns,
     maxRepairAttempts: config.maxRepairAttempts,
     maxReviewRepairAttempts: config.maxReviewRepairAttempts,
@@ -720,6 +722,7 @@ async function runVerifyRepairLoop(options: {
 
     tracer.record("repair_started", {
       attempt: repairAttempts,
+      ...routingTraceFields(resolveModel("repair", config)),
       maxRepairAttempts: config.maxRepairAttempts,
       specGoal: spec.goal,
       failedTests: normalized?.failedTests ?? [],
@@ -1019,6 +1022,7 @@ async function runIndependentReviewLoop(options: {
   const repairBefore = snapshotDirectory(config.targetSrcRoot);
   tracer.record("review_repair_started", {
     attempt: reviewRepairAttempts,
+    ...routingTraceFields(resolveModel("review_repair", config)),
     maxReviewRepairAttempts: config.maxReviewRepairAttempts,
     findingKeys: acceptedBlockers.map((item) => item.findingKey),
     promptIncludesSpec: true,

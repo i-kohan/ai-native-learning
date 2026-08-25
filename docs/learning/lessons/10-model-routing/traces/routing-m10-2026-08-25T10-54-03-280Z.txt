@@ -1,0 +1,35 @@
+=== Model Routing Experiment (m10-repair-routing) ===
+
+default_model: gpt-5.6-luna
+axis: deterministic phase
+first_target_episode: repair
+quality_slo: 3/3 valid R01 trials satisfy the existing R01 repair contract (one verification-repair, FAIL then PASS, final PASS, no repeated failure, workflow success, source-only repair).
+policy_conclusion: not applied by this report
+
+Predefined decision rule (not applied by this report):
+1. Luna 3/3, Terra 3/3: compare efficiency. Stronger routing is justified only if Terra provides a meaningful reliability/latency/workflow benefit that offsets its substantially higher token price.
+2. Luna <3/3, Terra 3/3: repair → Terra becomes an evidence-supported routing candidate.
+3. both <3/3: do not conclude routing solves the problem.
+4. noisy / insufficient evidence: no permanent routing decision.
+
+BASELINE — Luna repair
+repair_model: gpt-5.6-luna
+routing_reason: default
+valid_trials: 3 / attempted 3
+contaminated: 0
+slo: MET 3/3
+  valid#1 model=gpt-5.6-luna reason=default phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/6 repair_tokens=14911/1030 repair_ms=13761 workflow_calls=10 workflow_tokens=26864/2017 workflow_ms=34930
+  valid#2 model=gpt-5.6-luna reason=default phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/7 repair_tokens=18422/1032 repair_ms=11240 workflow_calls=10 workflow_tokens=31184/2144 workflow_ms=29300
+  valid#3 model=gpt-5.6-luna reason=default phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/6 repair_tokens=18058/1031 repair_ms=11687 workflow_calls=10 workflow_tokens=30362/2078 workflow_ms=29496
+  averages: repair_calls=4/6 repair_tokens=17130/1031 repair_ms=12229 workflow_calls=10 workflow_tokens=29470/2080 workflow_ms=31242
+
+VARIANT — Terra repair
+repair_model: gpt-5.6-terra
+routing_reason: repair_override
+valid_trials: 3 / attempted 3
+contaminated: 0
+slo: MET 3/3
+  valid#1 model=gpt-5.6-terra reason=repair_override phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/7 repair_tokens=18281/1017 repair_ms=10983 workflow_calls=11 workflow_tokens=33828/2079 workflow_ms=31332
+  valid#2 model=gpt-5.6-terra reason=repair_override phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/7 repair_tokens=18291/1016 repair_ms=10173 workflow_calls=10 workflow_tokens=30739/2122 workflow_ms=31544
+  valid#3 model=gpt-5.6-terra reason=repair_override phase=repair expected=yes verify=FAIL→PASS repair_ok=true workflow=success repeated=false repair_attempts=1 verify_attempts=2 repair_calls=4/6 repair_tokens=15191/994 repair_ms=10460 workflow_calls=10 workflow_tokens=29321/2064 workflow_ms=28578
+  averages: repair_calls=4/7 repair_tokens=17254/1009 repair_ms=10539 workflow_calls=10 workflow_tokens=31296/2088 workflow_ms=30485

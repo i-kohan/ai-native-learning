@@ -27,6 +27,14 @@ import {
 import { injectMissingTask500Fault } from "./r01-fault.ts";
 import { injectArch01CompleteTaskFault } from "./rev01-fault.ts";
 import { ARCH_01, isIntendedArch01Finding } from "./review.ts";
+import {
+  ROUTING_DEFAULT_MODEL,
+  ROUTING_REPAIR_CANDIDATE,
+  runRoutingExperiment,
+  writeRoutingExperimentArtifact,
+  type RoutingArmId,
+  type RoutingProbeAttempt,
+} from "./routing-experiment.ts";
 import { runFinalVerification } from "./verify.ts";
 import {
   bindConfig,
@@ -206,63 +214,116 @@ export function isExpectedV1Outcome(
   );
 }
 
-export async function runRepairProbe(): Promise<HarnessRunResult> {
-  const runId = `R01-repair-${timestamp()}`;
-  return withIsolatedWorkspace(runId, async (config, workspace) => {
-    restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
+export type RepairProbeOverlay = {
+  model?: string;
+  repairModel?: string | null;
+};
 
-    const taskPath = path.join(config.repoRoot, "benchmarks", "R01", "task.md");
-    if (!fs.existsSync(taskPath)) {
-      throw new Error(`Missing R01 task file: ${taskPath}`);
-    }
-    const task = fs.readFileSync(taskPath, "utf8").trim();
+export async function executeRepairProbe(options: {
+  runId: string;
+  overlay?: RepairProbeOverlay;
+  print?: boolean;
+}): Promise<RoutingProbeAttempt> {
+  const print = options.print !== false;
+  return withIsolatedWorkspace(
+    options.runId,
+    async (config, workspace) => {
+      let injected = false;
+      try {
+        restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
 
-    const initial = runFinalVerification(config);
-    if (!initial.passed) {
-      throw new Error(
-        `R01: expected green fixture tests to PASS before the probe, but they failed.\n${initial.output}`,
-      );
-    }
-
-    console.log("\n=== Preparing R01 (controlled repair probe) ===");
-    console.log(
-      "initial_tests: PASS (green fixture; defect injected after implementation)",
-    );
-    console.log(
-      `workspace: ${workspace.id} @ ${workspace.baseRevision.slice(0, 12)}`,
-    );
-
-    const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
-    let injected = false;
-
-    const result = await runV1Harness({
-      config,
-      task,
-      runId,
-      beforeSnapshot,
-      contextMode: "variant",
-      workspace,
-      afterImplementationEpisode: () => {
-        if (injected) {
-          throw new Error("R01 fault injection ran more than once.");
-        }
-        injectMissingTask500Fault(config.targetSrcRoot);
-        injected = true;
-        console.log(
-          "R01: injected getTask missing-task 404 → 500 after implementation",
+        const taskPath = path.join(
+          config.repoRoot,
+          "benchmarks",
+          "R01",
+          "task.md",
         );
-      },
-    });
+        if (!fs.existsSync(taskPath)) {
+          throw new Error(`Missing R01 task file: ${taskPath}`);
+        }
+        const task = fs.readFileSync(taskPath, "utf8").trim();
 
-    if (!injected) {
-      throw new Error(
+        const initial = runFinalVerification(config);
+        if (!initial.passed) {
+          throw new Error(
+            `R01: expected green fixture tests to PASS before the probe, but they failed.\n${initial.output}`,
+          );
+        }
+
+        console.log("\n=== Preparing R01 (controlled repair probe) ===");
+        console.log(
+          "initial_tests: PASS (green fixture; defect injected after implementation)",
+        );
+        console.log(
+          `workspace: ${workspace.id} @ ${workspace.baseRevision.slice(0, 12)}`,
+        );
+        console.log(
+          `model: ${config.model} | repair_model: ${config.repairModel ?? "(default)"}`,
+        );
+
+        const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+
+        const result = await runV1Harness({
+          config,
+          task,
+          runId: options.runId,
+          beforeSnapshot,
+          contextMode: "variant",
+          workspace,
+          afterImplementationEpisode: () => {
+            if (injected) {
+              throw new Error("R01 fault injection ran more than once.");
+            }
+            injectMissingTask500Fault(config.targetSrcRoot);
+            injected = true;
+            console.log(
+              "R01: injected getTask missing-task 404 → 500 after implementation",
+            );
+          },
+        });
+
+        if (print) {
+          printHarnessResult(result);
+          printRepairProbeSummary(result);
+        }
+        return { injected, result, error: null };
+      } catch (error) {
+        return {
+          injected,
+          result: null,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
+    options.overlay,
+  );
+}
+
+export async function runRepairProbe(
+  overlay?: RepairProbeOverlay,
+): Promise<HarnessRunResult> {
+  const runId = `R01-repair-${timestamp()}`;
+  const attempt = await executeRepairProbe({ runId, overlay });
+  if (!attempt.injected || !attempt.result) {
+    throw new Error(
+      attempt.error ??
         "R01: implementation episode finished without fault injection (spec likely did not start implementation).",
-      );
-    }
+    );
+  }
+  return attempt.result;
+}
 
-    printHarnessResult(result);
-    printRepairProbeSummary(result);
-    return result;
+export async function runModelRoutingExperiment() {
+  return runRoutingExperiment({
+    runTrial: async (arm: RoutingArmId, runId: string) =>
+      executeRepairProbe({
+        runId,
+        overlay: {
+          model: ROUTING_DEFAULT_MODEL,
+          repairModel: arm === "variant" ? ROUTING_REPAIR_CANDIDATE : null,
+        },
+      }),
+    scoreExpected: isExpectedR01Outcome,
   });
 }
 
@@ -513,17 +574,42 @@ export function printExperimentSummary(
 async function withIsolatedWorkspace<T>(
   runId: string,
   fn: (config: HarnessConfig, workspace: Workspace) => Promise<T>,
+  overlay?: RepairProbeOverlay,
 ): Promise<T> {
   const workspace = createWorkspace({
     hostRepoRoot: REPO_ROOT,
     id: runId,
   });
   try {
-    const config = bindConfig(loadConfig(), workspace);
+    const config = bindConfig(
+      applyProbeOverlay(loadConfig(), overlay),
+      workspace,
+    );
     return await fn(config, workspace);
   } finally {
     cleanupWorkspace({ hostRepoRoot: REPO_ROOT, workspace });
   }
+}
+
+function applyProbeOverlay(
+  loaded: HarnessConfig,
+  overlay?: RepairProbeOverlay,
+): HarnessConfig {
+  if (!overlay) {
+    return loaded;
+  }
+  const next: HarnessConfig = {
+    ...loaded,
+    ...(overlay.model ? { model: overlay.model } : {}),
+  };
+  if ("repairModel" in overlay) {
+    if (overlay.repairModel) {
+      next.repairModel = overlay.repairModel;
+    } else {
+      delete next.repairModel;
+    }
+  }
+  return next;
 }
 
 function restoreFixture(config: HarnessConfig, benchmarksRoot: string): void {
@@ -584,6 +670,7 @@ type CliOptions = {
   isolationProbe: boolean;
   securityProbe: boolean;
   evalSuite: boolean;
+  routingExperiment: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
 };
@@ -602,6 +689,20 @@ function parseArgs(argv: string[]): CliOptions {
       isolationProbe: false,
       securityProbe: false,
       evalSuite: true,
+      routingExperiment: false,
+      contextMode,
+    };
+  }
+  if (argv.includes("--routing") || argv.includes("routing")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: true,
       contextMode,
     };
   }
@@ -614,6 +715,7 @@ function parseArgs(argv: string[]): CliOptions {
       isolationProbe: false,
       securityProbe: false,
       evalSuite: false,
+      routingExperiment: false,
       contextMode,
     };
   }
@@ -626,6 +728,7 @@ function parseArgs(argv: string[]): CliOptions {
       isolationProbe: false,
       securityProbe: true,
       evalSuite: false,
+      routingExperiment: false,
       contextMode,
     };
   }
@@ -638,6 +741,7 @@ function parseArgs(argv: string[]): CliOptions {
       isolationProbe: true,
       securityProbe: false,
       evalSuite: false,
+      routingExperiment: false,
       contextMode,
     };
   }
@@ -650,6 +754,7 @@ function parseArgs(argv: string[]): CliOptions {
       isolationProbe: false,
       securityProbe: false,
       evalSuite: false,
+      routingExperiment: false,
       contextMode,
     };
   }
@@ -662,6 +767,7 @@ function parseArgs(argv: string[]): CliOptions {
       isolationProbe: false,
       securityProbe: false,
       evalSuite: false,
+      routingExperiment: false,
       contextMode,
     };
   }
@@ -674,6 +780,7 @@ function parseArgs(argv: string[]): CliOptions {
       isolationProbe: false,
       securityProbe: false,
       evalSuite: false,
+      routingExperiment: false,
       contextMode,
     };
   }
@@ -689,6 +796,7 @@ function parseArgs(argv: string[]): CliOptions {
       isolationProbe: false,
       securityProbe: false,
       evalSuite: false,
+      routingExperiment: false,
       contextMode,
     };
   }
@@ -700,6 +808,7 @@ function parseArgs(argv: string[]): CliOptions {
     isolationProbe: false,
     securityProbe: false,
     evalSuite: false,
+    routingExperiment: false,
     taskId,
     contextMode,
   };
@@ -714,6 +823,7 @@ async function main(): Promise<void> {
     isolationProbe,
     securityProbe,
     evalSuite,
+    routingExperiment,
     taskId,
     contextMode,
   } = parseArgs(process.argv.slice(2));
@@ -735,6 +845,16 @@ async function main(): Promise<void> {
   if (evalSuite) {
     const evalResult = await runFixedSuite();
     process.exit(evalResult.regressions.length === 0 ? 0 : 1);
+    return;
+  }
+
+  if (routingExperiment) {
+    const result = await runModelRoutingExperiment();
+    const artifacts = writeRoutingExperimentArtifact(result);
+    console.log(`\n${result.report}`);
+    console.log(`\nrouting_json: ${artifacts.jsonPath}`);
+    console.log(`routing_report: ${artifacts.reportPath}`);
+    process.exit(0);
     return;
   }
 
@@ -766,6 +886,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark:all [--baseline|--variant]");
     console.error("   or: npm run benchmark:experiment");
     console.error("   or: npm run benchmark:eval");
+    console.error("   or: npm run benchmark:routing");
     console.error("   or: npm run benchmark -- ISO01");
     console.error("   or: npm run benchmark -- SEC01");
     console.error("   or: npm run benchmark -- R01");
