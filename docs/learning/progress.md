@@ -13,6 +13,7 @@ Completed modules:
 7. ✅ 07 — Skills
 8. ✅ 08 — Worktrees / Isolation
 9. ✅ 09 — Security Fundamentals
+10. ✅ 10 — Model Routing
 
 Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with:
 
@@ -22,7 +23,8 @@ Current harness: **V3 Spec-Driven + targeted context + bounded verify/repair + i
 - exact workspace provenance via `baseRevision`;
 - workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace;
 - verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`;
-- optional deterministic model routing: `resolveModel(episode, config)` with an optional `OPENAI_REPAIR_MODEL` override that applies only to the verification-repair episode.
+- optional deterministic model routing: `resolveModel(episode, config)` with an optional `OPENAI_REPAIR_MODEL` override that applies only to the verification-repair episode;
+- current normal model policy remains Luna for all semantic episodes; the Terra repair override is not enabled by default because Module 10 evidence did not justify the added cost.
 
 This is **not** a sandbox: executed repository code can still touch host files, network, and subprocesses.
 
@@ -66,29 +68,32 @@ HarnessRunResult / raw traces
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
 
-## Current module (not formally closed)
+---
 
-**10 — Model Routing**
+## Module: 10 — Model Routing
 
-Status: implemented and evidenced; **not complete** until Topic Chat inspects the learning-critical code and evidence. No permanent routing policy has been selected.
+**Status:** ✅ COMPLETED — formally closed by Topic Chat on 2026-08-25 after code/evidence review.
 
-Practical notes + evidence: `docs/learning/lessons/10-model-routing/`  
-Do not treat `theory.md` as written yet.
+Theory: `docs/learning/lessons/10-model-routing/theory.md`  
+Practical notes + evidence: `docs/learning/lessons/10-model-routing/`
 
-Why this slice:
+### Why this slice
 
-- evals exist, so routing can be measured instead of guessed;
-- the first axis is deterministic `phase`;
-- the first target episode is bounded verification-repair (`repair` only);
-- `review_repair` is a different episode and must not inherit the repair override.
+- evals already existed, so model allocation could be measured rather than guessed;
+- the first routing axis was deterministic `phase`;
+- the first target episode was bounded verification-repair (`repair` only);
+- `review_repair` remained a separate episode and did not inherit the repair override;
+- R01 supplied an objective FAIL→repair→PASS contract with contamination guards.
 
 ### Built
 
 - `resolveModel(episode, config)` — selects only the model;
 - optional `OPENAI_REPAIR_MODEL`; absent → every LLM episode uses `OPENAI_MODEL`;
 - present → only `phase === "repair"` uses the override;
+- routing does not change tools, permissions, VERIFY, review policy, repair limits, Skills, workspace, or security authority;
 - traces record `episode`, `model`, `routingReason` (`default` | `repair_override`);
-- separate `npm run benchmark:routing` experiment (not folded into fixed 6/6).
+- separate `npm run benchmark:routing` experiment, not folded into fixed-suite denominators;
+- deterministic routing/authority/validity tests.
 
 ### Routing experiment
 
@@ -103,32 +108,75 @@ Quality SLO (defined before the run): 3/3 valid R01 trials per model must satisf
 
 Repair averages (valid trials):
 
-| Arm   | calls/tools | tokens in/out | wall   |
-| ----- | ----------- | ------------- | ------ |
-| Luna  | 4 / 6       | 17130 / 1031  | ~12.2s |
-| Terra | 4 / 7       | 17254 / 1009  | ~10.5s |
+| Arm   | calls/tools | tokens in/out | repair wall | workflow wall |
+| ----- | ----------- | ------------- | ----------- | ------------- |
+| Luna  | 4 / 6       | 17130 / 1031  | ~12.2s      | ~31.2s        |
+| Terra | 4 / 7       | 17254 / 1009  | ~10.5s      | ~30.5s        |
 
-This report does **not** choose a permanent policy. Both models met the quality SLO.
+### Topic Chat engineering decision
+
+Both models met the predefined quality SLO. Terra was somewhat faster inside the repair episode, but end-to-end latency improvement was small and did not justify the substantially higher token price for the current controlled workload.
+
+Permanent `repair → Terra` routing is therefore **not enabled**.
+
+Current normal policy:
+
+```text
+spec            → Luna
+implementation  → Luna
+repair          → Luna
+review          → Luna
+review_repair   → Luna
+```
+
+The explicit routing boundary remains in the harness for future evidence-backed experiments.
+
+This is a scoped conclusion: Module 10 shows that Luna is already sufficient for the current controlled R01 repair workload. It does not prove Luna is universally preferable for naturally occurring or more complex repairs.
 
 ### Fresh regression evidence
 
 `docs/learning/lessons/10-model-routing/traces/2026-08-25T11-00-45-136Z.txt`
 
 ```text
-ISO01 workspace isolation    PASS
+ISO01 workspace isolation            PASS
 SEC01 verification secret isolation  PASS
-T01–T04 expected outcomes    4 / 4
-Executable first-pass        3 / 3
-Correct escalation T04       1 / 1
-R01 verification repair      PASS
-REV01 independent review     PASS
-All fixed V3 contracts       6 / 6
-Hard regressions             none
+T01–T04 expected outcomes             4 / 4
+Executable first-pass                 3 / 3
+Correct escalation T04                1 / 1
+R01 verification repair               PASS
+REV01 independent review              PASS
+All fixed V3 contracts                6 / 6
+Hard regressions                      none
 ```
 
-Suite version remains `fixed-v3-m09`. Routing trials were not added to the 6/6 denominator.
+Suite version remains `fixed-v3-m09`. Routing comparison trials were not added to the fixed `6/6` denominator.
 
 Harness unit tests: 94 passed.
+
+### Closure
+
+Module 10 satisfies the intended Model Routing goal:
+
+- model selection is now an explicit harness-owned decision boundary;
+- routing key, routing policy and model profile are understood as distinct concepts;
+- phase-based deterministic routing is implemented without granting model choice extra authority;
+- routing provenance makes model selection explainable in traces;
+- the controlled comparison uses outcome-first SLOs and keeps repeated trials separate from fixed regression denominators;
+- cost is interpreted at successful-workflow level rather than raw token price alone;
+- role-specific/specialized models are treated as hypotheses requiring eval evidence rather than assumed best practice;
+- fallback/escalation, model drift and mature production routing are understood without prematurely implementing their infrastructure;
+- the experiment produced a valid negative allocation result: heterogeneous `repair → Terra` routing is not justified by current evidence.
+
+No additional Model Routing infrastructure is required before moving on.
+
+### Known non-blocking limits
+
+1. The experiment covers one controlled R01 repair class, not naturally occurring repair diversity.
+2. Three valid trials per arm are enough for this learning experiment, not strong statistical qualification.
+3. No task-class, risk-based, health-aware or model-selected routing exists yet.
+4. No fallback/escalation chain exists.
+5. Pricing/model/snapshot changes can invalidate old routing economics and would require requalification.
+6. Review/spec quality remains harder to evaluate because important misses may be unobservable to deterministic graders.
 
 ---
 
