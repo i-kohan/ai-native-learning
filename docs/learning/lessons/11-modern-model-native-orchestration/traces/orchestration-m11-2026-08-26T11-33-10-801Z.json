@@ -1,0 +1,438 @@
+{
+  "experimentId": "m11-conversation-state",
+  "generatedAt": "2026-08-26T11:33:10.801Z",
+  "taskId": "T02",
+  "contextMode": "variant",
+  "hypothesis": "Using previous_response_id instead of manual full Responses-history replay inside a bounded agent episode can preserve correctness, security and outer workflow semantics while reducing client-owned conversation-state plumbing/replay.",
+  "decisionRule": "Variant is a candidate to adopt only if:\n1. previous_response_id arm is 3/3 correct on T02.\n2. Client-side full-history replay is actually gone in variant.\n3. Existing tool/workspace/security authority is unchanged (by construction).\n4. Tool-call observability remains intact.\n5. Client conversation replay/items/bytes materially decrease.\n6. There is no clear repeated token/latency/failure regression.",
+  "manual": {
+    "id": "manual",
+    "label": "ARM A — manual full-history replay",
+    "conversationStateMode": "manual",
+    "trials": [
+      {
+        "arm": "manual",
+        "attempt": 1,
+        "runId": "T02-orch-manual-1-2026-08-26T11-33-10-801Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/T02-orch-manual-1-2026-08-26T11-33-10-801Z.jsonl",
+        "metrics": {
+          "conversationStateMode": "manual",
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "modelCalls": 7,
+          "toolCalls": 15,
+          "implementationTurns": 4,
+          "clientInputItemsSent": 45,
+          "clientInputBytesSent": 50929,
+          "inputTokens": 16418,
+          "outputTokens": 1443,
+          "wallTimeMs": 23542,
+          "changedFiles": [
+            "tasks/task-service.ts"
+          ],
+          "chain": {
+            "calls": [
+              {
+                "turn": 1,
+                "phase": "implementation",
+                "responseId": "resp_00326bdc154e5df2006a8ecf035a3887d28a4f0e6298d057cb",
+                "previousResponseId": null,
+                "clientInputItemCount": 1,
+                "clientInputBytes": 4960
+              },
+              {
+                "turn": 2,
+                "phase": "implementation",
+                "responseId": "resp_00326bdc154e5df2006a8ecf0533bc87d29e34bf1b73a2bae5",
+                "previousResponseId": null,
+                "clientInputItemCount": 12,
+                "clientInputBytes": 13014
+              },
+              {
+                "turn": 3,
+                "phase": "implementation",
+                "responseId": "resp_00326bdc154e5df2006a8ecf093da887d2848e446393ce371c",
+                "previousResponseId": null,
+                "clientInputItemCount": 15,
+                "clientInputBytes": 15954
+              },
+              {
+                "turn": 4,
+                "phase": "implementation",
+                "responseId": "resp_00326bdc154e5df2006a8ecf0b1ed887d2a100d2f4dbb18ae9",
+                "previousResponseId": null,
+                "clientInputItemCount": 17,
+                "clientInputBytes": 17001
+              }
+            ],
+            "firstTurnHasNoPreviousId": true,
+            "subsequentTurnsChainPreviousId": false,
+            "variantSendsOnlyNewItems": null,
+            "toolCallEvents": 7,
+            "replayGone": null
+          }
+        }
+      },
+      {
+        "arm": "manual",
+        "attempt": 2,
+        "runId": "T02-orch-manual-2-2026-08-26T11-33-35-158Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/T02-orch-manual-2-2026-08-26T11-33-35-158Z.jsonl",
+        "metrics": {
+          "conversationStateMode": "manual",
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "modelCalls": 7,
+          "toolCalls": 15,
+          "implementationTurns": 4,
+          "clientInputItemsSent": 45,
+          "clientInputBytesSent": 51254,
+          "inputTokens": 16680,
+          "outputTokens": 1623,
+          "wallTimeMs": 23910,
+          "changedFiles": [
+            "tasks/task-service.ts"
+          ],
+          "chain": {
+            "calls": [
+              {
+                "turn": 1,
+                "phase": "implementation",
+                "responseId": "resp_01b286a4c894fda5006a8ecf1bd91487d2be3a5c5bfabcbb88",
+                "previousResponseId": null,
+                "clientInputItemCount": 1,
+                "clientInputBytes": 5042
+              },
+              {
+                "turn": 2,
+                "phase": "implementation",
+                "responseId": "resp_01b286a4c894fda5006a8ecf1dd28c87d28b3321a426727c29",
+                "previousResponseId": null,
+                "clientInputItemCount": 12,
+                "clientInputBytes": 13096
+              },
+              {
+                "turn": 3,
+                "phase": "implementation",
+                "responseId": "resp_01b286a4c894fda5006a8ecf216c1487d2904ee515e23d1931",
+                "previousResponseId": null,
+                "clientInputItemCount": 15,
+                "clientInputBytes": 16036
+              },
+              {
+                "turn": 4,
+                "phase": "implementation",
+                "responseId": "resp_01b286a4c894fda5006a8ecf23c4ac87d2972d6ff1840987a1",
+                "previousResponseId": null,
+                "clientInputItemCount": 17,
+                "clientInputBytes": 17080
+              }
+            ],
+            "firstTurnHasNoPreviousId": true,
+            "subsequentTurnsChainPreviousId": false,
+            "variantSendsOnlyNewItems": null,
+            "toolCallEvents": 7,
+            "replayGone": null
+          }
+        }
+      },
+      {
+        "arm": "manual",
+        "attempt": 3,
+        "runId": "T02-orch-manual-3-2026-08-26T11-33-59-859Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/T02-orch-manual-3-2026-08-26T11-33-59-859Z.jsonl",
+        "metrics": {
+          "conversationStateMode": "manual",
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "modelCalls": 7,
+          "toolCalls": 14,
+          "implementationTurns": 4,
+          "clientInputItemsSent": 39,
+          "clientInputBytesSent": 57863,
+          "inputTokens": 18436,
+          "outputTokens": 1643,
+          "wallTimeMs": 23363,
+          "changedFiles": [
+            "tasks/task-service.ts"
+          ],
+          "chain": {
+            "calls": [
+              {
+                "turn": 1,
+                "phase": "implementation",
+                "responseId": "resp_0b292decfc59d2a3006a8ecf33e1ec87d29152a87544c5b185",
+                "previousResponseId": null,
+                "clientInputItemCount": 1,
+                "clientInputBytes": 4820
+              },
+              {
+                "turn": 2,
+                "phase": "implementation",
+                "responseId": "resp_0b292decfc59d2a3006a8ecf35e44487d2acaba62327cf3b09",
+                "previousResponseId": null,
+                "clientInputItemCount": 10,
+                "clientInputBytes": 15275
+              },
+              {
+                "turn": 3,
+                "phase": "implementation",
+                "responseId": "resp_0b292decfc59d2a3006a8ecf3af36087d29602d99ebfa9b87f",
+                "previousResponseId": null,
+                "clientInputItemCount": 13,
+                "clientInputBytes": 18363
+              },
+              {
+                "turn": 4,
+                "phase": "implementation",
+                "responseId": "resp_0b292decfc59d2a3006a8ecf3c5dc487d289a3f3fed244ee4c",
+                "previousResponseId": null,
+                "clientInputItemCount": 15,
+                "clientInputBytes": 19405
+              }
+            ],
+            "firstTurnHasNoPreviousId": true,
+            "subsequentTurnsChainPreviousId": false,
+            "variantSendsOnlyNewItems": null,
+            "toolCallEvents": 6,
+            "replayGone": null
+          }
+        }
+      }
+    ],
+    "expectedMet": 3,
+    "averages": {
+      "modelCalls": 7,
+      "toolCalls": 15,
+      "implementationTurns": 4,
+      "clientInputItemsSent": 43,
+      "clientInputBytesSent": 53349,
+      "inputTokens": 17178,
+      "outputTokens": 1570,
+      "wallTimeMs": 23605
+    }
+  },
+  "previousResponseId": {
+    "id": "previous_response_id",
+    "label": "ARM B — previous_response_id",
+    "conversationStateMode": "previous_response_id",
+    "trials": [
+      {
+        "arm": "previous_response_id",
+        "attempt": 1,
+        "runId": "T02-orch-previous_response_id-1-2026-08-26T11-34-23-995Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/T02-orch-previous_response_id-1-2026-08-26T11-34-23-995Z.jsonl",
+        "metrics": {
+          "conversationStateMode": "previous_response_id",
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "modelCalls": 7,
+          "toolCalls": 14,
+          "implementationTurns": 4,
+          "clientInputItemsSent": 7,
+          "clientInputBytesSent": 14049,
+          "inputTokens": 18394,
+          "outputTokens": 1768,
+          "wallTimeMs": 26671,
+          "changedFiles": [
+            "tasks/task-service.ts"
+          ],
+          "chain": {
+            "calls": [
+              {
+                "turn": 1,
+                "phase": "implementation",
+                "responseId": "resp_057abeba2a6a30f7006a8ecf5000a887d2a33c105ab0f779d1",
+                "previousResponseId": null,
+                "clientInputItemCount": 1,
+                "clientInputBytes": 4851
+              },
+              {
+                "turn": 2,
+                "phase": "implementation",
+                "responseId": "resp_057abeba2a6a30f7006a8ecf5221ec87d29c67e733b05eeb17",
+                "previousResponseId": "resp_057abeba2a6a30f7006a8ecf5000a887d2a33c105ab0f779d1",
+                "clientInputItemCount": 4,
+                "clientInputBytes": 8219
+              },
+              {
+                "turn": 3,
+                "phase": "implementation",
+                "responseId": "resp_057abeba2a6a30f7006a8ecf553bcc87d2bc753ec2705ed241",
+                "previousResponseId": "resp_057abeba2a6a30f7006a8ecf5221ec87d29c67e733b05eeb17",
+                "clientInputItemCount": 1,
+                "clientInputBytes": 142
+              },
+              {
+                "turn": 4,
+                "phase": "implementation",
+                "responseId": "resp_057abeba2a6a30f7006a8ecf570a1887d29b713b658639ef2e",
+                "previousResponseId": "resp_057abeba2a6a30f7006a8ecf553bcc87d2bc753ec2705ed241",
+                "clientInputItemCount": 1,
+                "clientInputBytes": 837
+              }
+            ],
+            "firstTurnHasNoPreviousId": true,
+            "subsequentTurnsChainPreviousId": true,
+            "variantSendsOnlyNewItems": true,
+            "toolCallEvents": 6,
+            "replayGone": true
+          }
+        }
+      },
+      {
+        "arm": "previous_response_id",
+        "attempt": 2,
+        "runId": "T02-orch-previous_response_id-2-2026-08-26T11-34-51-436Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/T02-orch-previous_response_id-2-2026-08-26T11-34-51-436Z.jsonl",
+        "metrics": {
+          "conversationStateMode": "previous_response_id",
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "modelCalls": 8,
+          "toolCalls": 14,
+          "implementationTurns": 4,
+          "clientInputItemsSent": 7,
+          "clientInputBytesSent": 14277,
+          "inputTokens": 22043,
+          "outputTokens": 1998,
+          "wallTimeMs": 30492,
+          "changedFiles": [
+            "tasks/task-service.ts"
+          ],
+          "chain": {
+            "calls": [
+              {
+                "turn": 1,
+                "phase": "implementation",
+                "responseId": "resp_0a5a1abfd588c3b4006a8ecf6c4ad487d2898a3959894e76fa",
+                "previousResponseId": null,
+                "clientInputItemCount": 1,
+                "clientInputBytes": 5082
+              },
+              {
+                "turn": 2,
+                "phase": "implementation",
+                "responseId": "resp_0a5a1abfd588c3b4006a8ecf6df6ec87d2978014f237508e3b",
+                "previousResponseId": "resp_0a5a1abfd588c3b4006a8ecf6c4ad487d2898a3959894e76fa",
+                "clientInputItemCount": 4,
+                "clientInputBytes": 8219
+              },
+              {
+                "turn": 3,
+                "phase": "implementation",
+                "responseId": "resp_0a5a1abfd588c3b4006a8ecf74614887d287a6397d4a9223f4",
+                "previousResponseId": "resp_0a5a1abfd588c3b4006a8ecf6df6ec87d2978014f237508e3b",
+                "clientInputItemCount": 1,
+                "clientInputBytes": 142
+              },
+              {
+                "turn": 4,
+                "phase": "implementation",
+                "responseId": "resp_0a5a1abfd588c3b4006a8ecf7641ac87d2b42912111606c3b3",
+                "previousResponseId": "resp_0a5a1abfd588c3b4006a8ecf74614887d287a6397d4a9223f4",
+                "clientInputItemCount": 1,
+                "clientInputBytes": 834
+              }
+            ],
+            "firstTurnHasNoPreviousId": true,
+            "subsequentTurnsChainPreviousId": true,
+            "variantSendsOnlyNewItems": true,
+            "toolCallEvents": 6,
+            "replayGone": true
+          }
+        }
+      },
+      {
+        "arm": "previous_response_id",
+        "attempt": 3,
+        "runId": "T02-orch-previous_response_id-3-2026-08-26T11-35-22-730Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/T02-orch-previous_response_id-3-2026-08-26T11-35-22-730Z.jsonl",
+        "metrics": {
+          "conversationStateMode": "previous_response_id",
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "modelCalls": 7,
+          "toolCalls": 15,
+          "implementationTurns": 4,
+          "clientInputItemsSent": 8,
+          "clientInputBytesSent": 14618,
+          "inputTokens": 19055,
+          "outputTokens": 1898,
+          "wallTimeMs": 39684,
+          "changedFiles": [
+            "tasks/task-service.ts"
+          ],
+          "chain": {
+            "calls": [
+              {
+                "turn": 1,
+                "phase": "implementation",
+                "responseId": "resp_0d0cb638d588bac7006a8ecf961ed887d29e4c830f7738b286",
+                "previousResponseId": null,
+                "clientInputItemCount": 1,
+                "clientInputBytes": 5051
+              },
+              {
+                "turn": 2,
+                "phase": "implementation",
+                "responseId": "resp_0d0cb638d588bac7006a8ecf98a09487d299916f9cbdc94a42",
+                "previousResponseId": "resp_0d0cb638d588bac7006a8ecf961ed887d29e4c830f7738b286",
+                "clientInputItemCount": 5,
+                "clientInputBytes": 8587
+              },
+              {
+                "turn": 3,
+                "phase": "implementation",
+                "responseId": "resp_0d0cb638d588bac7006a8ecf9c5b0487d28e049958e1b5d65b",
+                "previousResponseId": "resp_0d0cb638d588bac7006a8ecf98a09487d299916f9cbdc94a42",
+                "clientInputItemCount": 1,
+                "clientInputBytes": 142
+              },
+              {
+                "turn": 4,
+                "phase": "implementation",
+                "responseId": "resp_0d0cb638d588bac7006a8ecf9df5f087d29e9da9387e5e729a",
+                "previousResponseId": "resp_0d0cb638d588bac7006a8ecf9c5b0487d28e049958e1b5d65b",
+                "clientInputItemCount": 1,
+                "clientInputBytes": 838
+              }
+            ],
+            "firstTurnHasNoPreviousId": true,
+            "subsequentTurnsChainPreviousId": true,
+            "variantSendsOnlyNewItems": true,
+            "toolCallEvents": 7,
+            "replayGone": true
+          }
+        }
+      }
+    ],
+    "expectedMet": 3,
+    "averages": {
+      "modelCalls": 7,
+      "toolCalls": 14,
+      "implementationTurns": 4,
+      "clientInputItemsSent": 7,
+      "clientInputBytesSent": 14315,
+      "inputTokens": 19831,
+      "outputTokens": 1888,
+      "wallTimeMs": 32282
+    }
+  },
+  "decision": {
+    "variantCorrect3of3": true,
+    "variantReplayGone": true,
+    "toolObservabilityIntact": true,
+    "clientReplayMateriallyDecreased": true,
+    "noClearRegression": true,
+    "passed": true,
+    "notes": []
+  },
+  "report": "=== Conversation-State Experiment (m11-conversation-state) ===\n\ntask: T02\ncontext_mode: variant (constant; not the experiment axis)\nhypothesis: Using previous_response_id instead of manual full Responses-history replay inside a bounded agent episode can preserve correctness, security and outer workflow semantics while reducing client-owned conversation-state plumbing/replay.\n\nVariant is a candidate to adopt only if:\n1. previous_response_id arm is 3/3 correct on T02.\n2. Client-side full-history replay is actually gone in variant.\n3. Existing tool/workspace/security authority is unchanged (by construction).\n4. Tool-call observability remains intact.\n5. Client conversation replay/items/bytes materially decrease.\n6. There is no clear repeated token/latency/failure regression.\n\nARM A — manual full-history replay\nconversation_state_mode: manual\nexpected: 3/3\n  trial#1 expected=yes workflow=success verify=PASS calls=7 tools=15 impl_turns=4 client_items=45 client_bytes=50929 tokens=16418/1443 wall_ms=23542 files=tasks/task-service.ts chain=1:null->resp_00326bdc154e5df2006a8ecf035a3887d28a4f0e6298d057cb[n=1] 2:null->resp_00326bdc154e5df2006a8ecf0533bc87d29e34bf1b73a2bae5[n=12] 3:null->resp_00326bdc154e5df2006a8ecf093da887d2848e446393ce371c[n=15] 4:null->resp_00326bdc154e5df2006a8ecf0b1ed887d2a100d2f4dbb18ae9[n=17]\n  trial#2 expected=yes workflow=success verify=PASS calls=7 tools=15 impl_turns=4 client_items=45 client_bytes=51254 tokens=16680/1623 wall_ms=23910 files=tasks/task-service.ts chain=1:null->resp_01b286a4c894fda5006a8ecf1bd91487d2be3a5c5bfabcbb88[n=1] 2:null->resp_01b286a4c894fda5006a8ecf1dd28c87d28b3321a426727c29[n=12] 3:null->resp_01b286a4c894fda5006a8ecf216c1487d2904ee515e23d1931[n=15] 4:null->resp_01b286a4c894fda5006a8ecf23c4ac87d2972d6ff1840987a1[n=17]\n  trial#3 expected=yes workflow=success verify=PASS calls=7 tools=14 impl_turns=4 client_items=39 client_bytes=57863 tokens=18436/1643 wall_ms=23363 files=tasks/task-service.ts chain=1:null->resp_0b292decfc59d2a3006a8ecf33e1ec87d29152a87544c5b185[n=1] 2:null->resp_0b292decfc59d2a3006a8ecf35e44487d2acaba62327cf3b09[n=10] 3:null->resp_0b292decfc59d2a3006a8ecf3af36087d29602d99ebfa9b87f[n=13] 4:null->resp_0b292decfc59d2a3006a8ecf3c5dc487d289a3f3fed244ee4c[n=15]\n  averages: calls=7 tools=15 impl_turns=4 client_items=43 client_bytes=53349 tokens=17178/1570 wall_ms=23605\n\nARM B — previous_response_id\nconversation_state_mode: previous_response_id\nexpected: 3/3\n  trial#1 expected=yes workflow=success verify=PASS calls=7 tools=14 impl_turns=4 client_items=7 client_bytes=14049 tokens=18394/1768 wall_ms=26671 files=tasks/task-service.ts chain=1:null->resp_057abeba2a6a30f7006a8ecf5000a887d2a33c105ab0f779d1[n=1] 2:resp_057abeba2a6a30f7006a8ecf5000a887d2a33c105ab0f779d1->resp_057abeba2a6a30f7006a8ecf5221ec87d29c67e733b05eeb17[n=4] 3:resp_057abeba2a6a30f7006a8ecf5221ec87d29c67e733b05eeb17->resp_057abeba2a6a30f7006a8ecf553bcc87d2bc753ec2705ed241[n=1] 4:resp_057abeba2a6a30f7006a8ecf553bcc87d2bc753ec2705ed241->resp_057abeba2a6a30f7006a8ecf570a1887d29b713b658639ef2e[n=1]\n  trial#2 expected=yes workflow=success verify=PASS calls=8 tools=14 impl_turns=4 client_items=7 client_bytes=14277 tokens=22043/1998 wall_ms=30492 files=tasks/task-service.ts chain=1:null->resp_0a5a1abfd588c3b4006a8ecf6c4ad487d2898a3959894e76fa[n=1] 2:resp_0a5a1abfd588c3b4006a8ecf6c4ad487d2898a3959894e76fa->resp_0a5a1abfd588c3b4006a8ecf6df6ec87d2978014f237508e3b[n=4] 3:resp_0a5a1abfd588c3b4006a8ecf6df6ec87d2978014f237508e3b->resp_0a5a1abfd588c3b4006a8ecf74614887d287a6397d4a9223f4[n=1] 4:resp_0a5a1abfd588c3b4006a8ecf74614887d287a6397d4a9223f4->resp_0a5a1abfd588c3b4006a8ecf7641ac87d2b42912111606c3b3[n=1]\n  trial#3 expected=yes workflow=success verify=PASS calls=7 tools=15 impl_turns=4 client_items=8 client_bytes=14618 tokens=19055/1898 wall_ms=39684 files=tasks/task-service.ts chain=1:null->resp_0d0cb638d588bac7006a8ecf961ed887d29e4c830f7738b286[n=1] 2:resp_0d0cb638d588bac7006a8ecf961ed887d29e4c830f7738b286->resp_0d0cb638d588bac7006a8ecf98a09487d299916f9cbdc94a42[n=5] 3:resp_0d0cb638d588bac7006a8ecf98a09487d299916f9cbdc94a42->resp_0d0cb638d588bac7006a8ecf9c5b0487d28e049958e1b5d65b[n=1] 4:resp_0d0cb638d588bac7006a8ecf9c5b0487d28e049958e1b5d65b->resp_0d0cb638d588bac7006a8ecf9df5f087d29e9da9387e5e729a[n=1]\n  averages: calls=7 tools=14 impl_turns=4 client_items=7 client_bytes=14315 tokens=19831/1888 wall_ms=32282\n\nDecision\nvariant_3/3: yes\nreplay_gone: yes\ntool_observability: yes\nclient_replay_decreased: yes\nno_clear_regression: yes\ncandidate_to_adopt: yes"
+}

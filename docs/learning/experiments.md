@@ -1200,3 +1200,152 @@ On this R01 probe, both Luna and Terra met the predefined quality SLO 3/3. That 
 This does **not** prove routing helps on naturally occurring repairs, other episodes, or other models.
 
 Module 10 experiment recorded; formal module closure and any permanent routing policy remain for Topic Chat.
+
+---
+
+## Module 11 — Modern model-native orchestration (inner vs outer loop)
+
+### Hypothesis
+
+Using `previous_response_id` instead of manual full Responses-history replay inside a bounded agent episode can preserve correctness, security and outer workflow semantics while reducing client-owned conversation-state plumbing/replay.
+
+This is **not** a test of reducing model calls. Custom tools remain client-owned.
+
+### Baseline
+
+ARM A: `conversationStateMode = manual` (current V3 loop).
+
+```text
+task
+→ response A
+→ append response.output
+→ execute local tools
+→ append function_call_output
+→ send the complete accumulated input again
+```
+
+### Variant
+
+ARM B: `conversationStateMode = previous_response_id`, **inside `runAgentLoop` only**.
+
+```text
+first call: input = task, previous_response_id = undefined
+→ execute local tools
+next call: previous_response_id = A.id, input = ONLY new function_call_output items
+→ repeat
+```
+
+Each `runAgentLoop` invocation starts a fresh chain. Implementation, repair, and review_repair are not chained together.
+
+### Controlled variables
+
+T02, `contextMode=variant`, same fixture, model/routing, maxTurns, instructions, tools, security, spec gate, verifier, review/repair policies. Isolated worktree per trial.
+
+Only conversation-state **transport** differs.
+
+Command: `cd harness && npm run benchmark:orchestration`
+
+### Metrics
+
+Per trial: expected outcome, workflow status, final VERIFY, model/tool calls, implementation turns, `clientInputItemsSent`, `clientInputBytesSent` (UTF-8 `JSON.stringify(input)` only — not instructions/tools), tokens, wall time, changed files, conversation-state mode, chain evidence.
+
+### Results (3×3 T02)
+
+Evidence:
+
+- report: `docs/learning/lessons/11-modern-model-native-orchestration/traces/orchestration-m11-2026-08-26T11-33-10-801Z.txt`
+- json: `docs/learning/lessons/11-modern-model-native-orchestration/traces/orchestration-m11-2026-08-26T11-33-10-801Z.json`
+- raw trial traces in the same folder
+
+#### ARM A — manual
+
+| Trial | expected | workflow | verify | calls/tools | impl turns | client items/bytes | tokens in/out | wall | files |
+| ----- | -------- | -------- | ------ | ----------- | ---------- | ------------------ | ------------- | ---- | ----- |
+| 1 | yes | success | PASS | 7 / 15 | 4 | 45 / 50929 | 16418 / 1443 | ~24s | `task-service.ts` |
+| 2 | yes | success | PASS | 7 / 15 | 4 | 45 / 51254 | 16680 / 1623 | ~24s | `task-service.ts` |
+| 3 | yes | success | PASS | 7 / 14 | 4 | 39 / 57863 | 18436 / 1643 | ~23s | `task-service.ts` |
+| avg | 3/3 | | | 7 / 15 | 4 | 43 / 53349 | 17178 / 1570 | ~24s | |
+
+Chain: every implementation turn has `previousResponseId=null`; client item counts grow `1 → 12 → 15 → 17`.
+
+#### ARM B — previous_response_id
+
+| Trial | expected | workflow | verify | calls/tools | impl turns | client items/bytes | tokens in/out | wall | files |
+| ----- | -------- | -------- | ------ | ----------- | ---------- | ------------------ | ------------- | ---- | ----- |
+| 1 | yes | success | PASS | 7 / 14 | 4 | 7 / 14049 | 18394 / 1768 | ~27s | `task-service.ts` |
+| 2 | yes | success | PASS | 8 / 14 | 4 | 7 / 14277 | 22043 / 1998 | ~30s | `task-service.ts` |
+| 3 | yes | success | PASS | 7 / 15 | 4 | 8 / 14618 | 19055 / 1898 | ~40s | `task-service.ts` |
+| avg | 3/3 | | | 7 / 14 | 4 | 7 / 14315 | 19831 / 1888 | ~32s | |
+
+Chain example (trial 1):
+
+```text
+turn1 previous=null  → resp_A  items=1
+turn2 previous=A     → resp_B  items=4
+turn3 previous=B     → resp_C  items=1
+turn4 previous=C     → resp_D  items=1
+```
+
+### Decision rule
+
+| Criterion | Result |
+| --------- | ------ |
+| 1. previous_response_id 3/3 correct on T02 | yes |
+| 2. Client-side full-history replay gone in variant | yes |
+| 3. Tool/workspace/security authority unchanged | yes (by construction + unit tests) |
+| 4. Tool-call observability intact | yes |
+| 5. Client items/bytes materially decrease | yes (43→7 items, 53KB→14KB) |
+| 6. No clear repeated token/latency/failure regression | yes (both 3/3; tokens +15%, wall +37% on n=3 — not treated as a hard miss) |
+
+**Candidate to adopt: yes.**
+
+### Fixed regression (run because variant qualified)
+
+`docs/learning/lessons/11-modern-model-native-orchestration/traces/2026-08-26T11-39-08-076Z.txt`  
+Suite label remains `fixed-v3-m09`. Conversation state: `previous_response_id`.
+
+```text
+T01–T04 expected outcomes   4 / 4
+Executable first-pass       3 / 3
+Correct escalation T04      1 / 1
+R01 verification repair     PASS
+REV01 independent review    PASS
+All fixed V3 contracts      6 / 6
+ISO01                       PASS
+SEC01                       PASS
+Hard regressions            none
+```
+
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 15      | 19658 / 1813  | ~25s |
+| T02   | capability | yes      | yes        | PASS      | 8 / 14      | 19320 / 1416  | ~30s |
+| T03   | capability | yes      | yes        | PASS      | 7 / 16      | 19579 / 1567  | ~29s |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4444 / 845    | ~10s |
+| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 20     | 29325 / 2110  | ~31s |
+| REV01 | probe      | yes      | no         | PASS→PASS | 11 / 22     | 31156 / 2518  | ~34s |
+
+Harness unit tests: 104 passed.
+
+### Failures / unexpected behavior
+
+- Provider **input tokens did not fall** with client replay. Client items/bytes dropped sharply; billed input tokens were slightly higher on the variant arm (~17.2k → ~19.8k). Server-side continuation still counts conversation tokens; traces show `cached_tokens` growing across the chain.
+- Variant wall time was higher on this n=3 sample (~32s vs ~24s). Do not over-interpret latency.
+- Variant trial 2 used 8 whole-workflow model calls instead of 7 (one extra non-impl turn). Implementation turns stayed at 4.
+
+### Conclusion
+
+Hypothesis supported for **client conversation-state plumbing**, not as a token-cost optimization.
+
+- T02 correctness 3/3 on both arms.
+- Variant traces show `previous_response_id` chaining and no manual `response.output` replay.
+- Outer VERIFY / repair / review / workspace / security / eval scoring unchanged.
+- Custom tools still go through `executeTool()`.
+- Fixed V3 suite remained 6/6 with the variant.
+
+**Decision: adopt.** Default `conversationStateMode` is now `previous_response_id`. `manual` remains available via `--manual-conversation` for comparison. Topic Chat still owns formal module closure.
+
+This does **not** prove Sessions/Conversations API, PTC, hosted shell, MCP, or subagents would help. Those remain out of scope.
+
+Module 11 experiment recorded; formal module closure remains for Topic Chat. Do not treat `theory.md` as written yet.
+

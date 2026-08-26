@@ -1,0 +1,55 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion lifecycle behavior so completed tasks receive a timestamp and reopened tasks clear that timestamp.",
+    "requirements": [
+      "When a task is successfully completed through the existing completion flow, set its `completedAt` field to a timestamp string.",
+      "When a completed task is successfully reopened through the existing reopen flow, set its `completedAt` field to `null`.",
+      "Preserve the existing task statuses, route behavior, response shapes, and not-found handling."
+    ],
+    "constraints": [
+      "Use the existing `Task.completedAt: string | null` contract in `src/tasks/types.ts`.",
+      "Make the change in the existing task lifecycle/service path used by `POST /tasks/:id/complete` and `POST /tasks/:id/reopen`.",
+      "Do not change unrelated task creation, listing, filtering, or routing behavior.",
+      "A timestamp representation/clock implementation is left to ordinary implementation discretion; it must be returned as a non-empty string representing the completion time."
+    ],
+    "nonGoals": [
+      "Changing the HTTP API routes or status codes.",
+      "Changing task creation defaults (`status: \"pending\"`, `completedAt: null`).",
+      "Defining persistence, timezone, or timestamp precision requirements beyond returning a timestamp string.",
+      "Adding behavior for task deletion or other lifecycle operations."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns status `200`, status `\"completed\"`, and a non-empty string `completedAt`.",
+      "Reopening a completed existing task returns status `200`, status `\"pending\"`, and `completedAt: null`.",
+      "The task lifecycle tests in `tests/tasks.test.ts` pass, including both completedAt assertions.",
+      "Existing task route and status-filter tests continue to pass."
+    ],
+    "verification": [
+      "Run the repository test script: `npm test`.",
+      "Confirm the completion test observes a string, non-empty `completedAt`.",
+      "Confirm the reopen test observes `completedAt === null`.",
+      "Confirm the complete/reopen changes do not regress the GET, create, or status-filter tests."
+    ],
+    "ambiguities": [
+      {
+        "question": "What exact timestamp format and clock source should be used?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use the existing string field with a standard current-time timestamp representation (for example, an ISO 8601 string); no exact format is required by the task or repository.",
+        "basis": "The type contract is `string | null`, and the existing lifecycle tests require only that completedAt be a non-empty string."
+      },
+      {
+        "question": "What should happen if completion is requested for a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Keep the existing successful completion behavior and ensure the field remains a valid completion timestamp; no new route or status semantics are introduced.",
+        "basis": "The task specifies the completed/reopened lifecycle fields, while the current service already accepts the completion operation and returns the task; this edge case is outside the stated acceptance behavior."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

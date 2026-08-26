@@ -13,6 +13,7 @@
     "benchmark:sec01": "tsx src/run-benchmark.ts SEC01",
     "benchmark:eval": "tsx src/run-benchmark.ts --eval",
     "benchmark:routing": "tsx src/run-benchmark.ts --routing",
+    "benchmark:orchestration": "tsx src/run-benchmark.ts --orchestration",
     "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },
   "dependencies": {

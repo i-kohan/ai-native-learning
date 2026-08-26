@@ -343,6 +343,9 @@ describe("R01 expected outcome", () => {
       specPath: "/tmp/r01.spec.json",
       durationMs: 1,
       contextMode: "variant",
+      conversationStateMode: "manual",
+      clientInputItemsSent: 0,
+      clientInputBytesSent: 0,
       contextMetrics: {
         mode: "variant",
         preparation: null,

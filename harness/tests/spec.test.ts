@@ -222,6 +222,9 @@ describe("V1 expected outcomes", () => {
       specPath: "/tmp/trace.spec.json",
       durationMs: 1,
       contextMode: "baseline",
+      conversationStateMode: "manual",
+      clientInputItemsSent: 0,
+      clientInputBytesSent: 0,
       contextMetrics: {
         mode: "baseline",
         preparation: null,

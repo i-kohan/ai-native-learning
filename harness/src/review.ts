@@ -91,6 +91,8 @@ export type ReviewRepairSummary = {
   changedFiles: string[];
   durationMs: number;
   tokenUsage: TokenUsageSummary | null;
+  clientInputItemsSent?: number;
+  clientInputBytesSent?: number;
 };
 
 export type FinalReviewerOutcome =

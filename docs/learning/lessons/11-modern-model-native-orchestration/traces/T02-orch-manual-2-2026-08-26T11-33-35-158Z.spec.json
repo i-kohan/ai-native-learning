@@ -1,0 +1,55 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion lifecycle behavior so completed tasks receive a timestamp and reopened tasks have no completion timestamp.",
+    "requirements": [
+      "In `TaskService.complete`, set `completedAt` to a newly generated timestamp when the task is completed, while preserving the existing not-found behavior and completed status.",
+      "In `TaskService.reopen`, set `completedAt` to `null` while preserving the existing not-found behavior and pending status.",
+      "Keep the existing task shape and route response behavior; the route handlers already expose the service-returned task.",
+      "Use the existing `string | null` contract for `completedAt`; an ISO timestamp string is an appropriate concrete representation for the generated timestamp."
+    ],
+    "constraints": [
+      "Do not change the public task fields, endpoint paths, HTTP statuses, or error responses.",
+      "Creation must continue to initialize pending tasks with `completedAt: null`.",
+      "The implementation should remain within the existing in-memory TaskService lifecycle and TypeScript setup."
+    ],
+    "nonGoals": [
+      "No changes to task creation, listing, filtering, or lookup semantics.",
+      "No persistence, clock injection, or broader API redesign.",
+      "No changes to timestamp display formatting beyond providing a valid timestamp string."
+    ],
+    "acceptance": [
+      "Completing an existing task returns status `200`, status `completed`, and a non-empty timestamp string in `completedAt`.",
+      "The completion timestamp is a valid timestamp representation (the implementation may use ISO 8601).",
+      "Reopening a completed existing task returns status `200`, status `pending`, and `completedAt: null`.",
+      "A newly created task still has `completedAt: null`.",
+      "Missing-task complete and reopen requests still return `404` with `{ error: \"task_not_found\" }`.",
+      "The existing complete/reopen tests pass, including both timestamp-setting and timestamp-clearing assertions."
+    ],
+    "verification": [
+      "Run the repository test script: `npm test`.",
+      "Confirm the complete/reopen tests in `tests/tasks.test.ts` pass.",
+      "If adding or strengthening tests, cover that the completion response has a parseable/non-empty timestamp and that reopening clears it to `null`; retain the existing route and missing-task coverage."
+    ],
+    "ambiguities": [
+      {
+        "question": "What concrete string format should be used for `completedAt`?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use an ISO 8601 string generated with `new Date().toISOString()`.",
+        "basis": "The task requires a timestamp, `Task.completedAt` is typed as `string | null`, and the existing tests require a non-empty string but impose no alternative format."
+      },
+      {
+        "question": "Should repeated completion of an already completed task preserve the original timestamp or replace it?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Treat the complete operation as setting the completion timestamp; use the straightforward service behavior of assigning a current timestamp on each successful complete call.",
+        "basis": "The repository has no idempotency or timestamp-preservation contract, and the requested behavior is specifically implemented in the existing `complete` lifecycle method. This is a local lifecycle detail rather than a new API shape or persistence decision."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

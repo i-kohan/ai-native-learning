@@ -1,0 +1,52 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion lifecycle behavior so completed tasks have a completion timestamp and reopened tasks do not retain one.",
+    "requirements": [
+      "In `TaskService.complete`, when a task is transitioned to completed, assign `completedAt` a non-empty timestamp string (an ISO 8601 timestamp is an appropriate implementation format).",
+      "In `TaskService.reopen`, set the task status to `pending` and set `completedAt` to `null`.",
+      "Preserve the existing task routes, response statuses, task shape, creation behavior, and missing-task behavior."
+    ],
+    "constraints": [
+      "Limit the behavioral change to the task service completion/reopen lifecycle; no route or type contract changes are needed.",
+      "The timestamp must be generated at completion time rather than hard-coded.",
+      "No timestamp is required for newly created pending tasks; they continue to use `completedAt: null`."
+    ],
+    "nonGoals": [
+      "Changing task filtering, creation validation, IDs, titles, or HTTP error handling.",
+      "Defining additional behavior for unrelated task mutations or persistence.",
+      "Changing the public timestamp format beyond requiring it to be a timestamp string."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns status `completed` with a non-null, non-empty timestamp string in `completedAt`.",
+      "Reopening a completed task returns status `pending` with `completedAt` exactly `null`.",
+      "The same lifecycle state is observable through subsequent task retrieval/listing, since the service stores the updated task.",
+      "Existing task tests continue to pass, including not-found and status-filter behavior."
+    ],
+    "verification": [
+      "Run the repository test script (`npm test`) after the change.",
+      "Ensure the completion test verifies a string timestamp and the reopen test verifies `null`; these tests already exist in `tests/tasks.test.ts` and should pass against the implementation.",
+      "Optionally verify the returned timestamp can be parsed as a date, without asserting an exact clock value."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp string format should `completedAt` use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use `new Date().toISOString()`, which is a standard, stable timestamp representation; the required external contract is that it is a timestamp string.",
+        "basis": "The task requires a timestamp but does not prescribe a format. The existing type is `string | null`, and the tests require a non-empty string, so ISO 8601 is a low-risk implementation choice."
+      },
+      {
+        "question": "What should happen if the complete endpoint is called for a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "The required behavior applies to the transition to completed. Preserve the existing lifecycle semantics and ensure the task remains completed with a timestamp; repeated completion need not introduce a separate product rule.",
+        "basis": "The task specifically describes becoming completed and reopening, while existing service behavior accepts completion for any existing task and the repository contains no separate idempotency contract."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

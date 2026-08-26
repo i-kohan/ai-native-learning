@@ -1,0 +1,37 @@
+=== Conversation-State Experiment (m11-conversation-state) ===
+
+task: T02
+context_mode: variant (constant; not the experiment axis)
+hypothesis: Using previous_response_id instead of manual full Responses-history replay inside a bounded agent episode can preserve correctness, security and outer workflow semantics while reducing client-owned conversation-state plumbing/replay.
+
+Variant is a candidate to adopt only if:
+1. previous_response_id arm is 3/3 correct on T02.
+2. Client-side full-history replay is actually gone in variant.
+3. Existing tool/workspace/security authority is unchanged (by construction).
+4. Tool-call observability remains intact.
+5. Client conversation replay/items/bytes materially decrease.
+6. There is no clear repeated token/latency/failure regression.
+
+ARM A — manual full-history replay
+conversation_state_mode: manual
+expected: 3/3
+  trial#1 expected=yes workflow=success verify=PASS calls=7 tools=15 impl_turns=4 client_items=45 client_bytes=50929 tokens=16418/1443 wall_ms=23542 files=tasks/task-service.ts chain=1:null->resp_00326bdc154e5df2006a8ecf035a3887d28a4f0e6298d057cb[n=1] 2:null->resp_00326bdc154e5df2006a8ecf0533bc87d29e34bf1b73a2bae5[n=12] 3:null->resp_00326bdc154e5df2006a8ecf093da887d2848e446393ce371c[n=15] 4:null->resp_00326bdc154e5df2006a8ecf0b1ed887d2a100d2f4dbb18ae9[n=17]
+  trial#2 expected=yes workflow=success verify=PASS calls=7 tools=15 impl_turns=4 client_items=45 client_bytes=51254 tokens=16680/1623 wall_ms=23910 files=tasks/task-service.ts chain=1:null->resp_01b286a4c894fda5006a8ecf1bd91487d2be3a5c5bfabcbb88[n=1] 2:null->resp_01b286a4c894fda5006a8ecf1dd28c87d28b3321a426727c29[n=12] 3:null->resp_01b286a4c894fda5006a8ecf216c1487d2904ee515e23d1931[n=15] 4:null->resp_01b286a4c894fda5006a8ecf23c4ac87d2972d6ff1840987a1[n=17]
+  trial#3 expected=yes workflow=success verify=PASS calls=7 tools=14 impl_turns=4 client_items=39 client_bytes=57863 tokens=18436/1643 wall_ms=23363 files=tasks/task-service.ts chain=1:null->resp_0b292decfc59d2a3006a8ecf33e1ec87d29152a87544c5b185[n=1] 2:null->resp_0b292decfc59d2a3006a8ecf35e44487d2acaba62327cf3b09[n=10] 3:null->resp_0b292decfc59d2a3006a8ecf3af36087d29602d99ebfa9b87f[n=13] 4:null->resp_0b292decfc59d2a3006a8ecf3c5dc487d289a3f3fed244ee4c[n=15]
+  averages: calls=7 tools=15 impl_turns=4 client_items=43 client_bytes=53349 tokens=17178/1570 wall_ms=23605
+
+ARM B — previous_response_id
+conversation_state_mode: previous_response_id
+expected: 3/3
+  trial#1 expected=yes workflow=success verify=PASS calls=7 tools=14 impl_turns=4 client_items=7 client_bytes=14049 tokens=18394/1768 wall_ms=26671 files=tasks/task-service.ts chain=1:null->resp_057abeba2a6a30f7006a8ecf5000a887d2a33c105ab0f779d1[n=1] 2:resp_057abeba2a6a30f7006a8ecf5000a887d2a33c105ab0f779d1->resp_057abeba2a6a30f7006a8ecf5221ec87d29c67e733b05eeb17[n=4] 3:resp_057abeba2a6a30f7006a8ecf5221ec87d29c67e733b05eeb17->resp_057abeba2a6a30f7006a8ecf553bcc87d2bc753ec2705ed241[n=1] 4:resp_057abeba2a6a30f7006a8ecf553bcc87d2bc753ec2705ed241->resp_057abeba2a6a30f7006a8ecf570a1887d29b713b658639ef2e[n=1]
+  trial#2 expected=yes workflow=success verify=PASS calls=8 tools=14 impl_turns=4 client_items=7 client_bytes=14277 tokens=22043/1998 wall_ms=30492 files=tasks/task-service.ts chain=1:null->resp_0a5a1abfd588c3b4006a8ecf6c4ad487d2898a3959894e76fa[n=1] 2:resp_0a5a1abfd588c3b4006a8ecf6c4ad487d2898a3959894e76fa->resp_0a5a1abfd588c3b4006a8ecf6df6ec87d2978014f237508e3b[n=4] 3:resp_0a5a1abfd588c3b4006a8ecf6df6ec87d2978014f237508e3b->resp_0a5a1abfd588c3b4006a8ecf74614887d287a6397d4a9223f4[n=1] 4:resp_0a5a1abfd588c3b4006a8ecf74614887d287a6397d4a9223f4->resp_0a5a1abfd588c3b4006a8ecf7641ac87d2b42912111606c3b3[n=1]
+  trial#3 expected=yes workflow=success verify=PASS calls=7 tools=15 impl_turns=4 client_items=8 client_bytes=14618 tokens=19055/1898 wall_ms=39684 files=tasks/task-service.ts chain=1:null->resp_0d0cb638d588bac7006a8ecf961ed887d29e4c830f7738b286[n=1] 2:resp_0d0cb638d588bac7006a8ecf961ed887d29e4c830f7738b286->resp_0d0cb638d588bac7006a8ecf98a09487d299916f9cbdc94a42[n=5] 3:resp_0d0cb638d588bac7006a8ecf98a09487d299916f9cbdc94a42->resp_0d0cb638d588bac7006a8ecf9c5b0487d28e049958e1b5d65b[n=1] 4:resp_0d0cb638d588bac7006a8ecf9c5b0487d28e049958e1b5d65b->resp_0d0cb638d588bac7006a8ecf9df5f087d29e9da9387e5e729a[n=1]
+  averages: calls=7 tools=14 impl_turns=4 client_items=7 client_bytes=14315 tokens=19831/1888 wall_ms=32282
+
+Decision
+variant_3/3: yes
+replay_gone: yes
+tool_observability: yes
+client_replay_decreased: yes
+no_clear_regression: yes
+candidate_to_adopt: yes

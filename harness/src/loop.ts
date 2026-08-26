@@ -24,10 +24,42 @@ import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
 import {
   ResponseOutputItem,
   ResponseUsage,
+  Response,
 } from "openai/resources/responses/responses.js";
 
 export type EpisodePhase = "implementation" | "repair" | "review_repair";
 export type RunStatus = "success" | "failure";
+
+/**
+ * How this agent episode transports conversation state to the next Responses call.
+ * Episode-local only. Not workflow state; a new runAgentLoop starts a new chain.
+ */
+export type ConversationStateMode = "manual" | "previous_response_id";
+
+export type FunctionCallOutputItem = {
+  type: "function_call_output";
+  call_id: string;
+  output: string;
+};
+
+export type ResponsesCreateRequest = {
+  model: string;
+  instructions: string;
+  input: unknown;
+  tools: unknown;
+  previous_response_id?: string;
+};
+
+export type ResponsesCreateResult = {
+  id: string;
+  output?: Array<Record<string, unknown>>;
+  output_text?: string;
+  usage?: ResponseUsage;
+};
+
+export type ResponsesCreateFn = (
+  request: ResponsesCreateRequest,
+) => Promise<Response>;
 
 export type AgentRunResult = {
   task: string;
@@ -55,6 +87,9 @@ export type AgentRunResult = {
   implNavCallsBeforeFirstWrite: number | null;
   tokenUsage: TokenUsageSummary | null;
   skillLoad: SkillLoadRecord | null;
+  conversationStateMode: ConversationStateMode;
+  clientInputItemsSent: number;
+  clientInputBytesSent: number;
 };
 
 type FunctionCallItem = {
@@ -73,9 +108,14 @@ export async function runAgentLoop(options: {
   tracer?: Tracer;
   reusableContext?: ReusableContext;
   phase?: EpisodePhase;
+  conversationStateMode?: ConversationStateMode;
+  /** Test injection only. Production uses the OpenAI Responses client. */
+  responsesCreate?: ResponsesCreateFn;
 }): Promise<AgentRunResult> {
   const { config, task, runId, spec, reusableContext } = options;
   const phase: EpisodePhase = options.phase ?? "implementation";
+  const conversationStateMode: ConversationStateMode =
+    options.conversationStateMode ?? "previous_response_id";
   const startedAt = Date.now();
   const nested = Boolean(options.tracer);
   const tracer = options.tracer ?? new Tracer(config.tracesDir, runId);
@@ -85,7 +125,8 @@ export async function runAgentLoop(options: {
   let tokenUsage: TokenUsageSummary | null = null;
   const selection = resolveModel(phase, config);
 
-  const client = new OpenAI({ apiKey: config.apiKey });
+  const createResponse =
+    options.responsesCreate ?? defaultResponsesCreate(config.apiKey);
   const instructions =
     phase === "repair"
       ? REPAIR_INSTRUCTIONS
@@ -108,12 +149,11 @@ export async function runAgentLoop(options: {
     .join("\n\n");
 
   // Conversation input for the Responses API. Tool results are appended here.
-  let input: Array<Record<string, unknown>> = [
-    {
-      role: "user",
-      content: taskContent,
-    },
-  ];
+  let input: Array<Record<string, unknown>> =
+    initialConversationInput(taskContent);
+  let previousResponseId: string | null = null;
+  let clientInputItemsSent = 0;
+  let clientInputBytesSent = 0;
 
   let turns = 0;
   let modelCalls = 0;
@@ -132,6 +172,7 @@ export async function runAgentLoop(options: {
       ...routingTraceFields(selection),
       maxTurns: config.maxTurns,
       phase,
+      conversationStateMode,
       ...(spec ? { specStatus: "provided" } : {}),
     });
   } else if (phase === "implementation") {
@@ -140,6 +181,7 @@ export async function runAgentLoop(options: {
       specGoal: spec?.goal ?? null,
       requirementCount: spec?.requirements.length ?? 0,
       reusableContextProvided: Boolean(reusableContext),
+      conversationStateMode,
     });
   }
 
@@ -149,19 +191,32 @@ export async function runAgentLoop(options: {
       turns += 1;
       modelCalls += 1;
 
+      const inputMetrics = measureClientInput(input);
+      clientInputItemsSent += inputMetrics.clientInputItemCount;
+      clientInputBytesSent += inputMetrics.clientInputBytes;
+      const request = buildResponsesRequest({
+        model: selection.model,
+        instructions,
+        input,
+        tools: TOOL_DEFINITIONS,
+        mode: conversationStateMode,
+        previousResponseId,
+      });
+
       tracer.record(
         "model_call_started",
-        { ...routingTraceFields(selection), phase },
+        {
+          ...routingTraceFields(selection),
+          phase,
+          conversationStateMode,
+          previousResponseId,
+          ...inputMetrics,
+        },
         turns,
       );
       const callStarted = Date.now();
 
-      const response = await client.responses.create({
-        model: selection.model,
-        instructions,
-        input: input as never,
-        tools: TOOL_DEFINITIONS as never,
-      });
+      const response = await createResponse(request);
 
       const durationMs = Date.now() - callStarted;
       const usage = extractUsage(response);
@@ -176,14 +231,21 @@ export async function runAgentLoop(options: {
         {
           durationMs,
           responseId: response.id,
+          conversationStateMode,
+          previousResponseId,
+          ...inputMetrics,
           ...(usage ? { usage } : {}),
         },
         turns,
       );
 
+      previousResponseId = nextPreviousResponseId(
+        conversationStateMode,
+        response.id,
+      );
+
       const outputItems = (response.output ?? []) as Array<FunctionCallItem>;
-      // Feed model output back into the next request input.
-      input = [...input, ...outputItems];
+      input = applyModelOutput(conversationStateMode, input, outputItems);
 
       const functionCalls = outputItems.filter(
         (item): item is FunctionCallItem => item.type === "function_call",
@@ -207,6 +269,7 @@ export async function runAgentLoop(options: {
       }
 
       // Execute each requested tool and return observations to the model.
+      const toolOutputs: FunctionCallOutputItem[] = [];
       for (const call of functionCalls) {
         toolCalls += 1;
         const toolStarted = Date.now();
@@ -245,12 +308,13 @@ export async function runAgentLoop(options: {
           turns,
         );
 
-        input.push({
+        toolOutputs.push({
           type: "function_call_output",
           call_id: call.call_id,
           output: result.output,
         });
       }
+      input = applyToolOutputs(conversationStateMode, input, toolOutputs);
 
       // Next while-iteration starts the next model inference with tool results.
     }
@@ -312,6 +376,9 @@ export async function runAgentLoop(options: {
     implNavCallsBeforeFirstWrite: discovery.getImplNavCallsBeforeFirstWrite(),
     tokenUsage,
     skillLoad,
+    conversationStateMode,
+    clientInputItemsSent,
+    clientInputBytesSent,
   };
 
   if (!nested) {
@@ -329,6 +396,9 @@ export async function runAgentLoop(options: {
       implNavCallsBeforeFirstWrite: result.implNavCallsBeforeFirstWrite,
       tokenUsage,
       skillLoad: result.skillLoad,
+      conversationStateMode,
+      clientInputItemsSent,
+      clientInputBytesSent,
     });
     await tracer.close();
   }
@@ -345,6 +415,10 @@ export function printRunResult(result: AgentRunResult): void {
   }
   console.log(`turns/model_calls: ${result.turns}/${result.modelCalls}`);
   console.log(`tool_calls: ${result.toolCalls}`);
+  console.log(`conversation_state_mode: ${result.conversationStateMode}`);
+  console.log(
+    `client_input: items=${result.clientInputItemsSent} bytes=${result.clientInputBytesSent}`,
+  );
   console.log(`received_terminal_response: ${result.receivedTerminalResponse}`);
   console.log(
     `changed_files: ${result.changedFiles.length ? result.changedFiles.join(", ") : "(none)"}`,
@@ -357,6 +431,84 @@ export function printRunResult(result: AgentRunResult): void {
   console.log(`trace: ${result.tracePath}`);
   console.log(`duration_ms: ${result.durationMs}`);
   console.log(`model_final_response:\n${result.modelFinalResponse}`);
+}
+
+export function initialConversationInput(
+  taskContent: string,
+): Array<Record<string, unknown>> {
+  return [{ role: "user", content: taskContent }];
+}
+
+export function applyModelOutput(
+  mode: ConversationStateMode,
+  input: Array<Record<string, unknown>>,
+  outputItems: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  if (mode === "previous_response_id") {
+    return [];
+  }
+  return [...input, ...outputItems];
+}
+
+export function applyToolOutputs(
+  mode: ConversationStateMode,
+  input: Array<Record<string, unknown>>,
+  toolOutputs: FunctionCallOutputItem[],
+): Array<Record<string, unknown>> {
+  if (mode === "previous_response_id") {
+    return [...toolOutputs];
+  }
+  return [...input, ...toolOutputs];
+}
+
+export function nextPreviousResponseId(
+  mode: ConversationStateMode,
+  responseId: string,
+): string | null {
+  return mode === "previous_response_id" ? responseId : null;
+}
+
+export function measureClientInput(input: Array<Record<string, unknown>>): {
+  clientInputItemCount: number;
+  clientInputBytes: number;
+} {
+  return {
+    clientInputItemCount: input.length,
+    clientInputBytes: Buffer.byteLength(JSON.stringify(input), "utf8"),
+  };
+}
+
+export function buildResponsesRequest(options: {
+  model: string;
+  instructions: string;
+  input: Array<Record<string, unknown>>;
+  tools: unknown;
+  mode: ConversationStateMode;
+  previousResponseId: string | null;
+}): ResponsesCreateRequest {
+  return {
+    model: options.model,
+    instructions: options.instructions,
+    input: options.input,
+    tools: options.tools,
+    ...(options.mode === "previous_response_id" && options.previousResponseId
+      ? { previous_response_id: options.previousResponseId }
+      : {}),
+  };
+}
+
+function defaultResponsesCreate(apiKey: string): ResponsesCreateFn {
+  const client = new OpenAI({ apiKey });
+  return async (request) =>
+    client.responses.create({
+      model: request.model,
+      instructions: request.instructions,
+      input: request.input as never,
+      tools: request.tools as never,
+      ...(request.previous_response_id
+        ? { previous_response_id: request.previous_response_id }
+        : {}),
+    });
 }
 
 function extractText(response: {

@@ -18,13 +18,13 @@ Completed modules:
 Current execution core remains **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with later capstone layers around it:
 
 - systematic measurement: `HarnessRunResult → RunMetrics → EvalResult`;
-- reusable `evidence-guided-repair` Skill, selectively loaded only for `repair` / `review_repair`;
-- per-run Git worktree isolation from an exact `baseRevision`;
-- workspace-bound tools/context/snapshots/verifier;
-- minimal verification child environment allowlist so repository code does not inherit unrelated harness secrets;
-- explicit harness-owned model-selection boundary: `resolveModel(episode, config)`;
-- optional `OPENAI_REPAIR_MODEL` override applying only to verification repair;
-- current normal routing policy remains one default model for all semantic episodes because Module 10 did not justify a permanent repair override.
+- one reusable procedural Skill: `evidence-guided-repair`, selectively loaded only for `repair` / `review_repair`;
+- per-run Git worktree isolation for benchmark/eval execution;
+- exact workspace provenance via `baseRevision`;
+- workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace;
+- verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`;
+- optional deterministic model routing: `resolveModel(episode, config)` with an optional `OPENAI_REPAIR_MODEL` override that applies only to the verification-repair episode;
+- agent-episode conversation continuation via Responses `previous_response_id` (client no longer replays full `response.output` history inside `runAgentLoop`). `manual` replay remains available for comparison.
 
 Conceptual flow:
 
@@ -48,7 +48,62 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 **11 — Modern Model-Native Orchestration / Inner vs Outer Loop**
 
-Why now:
+Status: implemented and evidenced; **not complete** until Topic Chat inspects the learning-critical code and evidence. `theory.md` is not written yet.
+
+Practical notes + evidence: `docs/learning/lessons/11-modern-model-native-orchestration/`
+
+Why this slice:
+
+- evals already exist, so an inner-loop transport change can be measured instead of guessed;
+- the change is one responsibility boundary: who owns conversation continuation **inside one agent episode**;
+- outer harness authority (VERIFY, repair/review policy, tools, workspace, security) must stay put.
+
+### Built
+
+- `conversationStateMode = "manual" | "previous_response_id"`;
+- default after the experiment: `previous_response_id`;
+- `manual` remains available (`--manual-conversation`);
+- traces record `conversationStateMode`, `responseId`, `previousResponseId`, `clientInputItemCount`, `clientInputBytes`;
+- separate `npm run benchmark:orchestration` (T02 3×3). Not folded into fixed 6/6.
+
+### Orchestration experiment
+
+Command: `cd harness && npm run benchmark:orchestration`
+
+T02, `contextMode=variant`, 3 valid trials per arm.
+
+| Arm | mode                 | expected | client items/bytes avg | tokens in/out avg |
+| --- | -------------------- | -------- | ---------------------- | ----------------- |
+| A   | manual               | 3/3      | 43 / 53349             | 17178 / 1570      |
+| B   | previous_response_id | 3/3      | 7 / 14315              | 19831 / 1888      |
+
+Decision rule passed. Adopted as default. Client replay dropped; billed input tokens did **not**.
+
+### Fresh regression evidence
+
+`docs/learning/lessons/11-modern-model-native-orchestration/traces/2026-08-26T11-39-08-076Z.txt`
+
+```text
+ISO01 workspace isolation    PASS
+SEC01 verification secret isolation  PASS
+T01–T04 expected outcomes    4 / 4
+Executable first-pass        3 / 3
+Correct escalation T04       1 / 1
+R01 verification repair      PASS
+REV01 independent review     PASS
+All fixed V3 contracts       6 / 6
+Hard regressions             none
+```
+
+Suite version remains `fixed-v3-m09`. Orchestration trials were not added to the 6/6 denominator.
+
+Harness unit tests: 104 passed.
+
+---
+
+## Module: 10 — Model Routing
+
+**Status:** implemented and evidenced; **not complete** until Topic Chat inspects the learning-critical code and evidence. No permanent routing policy has been selected.
 
 - Phase 2 reliability/safety layers are complete;
 - Module 10 made model allocation an explicit, measurable harness-owned boundary;

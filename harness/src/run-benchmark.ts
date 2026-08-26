@@ -14,6 +14,7 @@ import { aggregateRuns } from "./eval/aggregate.ts";
 import { normalizeRun } from "./eval/normalize.ts";
 import type { EvalResult, FixedTaskId } from "./eval/types.ts";
 import { writeEvalArtifact } from "./eval/write.ts";
+import type { ConversationStateMode } from "./loop.ts";
 import {
   isExpectedISO01Outcome,
   printIsolationProbeSummary,
@@ -35,6 +36,11 @@ import {
   type RoutingArmId,
   type RoutingProbeAttempt,
 } from "./routing-experiment.ts";
+import {
+  runOrchestrationExperiment,
+  writeOrchestrationExperimentArtifact,
+  type OrchestrationArmId,
+} from "./orchestration-experiment.ts";
 import { runFinalVerification } from "./verify.ts";
 import {
   bindConfig,
@@ -87,11 +93,18 @@ export function prepareBenchmark(
   };
 }
 
+export type BenchmarkRunOptions = {
+  conversationStateMode?: ConversationStateMode;
+};
+
 export async function runBenchmark(
   taskId: TaskId,
   contextMode: ContextMode = "baseline",
+  options: BenchmarkRunOptions = {},
 ): Promise<HarnessRunResult> {
-  const runId = `${taskId}-${contextMode}-${timestamp()}`;
+  const conversationStateMode =
+    options.conversationStateMode ?? "previous_response_id";
+  const runId = `${taskId}-${contextMode}-${conversationStateMode}-${timestamp()}`;
   return withIsolatedWorkspace(runId, async (config, workspace) => {
     const prep = prepareBenchmark(taskId, config);
 
@@ -101,7 +114,9 @@ export async function runBenchmark(
       );
     }
 
-    console.log(`\n=== Preparing ${taskId} (${contextMode}) ===`);
+    console.log(
+      `\n=== Preparing ${taskId} (${contextMode}, ${conversationStateMode}) ===`,
+    );
     console.log(`initial_tests: ${prep.initialTestsPassed ? "PASS" : "FAIL"}`);
     console.log(
       `workspace: ${workspace.id} @ ${workspace.baseRevision.slice(0, 12)}`,
@@ -114,6 +129,7 @@ export async function runBenchmark(
       runId,
       beforeSnapshot,
       contextMode,
+      conversationStateMode,
       workspace,
     });
 
@@ -156,7 +172,13 @@ export function runIdFromTracePath(tracePath: string): string {
   return path.basename(tracePath, ".jsonl");
 }
 
-export async function runFixedSuite(): Promise<EvalResult> {
+export async function runFixedSuite(
+  options: {
+    conversationStateMode?: ConversationStateMode;
+  } = {},
+): Promise<EvalResult> {
+  const conversationStateMode =
+    options.conversationStateMode ?? "previous_response_id";
   const isolation = runIsolationProbe();
   printIsolationProbeSummary(isolation);
   const security = runSecurityProbe();
@@ -167,11 +189,17 @@ export async function runFixedSuite(): Promise<EvalResult> {
   for (const taskId of TASK_IDS) {
     labeled.push({
       taskId,
-      result: await runBenchmark(taskId, "variant"),
+      result: await runBenchmark(taskId, "variant", { conversationStateMode }),
     });
   }
-  labeled.push({ taskId: "R01", result: await runRepairProbe() });
-  labeled.push({ taskId: "REV01", result: await runReviewProbe() });
+  labeled.push({
+    taskId: "R01",
+    result: await runRepairProbe(undefined, conversationStateMode),
+  });
+  labeled.push({
+    taskId: "REV01",
+    result: await runReviewProbe(conversationStateMode),
+  });
 
   const metrics = labeled.map(({ taskId, result }) =>
     normalizeRun({
@@ -222,9 +250,12 @@ export type RepairProbeOverlay = {
 export async function executeRepairProbe(options: {
   runId: string;
   overlay?: RepairProbeOverlay;
+  conversationStateMode?: ConversationStateMode;
   print?: boolean;
 }): Promise<RoutingProbeAttempt> {
   const print = options.print !== false;
+  const conversationStateMode =
+    options.conversationStateMode ?? "previous_response_id";
   return withIsolatedWorkspace(
     options.runId,
     async (config, workspace) => {
@@ -269,6 +300,7 @@ export async function executeRepairProbe(options: {
           runId: options.runId,
           beforeSnapshot,
           contextMode: "variant",
+          conversationStateMode,
           workspace,
           afterImplementationEpisode: () => {
             if (injected) {
@@ -301,9 +333,14 @@ export async function executeRepairProbe(options: {
 
 export async function runRepairProbe(
   overlay?: RepairProbeOverlay,
+  conversationStateMode: ConversationStateMode = "previous_response_id",
 ): Promise<HarnessRunResult> {
   const runId = `R01-repair-${timestamp()}`;
-  const attempt = await executeRepairProbe({ runId, overlay });
+  const attempt = await executeRepairProbe({
+    runId,
+    overlay,
+    conversationStateMode,
+  });
   if (!attempt.injected || !attempt.result) {
     throw new Error(
       attempt.error ??
@@ -324,6 +361,36 @@ export async function runModelRoutingExperiment() {
         },
       }),
     scoreExpected: isExpectedR01Outcome,
+  });
+}
+
+export async function runConversationStateExperiment() {
+  return runOrchestrationExperiment({
+    runTrial: async (arm: OrchestrationArmId, runId: string) =>
+      withIsolatedWorkspace(runId, async (config, workspace) => {
+        const prep = prepareBenchmark("T02", config);
+        if (prep.initialTestsPassed) {
+          throw new Error(
+            "T02: expected initial tests to FAIL after setup, but they passed.",
+          );
+        }
+        console.log(
+          `\n=== Preparing T02 (variant, ${arm}) workspace=${workspace.id} ===`,
+        );
+        const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+        const result = await runV1Harness({
+          config,
+          task: prep.task,
+          runId,
+          beforeSnapshot,
+          contextMode: "variant",
+          conversationStateMode: arm,
+          workspace,
+        });
+        printHarnessResult(result);
+        return result;
+      }),
+    scoreExpected: (result) => isExpectedV1Outcome("T02", result),
   });
 }
 
@@ -391,7 +458,9 @@ function printRepairProbeSummary(result: HarnessRunResult): void {
   console.log(`outcome: ${expected}`);
 }
 
-export async function runReviewProbe(): Promise<HarnessRunResult> {
+export async function runReviewProbe(
+  conversationStateMode: ConversationStateMode = "previous_response_id",
+): Promise<HarnessRunResult> {
   const runId = `REV01-review-${timestamp()}`;
   return withIsolatedWorkspace(runId, async (config, workspace) => {
     restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
@@ -433,6 +502,7 @@ export async function runReviewProbe(): Promise<HarnessRunResult> {
       runId,
       beforeSnapshot,
       contextMode: "variant",
+      conversationStateMode,
       workspace,
       architectureConstraints: [ARCH_01],
       afterImplementationEpisode: () => {
@@ -671,14 +741,21 @@ type CliOptions = {
   securityProbe: boolean;
   evalSuite: boolean;
   routingExperiment: boolean;
+  orchestrationExperiment?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
+  conversationStateMode: ConversationStateMode;
 };
 
 function parseArgs(argv: string[]): CliOptions {
   const contextMode: ContextMode = argv.includes("--variant")
     ? "variant"
     : "baseline";
+  const conversationStateMode: ConversationStateMode = argv.includes(
+    "--manual-conversation",
+  )
+    ? "manual"
+    : "previous_response_id";
 
   if (argv.includes("--eval") || argv.includes("--fixed-suite")) {
     return {
@@ -691,6 +768,22 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: true,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--orchestration") || argv.includes("orchestration")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      orchestrationExperiment: true,
+      contextMode: "variant",
+      conversationStateMode,
     };
   }
   if (argv.includes("--routing") || argv.includes("routing")) {
@@ -704,6 +797,7 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: true,
       contextMode,
+      conversationStateMode,
     };
   }
   if (argv.includes("--experiment")) {
@@ -717,6 +811,7 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
     };
   }
   if (argv.includes("SEC01") || argv.includes("--security-probe")) {
@@ -730,6 +825,7 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
     };
   }
   if (argv.includes("ISO01") || argv.includes("--isolation-probe")) {
@@ -743,6 +839,7 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
     };
   }
   if (argv.includes("REV01") || argv.includes("--review-probe")) {
@@ -756,6 +853,7 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
     };
   }
   if (argv.includes("R01") || argv.includes("--repair-probe")) {
@@ -769,6 +867,7 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
     };
   }
   if (argv.includes("--all")) {
@@ -782,6 +881,7 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
     };
   }
   const taskId = argv.find((arg) => TASK_IDS.includes(arg as TaskId)) as
@@ -798,6 +898,7 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
     };
   }
   return {
@@ -811,6 +912,7 @@ function parseArgs(argv: string[]): CliOptions {
     routingExperiment: false,
     taskId,
     contextMode,
+    conversationStateMode,
   };
 }
 
@@ -824,8 +926,10 @@ async function main(): Promise<void> {
     securityProbe,
     evalSuite,
     routingExperiment,
+    orchestrationExperiment,
     taskId,
     contextMode,
+    conversationStateMode,
   } = parseArgs(process.argv.slice(2));
 
   if (securityProbe) {
@@ -843,8 +947,20 @@ async function main(): Promise<void> {
   }
 
   if (evalSuite) {
-    const evalResult = await runFixedSuite();
+    const evalResult = await runFixedSuite({ conversationStateMode });
     process.exit(evalResult.regressions.length === 0 ? 0 : 1);
+    return;
+  }
+
+  if (orchestrationExperiment) {
+    const result = await runConversationStateExperiment();
+    const artifacts = writeOrchestrationExperimentArtifact(result);
+    console.log(`\n${result.report}`);
+    console.log(`\norchestration_json: ${artifacts.jsonPath}`);
+    console.log(`orchestration_report: ${artifacts.reportPath}`);
+    process.exit(
+      result.decision.passed && result.manual.expectedMet === 3 ? 0 : 1,
+    );
     return;
   }
 
@@ -859,13 +975,13 @@ async function main(): Promise<void> {
   }
 
   if (reviewProbe) {
-    const result = await runReviewProbe();
+    const result = await runReviewProbe(conversationStateMode);
     process.exit(isExpectedREV01Outcome(result) ? 0 : 1);
     return;
   }
 
   if (repairProbe) {
-    const result = await runRepairProbe();
+    const result = await runRepairProbe(undefined, conversationStateMode);
     process.exit(isExpectedR01Outcome(result) ? 0 : 1);
     return;
   }
@@ -881,12 +997,15 @@ async function main(): Promise<void> {
 
   if (!all && !taskId) {
     console.error(
-      "Usage: npm run benchmark -- T01|T02|T03|T04 [--baseline|--variant]",
+      "Usage: npm run benchmark -- T01|T02|T03|T04 [--baseline|--variant] [--manual-conversation]",
     );
-    console.error("   or: npm run benchmark:all [--baseline|--variant]");
+    console.error(
+      "   or: npm run benchmark:all [--baseline|--variant] [--manual-conversation]",
+    );
     console.error("   or: npm run benchmark:experiment");
-    console.error("   or: npm run benchmark:eval");
+    console.error("   or: npm run benchmark:eval [-- --manual-conversation]");
     console.error("   or: npm run benchmark:routing");
+    console.error("   or: npm run benchmark:orchestration");
     console.error("   or: npm run benchmark -- ISO01");
     console.error("   or: npm run benchmark -- SEC01");
     console.error("   or: npm run benchmark -- R01");
@@ -898,7 +1017,9 @@ async function main(): Promise<void> {
   const results: HarnessRunResult[] = [];
 
   for (const id of ids) {
-    const result = await runBenchmark(id, contextMode);
+    const result = await runBenchmark(id, contextMode, {
+      conversationStateMode,
+    });
     results.push(result);
   }
 

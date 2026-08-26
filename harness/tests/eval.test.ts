@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { aggregateRuns } from "../src/eval/aggregate.ts";
 import { normalizeRun } from "../src/eval/normalize.ts";
-import { CAPABILITY_TASK_IDS, type FixedTaskId, type RunMetrics } from "../src/eval/types.ts";
+import {
+  CAPABILITY_TASK_IDS,
+  type FixedTaskId,
+  type RunMetrics,
+} from "../src/eval/types.ts";
 import { emptyReviewRunState } from "../src/review.ts";
 import type { Finding, FindingDecisionRecord } from "../src/review.ts";
 import type { IsolationProbeResult } from "../src/iso01.ts";
@@ -113,6 +117,9 @@ function harnessResult(
     specPath: "/tmp/run.spec.json",
     durationMs: 1200,
     contextMode: "variant",
+    conversationStateMode: "manual",
+    clientInputItemsSent: 0,
+    clientInputBytesSent: 0,
     contextMetrics: {
       mode: "variant",
       preparation: null,

@@ -13,7 +13,11 @@ import {
 } from "./context.ts";
 import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
 import { normalizeFailure, type NormalizedFailure } from "./failure.ts";
-import { runAgentLoop, type AgentRunResult } from "./loop.ts";
+import {
+  runAgentLoop,
+  type AgentRunResult,
+  type ConversationStateMode,
+} from "./loop.ts";
 import { formatRepairContract, nextRepairDecision } from "./repair.ts";
 import {
   aggregateReviewState,
@@ -77,6 +81,8 @@ export type RepairAttemptSummary = {
   changedFiles: string[];
   durationMs: number;
   tokenUsage: TokenUsageSummary | null;
+  clientInputItemsSent?: number;
+  clientInputBytesSent?: number;
 };
 
 export type HarnessRunResult = {
@@ -119,6 +125,9 @@ export type HarnessRunResult = {
   specPath: string;
   durationMs: number;
   contextMode: ContextMode;
+  conversationStateMode: ConversationStateMode;
+  clientInputItemsSent: number;
+  clientInputBytesSent: number;
   contextMetrics: ContextRunMetrics;
   skillLoads: SkillLoadRecord[];
   workspace?: Workspace;
@@ -130,6 +139,7 @@ export async function runV1Harness(options: {
   runId: string;
   beforeSnapshot?: FileSnapshot;
   contextMode?: ContextMode;
+  conversationStateMode?: ConversationStateMode;
   architectureConstraints?: ArchitectureConstraint[];
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
@@ -137,6 +147,8 @@ export async function runV1Harness(options: {
 }): Promise<HarnessRunResult> {
   const { config, task, runId } = options;
   const contextMode = options.contextMode ?? "baseline";
+  const conversationStateMode: ConversationStateMode =
+    options.conversationStateMode ?? "previous_response_id";
   const startedAt = Date.now();
   const tracer = new Tracer(config.tracesDir, runId);
   const beforeSnapshot =
@@ -165,6 +177,7 @@ export async function runV1Harness(options: {
     maxRepairAttempts: config.maxRepairAttempts,
     maxReviewRepairAttempts: config.maxReviewRepairAttempts,
     contextMode,
+    conversationStateMode,
     repoRoot: config.repoRoot,
     targetAppRoot: config.targetAppRoot,
     targetSrcRoot: config.targetSrcRoot,
@@ -204,6 +217,7 @@ export async function runV1Harness(options: {
       implementation: null,
       specPhase,
       contextMode,
+      conversationStateMode,
       contextPreparation,
       receivedTerminalResponse: false,
       verificationAttempts: 0,
@@ -251,6 +265,7 @@ export async function runV1Harness(options: {
       implementation: null,
       specPhase,
       contextMode,
+      conversationStateMode,
       contextPreparation,
       receivedTerminalResponse: false,
       verificationAttempts: 0,
@@ -294,6 +309,7 @@ export async function runV1Harness(options: {
     tracer,
     reusableContext,
     phase: "implementation",
+    conversationStateMode,
   });
 
   tracer.record("implementation_completed", {
@@ -317,6 +333,7 @@ export async function runV1Harness(options: {
     reusableContext,
     runId,
     implementation,
+    conversationStateMode,
     emitSuccessOutcome: false,
   });
 
@@ -353,6 +370,7 @@ export async function runV1Harness(options: {
       architectureConstraints: options.architectureConstraints ?? [],
       lastVerification: verified.finalVerification!,
       lastVerificationAttempt: verified.verificationAttempts,
+      conversationStateMode,
     });
     workflowStatus = reviewed.workflowStatus;
     failureReason = reviewed.failureReason;
@@ -393,6 +411,7 @@ export async function runV1Harness(options: {
     implementation,
     specPhase,
     contextMode,
+    conversationStateMode,
     contextPreparation,
     receivedTerminalResponse: implementation.receivedTerminalResponse,
     verificationAttempts,
@@ -522,6 +541,10 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(`spec: ${result.specPath}`);
   console.log(`duration_ms: ${result.durationMs}`);
   console.log(`context_mode: ${result.contextMode}`);
+  console.log(`conversation_state_mode: ${result.conversationStateMode}`);
+  console.log(
+    `client_input: items=${result.clientInputItemsSent} bytes=${result.clientInputBytesSent}`,
+  );
   printContextMetrics(result.contextMetrics);
   console.log(`skill_loads: ${formatSkillLoads(result.skillLoads)}`);
   console.log(`model_final_response:\n${result.modelFinalResponse}`);
@@ -574,6 +597,7 @@ async function runVerifyRepairLoop(options: {
   reusableContext: ReusableContext | undefined;
   runId: string;
   implementation: AgentRunResult;
+  conversationStateMode: ConversationStateMode;
   emitSuccessOutcome?: boolean;
 }): Promise<{
   workflowStatus: WorkflowStatus;
@@ -590,6 +614,7 @@ async function runVerifyRepairLoop(options: {
 }> {
   const { config, task, spec, tracer, reusableContext, runId, implementation } =
     options;
+  const conversationStateMode = options.conversationStateMode;
 
   const verifications: VerificationAttempt[] = [];
   const repairs: RepairAttemptSummary[] = [];
@@ -723,6 +748,7 @@ async function runVerifyRepairLoop(options: {
     tracer.record("repair_started", {
       attempt: repairAttempts,
       ...routingTraceFields(resolveModel("repair", config)),
+      conversationStateMode,
       maxRepairAttempts: config.maxRepairAttempts,
       specGoal: spec.goal,
       failedTests: normalized?.failedTests ?? [],
@@ -744,6 +770,7 @@ async function runVerifyRepairLoop(options: {
       tracer,
       reusableContext,
       phase: "repair",
+      conversationStateMode,
     });
 
     lastRepairChangedFiles = repair.changedFiles.length > 0;
@@ -758,6 +785,8 @@ async function runVerifyRepairLoop(options: {
       changedFiles: repair.changedFiles,
       durationMs: repair.durationMs,
       tokenUsage: repair.tokenUsage,
+      clientInputItemsSent: repair.clientInputItemsSent,
+      clientInputBytesSent: repair.clientInputBytesSent,
     });
 
     tracer.record("repair_completed", {
@@ -807,6 +836,7 @@ async function runIndependentReviewLoop(options: {
   architectureConstraints: ArchitectureConstraint[];
   lastVerification: VerificationResult;
   lastVerificationAttempt: number;
+  conversationStateMode: ConversationStateMode;
 }): Promise<{
   workflowStatus: WorkflowStatus;
   failureReason?: WorkflowFailureReason;
@@ -830,6 +860,7 @@ async function runIndependentReviewLoop(options: {
     runId,
     beforeSnapshot,
     architectureConstraints,
+    conversationStateMode,
   } = options;
 
   const reviews: ReviewAttemptSummary[] = [];
@@ -1023,6 +1054,7 @@ async function runIndependentReviewLoop(options: {
   tracer.record("review_repair_started", {
     attempt: reviewRepairAttempts,
     ...routingTraceFields(resolveModel("review_repair", config)),
+    conversationStateMode,
     maxReviewRepairAttempts: config.maxReviewRepairAttempts,
     findingKeys: acceptedBlockers.map((item) => item.findingKey),
     promptIncludesSpec: true,
@@ -1038,6 +1070,7 @@ async function runIndependentReviewLoop(options: {
     tracer,
     reusableContext,
     phase: "review_repair",
+    conversationStateMode,
   });
 
   modelFinalResponse = repair.modelFinalResponse;
@@ -1051,6 +1084,8 @@ async function runIndependentReviewLoop(options: {
     changedFiles: repair.changedFiles,
     durationMs: repair.durationMs,
     tokenUsage: repair.tokenUsage,
+    clientInputItemsSent: repair.clientInputItemsSent,
+    clientInputBytesSent: repair.clientInputBytesSent,
   });
   tracer.record("review_repair_completed", {
     attempt: reviewRepairAttempts,
@@ -1076,6 +1111,7 @@ async function runIndependentReviewLoop(options: {
     reusableContext,
     runId,
     implementation: repair,
+    conversationStateMode,
     emitSuccessOutcome: false,
   });
 
@@ -1147,6 +1183,7 @@ function baseResult(fields: {
     tokenUsage: TokenUsageSummary | null;
   };
   contextMode: ContextMode;
+  conversationStateMode: ConversationStateMode;
   contextPreparation: ContextPreparation | null;
   receivedTerminalResponse: boolean;
   verificationAttempts: number;
@@ -1229,6 +1266,27 @@ function baseResult(fields: {
     0,
   );
 
+  const clientInputItemsSent =
+    (implementation?.clientInputItemsSent ?? 0) +
+    fields.repairs.reduce(
+      (sum, item) => sum + (item.clientInputItemsSent ?? 0),
+      0,
+    ) +
+    review.reviewRepairs.reduce(
+      (sum, item) => sum + (item.clientInputItemsSent ?? 0),
+      0,
+    );
+  const clientInputBytesSent =
+    (implementation?.clientInputBytesSent ?? 0) +
+    fields.repairs.reduce(
+      (sum, item) => sum + (item.clientInputBytesSent ?? 0),
+      0,
+    ) +
+    review.reviewRepairs.reduce(
+      (sum, item) => sum + (item.clientInputBytesSent ?? 0),
+      0,
+    );
+
   return {
     task: fields.task,
     workflowStatus: fields.workflowStatus,
@@ -1283,6 +1341,9 @@ function baseResult(fields: {
     specPath: "",
     durationMs: fields.durationMs,
     contextMode: fields.contextMode,
+    conversationStateMode: fields.conversationStateMode,
+    clientInputItemsSent,
+    clientInputBytesSent,
     contextMetrics,
     skillLoads: fields.skillLoads ?? [],
     ...(fields.workspace ? { workspace: fields.workspace } : {}),
@@ -1391,6 +1452,9 @@ async function finishRun(
     changedFiles: result.changedFiles,
     durationMs: result.durationMs,
     contextMode: result.contextMode,
+    conversationStateMode: result.conversationStateMode,
+    clientInputItemsSent: result.clientInputItemsSent,
+    clientInputBytesSent: result.clientInputBytesSent,
     contextMetrics: result.contextMetrics,
     skillLoads: result.skillLoads,
   });
