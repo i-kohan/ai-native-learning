@@ -14,12 +14,9 @@ Completed modules:
 8. ✅ 08 — Worktrees / Isolation
 9. ✅ 09 — Security Fundamentals
 10. ✅ 10 — Model Routing
+11. ✅ 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
 
-Current module:
-
-11. 🟡 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
-
-Status: implementation, experiment, evidence review, decision correction and `theory.md` are complete. **Formal module closure is still pending the final Topic Chat understanding check.**
+Current module: none. Return to Master/Roadmap to select the next module from the current plan.
 
 ---
 
@@ -57,6 +54,8 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 ---
 
 # Module 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
+
+**Status:** ✅ COMPLETED — formally closed by Topic Chat on 2026-08-26 after implementation, evidence review, decision correction, theory, and understanding check.
 
 ## Goal
 
@@ -170,6 +169,14 @@ Hard regressions                      none
 
 Harness unit tests at experiment time: 104 passed.
 
+## Understanding check
+
+Final Topic Chat check passed. The learner correctly identified that:
+
+- `baseRevision` / workspace provenance belongs to the outer harness because the harness controls the authoritative workspace;
+- retry limits belong to the outer harness because the harness controls whether another semantic attempt is permitted;
+- model/tool sequencing and temporary continuation may live inward, but policy, permissions, checkpoints and workflow truth stay outer.
+
 ## Learning-critical result
 
 The provider can own more **temporary episode continuation** without owning:
@@ -190,7 +197,7 @@ manual continuation = default
 previous_response_id = proven mechanism / selectable variant
 ```
 
-No additional provider-native orchestration infrastructure is required before the final Module 11 understanding check.
+No additional provider-native orchestration infrastructure is required before moving on.
 
 ---
 
