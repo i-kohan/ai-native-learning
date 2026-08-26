@@ -5,7 +5,7 @@
 Theory: `theory.md`  
 Decision correction: `traces/decision-correction-2026-08-26.md`
 
-Formal closure остаётся за Topic Chat после проверки понимания.
+**Status:** ✅ COMPLETED — formally closed by Topic Chat on 2026-08-26 after the final understanding check.
 
 ## Что это за урок одной фразой
 
@@ -129,6 +129,29 @@ Hard regressions            none
 ```
 
 Harness tests: 104 passed.
+
+## Final understanding check
+
+Topic Chat confirmed that the learner can distinguish the two sides of the boundary:
+
+```text
+INNER
+- file/tool sequencing
+- temporary reasoning
+- episode continuation
+
+OUTER
+- workspace/baseRevision
+- retry limits
+- permissions/control boundaries
+- VERIFY/review policy
+- workflow truth
+```
+
+In particular:
+
+- `baseRevision` stays outer because the harness controls the authoritative workspace provenance;
+- retry count stays outer because the harness controls whether another semantic attempt is permitted.
 
 ## Нюансы
 
