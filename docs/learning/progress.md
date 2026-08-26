@@ -15,7 +15,17 @@ Completed modules:
 9. ✅ 09 — Security Fundamentals
 10. ✅ 10 — Model Routing
 
-Current execution core remains **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with later capstone layers around it:
+Current module:
+
+11. 🟡 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
+
+Status: implementation, experiment, evidence review, decision correction and `theory.md` are complete. **Formal module closure is still pending the final Topic Chat understanding check.**
+
+---
+
+## Current execution core
+
+The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair + independent review**, with later layers around it:
 
 - systematic measurement: `HarnessRunResult → RunMetrics → EvalResult`;
 - one reusable procedural Skill: `evidence-guided-repair`, selectively loaded only for `repair` / `review_repair`;
@@ -23,8 +33,8 @@ Current execution core remains **V3 Spec-Driven + targeted context + bounded ver
 - exact workspace provenance via `baseRevision`;
 - workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace;
 - verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`;
-- optional deterministic model routing: `resolveModel(episode, config)` with an optional `OPENAI_REPAIR_MODEL` override that applies only to the verification-repair episode;
-- optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`. Default remains manual full-history replay; the variant is selectable, not the production default.
+- deterministic harness-owned model routing through `resolveModel(episode, config)`; current normal policy keeps all episodes on `gpt-5.6-luna`;
+- optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`; default remains manual full-history replay because the Module 11 efficiency/adoption criterion was inconclusive.
 
 Conceptual flow:
 
@@ -44,96 +54,167 @@ Security note: this is still not a general sandbox; executed repository code can
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
 
-## Next module
+---
 
-**11 — Modern Model-Native Orchestration / Inner vs Outer Loop**
+# Module 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
 
-Status: implemented and evidenced; **not complete** until Topic Chat inspects the learning-critical code and evidence. `theory.md` is not written yet.
+## Goal
 
-Practical notes + evidence: `docs/learning/lessons/11-modern-model-native-orchestration/`
+Understand **where orchestration responsibility should live** as provider/model runtimes become more capable.
 
-Why this slice:
+Core distinction:
 
-- evals already exist, so an inner-loop transport change can be measured instead of guessed;
-- the change is one responsibility boundary: who owns conversation continuation **inside one agent episode**;
-- outer harness authority (VERIFY, repair/review policy, tools, workspace, security) must stay put.
+```text
+OUTER HARNESS
+→ whether an action/episode should happen
+→ policy / permissions / verification / transitions / workflow truth
 
-### Built
+INNER EPISODE
+→ how to execute the currently allowed bounded objective
+```
+
+Theory:
+
+`docs/learning/lessons/11-modern-model-native-orchestration/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/11-modern-model-native-orchestration/notes.md`
+
+## Built
 
 - `conversationStateMode = "manual" | "previous_response_id"`;
-- default remains `manual` (full-history replay);
-- `previous_response_id` is fully implemented and selectable (`--previous-response-id`);
+- default remains `manual`;
+- `previous_response_id` is fully implemented and selectable with `--previous-response-id`;
+- each `runAgentLoop` invocation starts a fresh response chain;
+- implementation / repair / review_repair do not share one provider response chain across outer checkpoints;
+- custom tools remain client-executed via `executeTool()`;
 - traces record `conversationStateMode`, `responseId`, `previousResponseId`, `clientInputItemCount`, `clientInputBytes`;
-- separate `npm run benchmark:orchestration` (T02 3×3). Not folded into fixed 6/6.
+- separate `npm run benchmark:orchestration` experiment; orchestration trials are not folded into the fixed 6/6 denominator.
 
-### Orchestration experiment
+## Controlled experiment
 
-Command: `cd harness && npm run benchmark:orchestration`
+Task: T02  
+Context: `contextMode=variant`  
+Trials: 3 per arm, isolated exact-base worktree per trial.
 
-T02, `contextMode=variant`, 3 valid trials per arm.
+| Arm | mode | expected | client items/bytes avg | tokens in/out avg | wall avg |
+| --- | --- | --- | --- | --- | --- |
+| A | manual | 3/3 | 43 / 53,349 | 17,178 / 1,570 | ~23.6s |
+| B | previous_response_id | 3/3 | 7 / 14,315 | 19,831 / 1,888 | ~32.3s |
 
-| Arm | mode                 | expected | client items/bytes avg | tokens in/out avg |
-| --- | -------------------- | -------- | ---------------------- | ----------------- |
-| A   | manual               | 3/3      | 43 / 53349             | 17178 / 1570      |
-| B   | previous_response_id | 3/3      | 7 / 14315              | 19831 / 1888      |
+Supported:
 
-Decision: **keep baseline**. Criteria 1–5 held; criterion 6 (token/latency regression) is **inconclusive** on n=3. `previous_response_id` stays available as a variant. Client replay dropped; billed input tokens did **not**.
+```text
+correctness on T02                    3/3 both arms
+previous_response_id chaining         yes
+client full-history replay removed    yes in variant
+custom tool authority preserved       yes
+outer workflow authority preserved    yes
+client payload materially reduced     yes
+```
 
-### Fresh regression evidence
+Not established:
 
-The suite below was run with `conversationStateMode = previous_response_id`. It shows the variant can pass V3; it is not a default-change result.
+```text
+token improvement      no
+latency improvement    no
+stable regression      not proven with n=3
+```
+
+## Decision correction
+
+The original generated report used post-hoc token/latency thresholds and therefore incorrectly emitted:
+
+```text
+candidate_to_adopt: yes
+```
+
+That historical artifact is intentionally preserved unchanged.
+
+Authoritative correction:
+
+`docs/learning/lessons/11-modern-model-native-orchestration/traces/decision-correction-2026-08-26.md`
+
+Current decision:
+
+```text
+criterion 1–5      supported
+criterion 6        inconclusive
+candidate_to_adopt no
+normal default     manual
+variant            previous_response_id remains available
+```
+
+This is an eval-discipline result as well as an orchestration result: thresholds must not be invented after observing the data.
+
+## Fresh variant regression evidence
+
+The fixed suite below was run with `conversationStateMode = previous_response_id` to prove that the variant preserves current contracts when explicitly selected. It is **not** evidence that the variant became the default.
+
+Evidence:
 
 `docs/learning/lessons/11-modern-model-native-orchestration/traces/2026-08-26T11-39-08-076Z.txt`
 
 ```text
-ISO01 workspace isolation    PASS
-SEC01 verification secret isolation  PASS
-T01–T04 expected outcomes    4 / 4
-Executable first-pass        3 / 3
-Correct escalation T04       1 / 1
-R01 verification repair      PASS
-REV01 independent review     PASS
-All fixed V3 contracts       6 / 6
-Hard regressions             none
+T01–T04 expected outcomes             4 / 4
+Executable first-pass                 3 / 3
+Correct escalation T04                1 / 1
+R01 verification repair               PASS
+REV01 independent review              PASS
+ISO01 workspace isolation             PASS
+SEC01 verification secret isolation   PASS
+All fixed V3 contracts                6 / 6
+Hard regressions                      none
 ```
 
-Suite version remains `fixed-v3-m09`. Orchestration trials were not added to the 6/6 denominator.
+Harness unit tests at experiment time: 104 passed.
 
-Harness unit tests: 104 passed.
+## Learning-critical result
+
+The provider can own more **temporary episode continuation** without owning:
+
+- workspace/base provenance;
+- tool permissions;
+- VERIFY;
+- repair/review counters;
+- routing policy;
+- human escalation;
+- workflow success;
+- eval truth.
+
+The current engineering choice is therefore intentionally conservative:
+
+```text
+manual continuation = default
+previous_response_id = proven mechanism / selectable variant
+```
+
+No additional provider-native orchestration infrastructure is required before the final Module 11 understanding check.
 
 ---
 
-## Module: 10 — Model Routing
-
-**Status:** implemented and evidenced; **not complete** until Topic Chat inspects the learning-critical code and evidence. No permanent routing policy has been selected.
-
-- Phase 2 reliability/safety layers are complete;
-- Module 10 made model allocation an explicit, measurable harness-owned boundary;
-- the current `master-learning-plan.md` places modern model-native inner orchestration immediately after Model Routing in Phase 3 — System Optimization;
-- the next architectural question is no longer which model executes an episode, but which temporary reasoning/tool/subagent orchestration may safely live inside the model/provider runtime versus which state, policy, permissions, verification, retry, delivery and eval responsibilities must remain in the durable outer harness.
-
-Do not start planner/worker/reviewer expansion, general subagents, durable execution, or distributed orchestration inside Module 11 unless needed only as a bounded illustration of the inner-vs-outer boundary.
-
----
-
-## Module: 10 — Model Routing
+# Module 10 — Model Routing
 
 **Status:** ✅ COMPLETED — formally closed by Master on 2026-08-25.
 
-Theory: `docs/learning/lessons/10-model-routing/theory.md`  
-Practical notes + evidence: `docs/learning/lessons/10-model-routing/`
+Theory:
 
-### Built
+`docs/learning/lessons/10-model-routing/theory.md`
 
-- `resolveModel(episode, config)` as a single harness-owned model-selection boundary;
+Practical notes/evidence:
+
+`docs/learning/lessons/10-model-routing/`
+
+## Built
+
+- `resolveModel(episode, config)` as one harness-owned model-selection boundary;
 - routing episodes: `spec | implementation | repair | review | review_repair`;
-- optional `OPENAI_REPAIR_MODEL` / `repairModel` override only for `repair`;
-- `review_repair` deliberately remains independent from the verification-repair override;
+- optional `OPENAI_REPAIR_MODEL` override only for verification `repair`;
 - routing provenance: `episode`, selected `model`, `routingReason`;
-- separate controlled routing experiment rather than inflating fixed-suite denominators;
-- deterministic tests for routing semantics, authority preservation and R01 trial validity.
+- controlled R01 routing experiment separate from fixed-suite denominators.
 
-### Controlled routing experiment
+## Routing experiment result
 
 Baseline:
 
@@ -148,31 +229,9 @@ spec / implementation / review / review_repair → gpt-5.6-luna
 repair → gpt-5.6-terra
 ```
 
-Predefined quality SLO:
+Both candidates met the predefined R01 SLO 3/3. Quality did not separate them, while Terra did not show enough end-to-end benefit to justify the higher token economics.
 
-```text
-3/3 valid R01 trials per arm must satisfy the existing R01 FAIL→repair→PASS contract.
-```
-
-Fresh evidence:
-
-`docs/learning/lessons/10-model-routing/traces/routing-m10-2026-08-25T10-54-03-280Z.txt`
-
-```text
-Luna repair   3 / 3 valid, SLO MET, contaminated 0
-Terra repair  3 / 3 valid, SLO MET, contaminated 0
-```
-
-Averages:
-
-```text
-Luna:  repair ~12.2s, workflow ~31.2s, repair tokens ~17130 / 1031
-Terra: repair ~10.5s, workflow ~30.5s, repair tokens ~17254 / 1009
-```
-
-Quality did not separate the models. Terra was somewhat faster in the repair episode, but end-to-end latency improvement was small while current official token pricing is substantially higher for Terra. Therefore permanent heterogeneous `repair → Terra` routing is **not enabled**.
-
-Current normal policy:
+Current normal policy remains:
 
 ```text
 spec            → Luna
@@ -182,9 +241,9 @@ review          → Luna
 review_repair   → Luna
 ```
 
-The routing boundary remains because future model/workload changes can be re-evaluated without scattering model selection across call sites.
+The routing boundary remains available for future requalification.
 
-### Fresh regression evidence
+Fresh Module 10 regression evidence:
 
 `docs/learning/lessons/10-model-routing/traces/2026-08-25T11-00-45-136Z.txt`
 
@@ -200,30 +259,11 @@ All fixed V3 contracts       6 / 6
 Hard regressions             none
 ```
 
-Routing comparison trials remain separate from the fixed `6/6` denominator. Harness unit tests: 94 passed.
+Known non-blocking limits:
 
-### Master closure
-
-Module 10 satisfies the intended Model Routing goal:
-
-- routing key (`phase`), routing policy and model candidate/profile are conceptually separated;
-- model selection is explicit and harness-owned rather than model-self-selected;
-- switching model does not alter tools, permissions, retry limits, verification, review policy, Skills, workspace or security authority;
-- all semantic model call sites use the resolver;
-- routing provenance is traceable;
-- the experiment defines quality SLO and contamination rules before interpreting results;
-- repeated routing trials remain separate from representative/fixed eval denominators;
-- economics are evaluated only after both candidates satisfy quality;
-- the module accepts a negative allocation result instead of forcing heterogeneous routing;
-- fixed harness contracts remain intact.
-
-### Known non-blocking limits
-
-1. Routing evidence covers one controlled verification-repair workload (R01), not broad natural repair diversity.
-2. Three valid trials per arm are sufficient for the learning experiment, not strong statistical qualification.
-3. No task-class, risk/health-aware or model-selected routing yet.
-4. No fallback/escalation chain yet.
-5. Model aliases, pricing and snapshots can drift; old routing economics require requalification.
-6. Spec/reviewer quality is harder to route safely because important misses may not be observable to current deterministic graders.
-
-No additional Model Routing infrastructure is required before moving on.
+1. Routing evidence covers one controlled R01 workload, not broad natural repair diversity.
+2. Three trials per arm are learning evidence, not statistical qualification.
+3. No task-class/risk/health-aware/model-selected routing yet.
+4. No fallback/escalation graph yet.
+5. Provider model capabilities/pricing can drift and require requalification.
+6. Spec/reviewer quality remains harder to route safely because important misses may be invisible to deterministic graders.
