@@ -1,6 +1,11 @@
 # 11 — Modern model-native orchestration (inner vs outer loop)
 
-Практический журнал. Bounded experiment: `previous_response_id` vs ручной replay истории внутри `runAgentLoop`. Formal closure и `theory.md` остаются за Topic Chat.
+Практический журнал. Bounded experiment: `previous_response_id` vs ручной replay истории внутри `runAgentLoop`.
+
+Theory: `theory.md`  
+Decision correction: `traces/decision-correction-2026-08-26.md`
+
+Formal closure остаётся за Topic Chat после проверки понимания.
 
 ## Что это за урок одной фразой
 
@@ -73,7 +78,7 @@ previous_response_id:
 2. `harness/src/loop.ts` — локальный `executeTool()` после `function_call`
 3. `harness/src/run.ts` — `runVerifyRepairLoop` (outer VERIFY/repair не менялся)
 4. `harness/src/tools.ts` — `executeTool` / path restrictions
-5. `docs/learning/lessons/11-modern-model-native-orchestration/traces/T02-orch-previous_response_id-1-2026-08-26T11-34-23-995Z.jsonl` — A→B→C chain
+5. `traces/T02-orch-previous_response_id-1-2026-08-26T11-34-23-995Z.jsonl` — A→B→C chain
 
 ## Experiment (2026-08-26)
 
@@ -85,6 +90,27 @@ T02, `contextMode=variant`, 3 valid trials / arm.
 | previous_response_id | 3/3 | 7 / 14315 | 19831 / 1888 | ~32s |
 
 Decision: **keep baseline**. Criteria 1–5 held; criterion 6 **inconclusive** (n=3, no predefined token/latency bar). Variant remains implemented and selectable.
+
+## Decision provenance correction
+
+Original generated report `traces/orchestration-m11-2026-08-26T11-33-10-801Z.txt` is intentionally preserved unchanged and still contains the original `candidate_to_adopt: yes` decision.
+
+That interpretation is superseded by:
+
+`traces/decision-correction-2026-08-26.md`
+
+Reason: the first evaluator introduced post-hoc `1.5x` token and `2x` latency thresholds that were not defined before the experiment. The raw metrics/traces remain valid; only the adoption interpretation was corrected.
+
+Current authoritative decision:
+
+```text
+mechanism supported
+correctness preserved on tested workload
+outer authority preserved
+client replay reduced
+token/latency effect inconclusive
+keep manual default
+```
 
 ## V3 regression (fixed-v3-m09, variant-mode suite)
 
@@ -107,18 +133,18 @@ Harness tests: 104 passed.
 ## Нюансы
 
 - Client replay/items/bytes упали; billed input tokens **не** упали. Провайдер всё равно считает continuation; в traces видны `cached_tokens`.
-- Wall time на n=3 выше у variant. Criterion 6 inconclusive — не выдумывать 1.5x/2x bar после прогона.
+- Wall time на n=3 выше у variant. Criterion 6 inconclusive — не выдумывать bar после прогона.
 - `instructions` и tool definitions resend на каждый Responses request.
 - Spec-phase и reviewer loop **не** переведены на `previous_response_id` (эксперимент только `runAgentLoop`).
 - Не добавлялись Agents SDK, PTC, hosted shell, Sessions API, MCP, subagents, planner/worker, durable execution.
 
 ## Evidence paths
 
-- 3×3 report: `traces/orchestration-m11-2026-08-26T11-33-10-801Z.txt`
+- original 3×3 report: `traces/orchestration-m11-2026-08-26T11-33-10-801Z.txt`
+- authoritative decision correction: `traces/decision-correction-2026-08-26.md`
 - chain: `traces/T02-orch-previous_response_id-1-2026-08-26T11-34-23-995Z.jsonl`
 - fixed suite: `traces/2026-08-26T11-39-08-076Z.txt`
-
-`theory.md` не писать до Topic Chat.
+- theory: `theory.md`
 
 ## Personal takeaways
 
