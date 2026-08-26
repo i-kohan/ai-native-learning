@@ -1128,23 +1128,23 @@ Contaminated trials: **none** (3/3 attempted valid on both arms).
 
 #### BASELINE — Luna repair
 
-| Trial | expected | verify | repair calls/tools | repair tokens in/out | repair ms | workflow calls | workflow tokens in/out | wall ms |
-| ----- | -------- | ------ | ------------------ | -------------------- | --------- | -------------- | ---------------------- | ------- |
-| 1 | yes | FAIL→PASS | 4 / 6 | 14911 / 1030 | 13761 | 10 | 26864 / 2017 | 34930 |
-| 2 | yes | FAIL→PASS | 4 / 7 | 18422 / 1032 | 11240 | 10 | 31184 / 2144 | 29300 |
-| 3 | yes | FAIL→PASS | 4 / 6 | 18058 / 1031 | 11687 | 10 | 30362 / 2078 | 29496 |
-| avg | 3/3 SLO MET | | 4 / 6 | 17130 / 1031 | 12229 | 10 | 29470 / 2080 | 31242 |
+| Trial | expected    | verify    | repair calls/tools | repair tokens in/out | repair ms | workflow calls | workflow tokens in/out | wall ms |
+| ----- | ----------- | --------- | ------------------ | -------------------- | --------- | -------------- | ---------------------- | ------- |
+| 1     | yes         | FAIL→PASS | 4 / 6              | 14911 / 1030         | 13761     | 10             | 26864 / 2017           | 34930   |
+| 2     | yes         | FAIL→PASS | 4 / 7              | 18422 / 1032         | 11240     | 10             | 31184 / 2144           | 29300   |
+| 3     | yes         | FAIL→PASS | 4 / 6              | 18058 / 1031         | 11687     | 10             | 30362 / 2078           | 29496   |
+| avg   | 3/3 SLO MET |           | 4 / 6              | 17130 / 1031         | 12229     | 10             | 29470 / 2080           | 31242   |
 
 Routing: `phase=repair`, `model=gpt-5.6-luna`, `reason=default`.
 
 #### VARIANT — Terra repair
 
-| Trial | expected | verify | repair calls/tools | repair tokens in/out | repair ms | workflow calls | workflow tokens in/out | wall ms |
-| ----- | -------- | ------ | ------------------ | -------------------- | --------- | -------------- | ---------------------- | ------- |
-| 1 | yes | FAIL→PASS | 4 / 7 | 18281 / 1017 | 10983 | 11 | 33828 / 2079 | 31332 |
-| 2 | yes | FAIL→PASS | 4 / 7 | 18291 / 1016 | 10173 | 10 | 30739 / 2122 | 31544 |
-| 3 | yes | FAIL→PASS | 4 / 6 | 15191 / 994 | 10460 | 10 | 29321 / 2064 | 28578 |
-| avg | 3/3 SLO MET | | 4 / 7 | 17254 / 1009 | 10539 | 10 | 31296 / 2088 | 30485 |
+| Trial | expected    | verify    | repair calls/tools | repair tokens in/out | repair ms | workflow calls | workflow tokens in/out | wall ms |
+| ----- | ----------- | --------- | ------------------ | -------------------- | --------- | -------------- | ---------------------- | ------- |
+| 1     | yes         | FAIL→PASS | 4 / 7              | 18281 / 1017         | 10983     | 11             | 33828 / 2079           | 31332   |
+| 2     | yes         | FAIL→PASS | 4 / 7              | 18291 / 1016         | 10173     | 10             | 30739 / 2122           | 31544   |
+| 3     | yes         | FAIL→PASS | 4 / 6              | 15191 / 994          | 10460     | 10             | 29321 / 2064           | 28578   |
+| avg   | 3/3 SLO MET |           | 4 / 7              | 17254 / 1009         | 10539     | 10             | 31296 / 2088           | 30485   |
 
 Routing: `phase=repair`, `model=gpt-5.6-terra`, `reason=repair_override`. Spec/implementation/review stayed on Luna.
 
@@ -1259,23 +1259,23 @@ Evidence:
 
 #### ARM A — manual
 
-| Trial | expected | workflow | verify | calls/tools | impl turns | client items/bytes | tokens in/out | wall | files |
-| ----- | -------- | -------- | ------ | ----------- | ---------- | ------------------ | ------------- | ---- | ----- |
-| 1 | yes | success | PASS | 7 / 15 | 4 | 45 / 50929 | 16418 / 1443 | ~24s | `task-service.ts` |
-| 2 | yes | success | PASS | 7 / 15 | 4 | 45 / 51254 | 16680 / 1623 | ~24s | `task-service.ts` |
-| 3 | yes | success | PASS | 7 / 14 | 4 | 39 / 57863 | 18436 / 1643 | ~23s | `task-service.ts` |
-| avg | 3/3 | | | 7 / 15 | 4 | 43 / 53349 | 17178 / 1570 | ~24s | |
+| Trial | expected | workflow | verify | calls/tools | impl turns | client items/bytes | tokens in/out | wall | files             |
+| ----- | -------- | -------- | ------ | ----------- | ---------- | ------------------ | ------------- | ---- | ----------------- |
+| 1     | yes      | success  | PASS   | 7 / 15      | 4          | 45 / 50929         | 16418 / 1443  | ~24s | `task-service.ts` |
+| 2     | yes      | success  | PASS   | 7 / 15      | 4          | 45 / 51254         | 16680 / 1623  | ~24s | `task-service.ts` |
+| 3     | yes      | success  | PASS   | 7 / 14      | 4          | 39 / 57863         | 18436 / 1643  | ~23s | `task-service.ts` |
+| avg   | 3/3      |          |        | 7 / 15      | 4          | 43 / 53349         | 17178 / 1570  | ~24s |                   |
 
 Chain: every implementation turn has `previousResponseId=null`; client item counts grow `1 → 12 → 15 → 17`.
 
 #### ARM B — previous_response_id
 
-| Trial | expected | workflow | verify | calls/tools | impl turns | client items/bytes | tokens in/out | wall | files |
-| ----- | -------- | -------- | ------ | ----------- | ---------- | ------------------ | ------------- | ---- | ----- |
-| 1 | yes | success | PASS | 7 / 14 | 4 | 7 / 14049 | 18394 / 1768 | ~27s | `task-service.ts` |
-| 2 | yes | success | PASS | 8 / 14 | 4 | 7 / 14277 | 22043 / 1998 | ~30s | `task-service.ts` |
-| 3 | yes | success | PASS | 7 / 15 | 4 | 8 / 14618 | 19055 / 1898 | ~40s | `task-service.ts` |
-| avg | 3/3 | | | 7 / 14 | 4 | 7 / 14315 | 19831 / 1888 | ~32s | |
+| Trial | expected | workflow | verify | calls/tools | impl turns | client items/bytes | tokens in/out | wall | files             |
+| ----- | -------- | -------- | ------ | ----------- | ---------- | ------------------ | ------------- | ---- | ----------------- |
+| 1     | yes      | success  | PASS   | 7 / 14      | 4          | 7 / 14049          | 18394 / 1768  | ~27s | `task-service.ts` |
+| 2     | yes      | success  | PASS   | 8 / 14      | 4          | 7 / 14277          | 22043 / 1998  | ~30s | `task-service.ts` |
+| 3     | yes      | success  | PASS   | 7 / 15      | 4          | 8 / 14618          | 19055 / 1898  | ~40s | `task-service.ts` |
+| avg   | 3/3      |          |        | 7 / 14      | 4          | 7 / 14315          | 19831 / 1888  | ~32s |                   |
 
 Chain example (trial 1):
 
@@ -1288,21 +1288,23 @@ turn4 previous=C     → resp_D  items=1
 
 ### Decision rule
 
-| Criterion | Result |
-| --------- | ------ |
-| 1. previous_response_id 3/3 correct on T02 | yes |
-| 2. Client-side full-history replay gone in variant | yes |
-| 3. Tool/workspace/security authority unchanged | yes (by construction + unit tests) |
-| 4. Tool-call observability intact | yes |
-| 5. Client items/bytes materially decrease | yes (43→7 items, 53KB→14KB) |
-| 6. No clear repeated token/latency/failure regression | yes (both 3/3; tokens +15%, wall +37% on n=3 — not treated as a hard miss) |
+| Criterion                                             | Result                                                                  |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1. previous_response_id 3/3 correct on T02            | yes                                                                     |
+| 2. Client-side full-history replay gone in variant    | yes                                                                     |
+| 3. Tool/workspace/security authority unchanged        | yes (by construction + unit tests)                                      |
+| 4. Tool-call observability intact                     | yes                                                                     |
+| 5. Client items/bytes materially decrease             | yes (43→7 items, 53KB→14KB)                                             |
+| 6. No clear repeated token/latency/failure regression | **inconclusive** (n=3; tokens +15%, wall +37%; no predefined threshold) |
 
-**Candidate to adopt: yes.**
+**Candidate to adopt: no.** Keep baseline.
 
-### Fixed regression (run because variant qualified)
+### Fixed regression (variant-mode suite, not a default change)
+
+The suite below was run with `conversationStateMode = previous_response_id` after the 3×3. It shows the variant can pass V3; it does not change the default.
 
 `docs/learning/lessons/11-modern-model-native-orchestration/traces/2026-08-26T11-39-08-076Z.txt`  
-Suite label remains `fixed-v3-m09`. Conversation state: `previous_response_id`.
+Suite label remains `fixed-v3-m09`.
 
 ```text
 T01–T04 expected outcomes   4 / 4
@@ -1330,22 +1332,22 @@ Harness unit tests: 104 passed.
 ### Failures / unexpected behavior
 
 - Provider **input tokens did not fall** with client replay. Client items/bytes dropped sharply; billed input tokens were slightly higher on the variant arm (~17.2k → ~19.8k). Server-side continuation still counts conversation tokens; traces show `cached_tokens` growing across the chain.
-- Variant wall time was higher on this n=3 sample (~32s vs ~24s). Do not over-interpret latency.
+- Variant wall time was higher on this n=3 sample (~32s vs ~24s). Criterion 6 is inconclusive; do not invent a pass/fail bar after the run.
 - Variant trial 2 used 8 whole-workflow model calls instead of 7 (one extra non-impl turn). Implementation turns stayed at 4.
 
 ### Conclusion
 
-Hypothesis supported for **client conversation-state plumbing**, not as a token-cost optimization.
+Hypothesis supported for **client conversation-state plumbing**, not as a token-cost optimization, and **not as a default change**.
 
 - T02 correctness 3/3 on both arms.
 - Variant traces show `previous_response_id` chaining and no manual `response.output` replay.
 - Outer VERIFY / repair / review / workspace / security / eval scoring unchanged.
 - Custom tools still go through `executeTool()`.
-- Fixed V3 suite remained 6/6 with the variant.
+- Fixed V3 suite remained 6/6 **when the variant was selected**.
+- Criterion 6 remains inconclusive on n=3.
 
-**Decision: adopt.** Default `conversationStateMode` is now `previous_response_id`. `manual` remains available via `--manual-conversation` for comparison. Topic Chat still owns formal module closure.
+**Decision: keep baseline.** Default `conversationStateMode` stays `manual`. `previous_response_id` remains fully implemented and selectable via `--previous-response-id`. Topic Chat still owns formal module closure.
 
 This does **not** prove Sessions/Conversations API, PTC, hosted shell, MCP, or subagents would help. Those remain out of scope.
 
 Module 11 experiment recorded; formal module closure remains for Topic Chat. Do not treat `theory.md` as written yet.
-

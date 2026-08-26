@@ -24,7 +24,7 @@ Current execution core remains **V3 Spec-Driven + targeted context + bounded ver
 - workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace;
 - verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`;
 - optional deterministic model routing: `resolveModel(episode, config)` with an optional `OPENAI_REPAIR_MODEL` override that applies only to the verification-repair episode;
-- agent-episode conversation continuation via Responses `previous_response_id` (client no longer replays full `response.output` history inside `runAgentLoop`). `manual` replay remains available for comparison.
+- optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`. Default remains manual full-history replay; the variant is selectable, not the production default.
 
 Conceptual flow:
 
@@ -61,8 +61,8 @@ Why this slice:
 ### Built
 
 - `conversationStateMode = "manual" | "previous_response_id"`;
-- default after the experiment: `previous_response_id`;
-- `manual` remains available (`--manual-conversation`);
+- default remains `manual` (full-history replay);
+- `previous_response_id` is fully implemented and selectable (`--previous-response-id`);
 - traces record `conversationStateMode`, `responseId`, `previousResponseId`, `clientInputItemCount`, `clientInputBytes`;
 - separate `npm run benchmark:orchestration` (T02 3×3). Not folded into fixed 6/6.
 
@@ -77,9 +77,11 @@ T02, `contextMode=variant`, 3 valid trials per arm.
 | A   | manual               | 3/3      | 43 / 53349             | 17178 / 1570      |
 | B   | previous_response_id | 3/3      | 7 / 14315              | 19831 / 1888      |
 
-Decision rule passed. Adopted as default. Client replay dropped; billed input tokens did **not**.
+Decision: **keep baseline**. Criteria 1–5 held; criterion 6 (token/latency regression) is **inconclusive** on n=3. `previous_response_id` stays available as a variant. Client replay dropped; billed input tokens did **not**.
 
 ### Fresh regression evidence
+
+The suite below was run with `conversationStateMode = previous_response_id`. It shows the variant can pass V3; it is not a default-change result.
 
 `docs/learning/lessons/11-modern-model-native-orchestration/traces/2026-08-26T11-39-08-076Z.txt`
 

@@ -102,8 +102,7 @@ export async function runBenchmark(
   contextMode: ContextMode = "baseline",
   options: BenchmarkRunOptions = {},
 ): Promise<HarnessRunResult> {
-  const conversationStateMode =
-    options.conversationStateMode ?? "previous_response_id";
+  const conversationStateMode = options.conversationStateMode ?? "manual";
   const runId = `${taskId}-${contextMode}-${conversationStateMode}-${timestamp()}`;
   return withIsolatedWorkspace(runId, async (config, workspace) => {
     const prep = prepareBenchmark(taskId, config);
@@ -177,8 +176,7 @@ export async function runFixedSuite(
     conversationStateMode?: ConversationStateMode;
   } = {},
 ): Promise<EvalResult> {
-  const conversationStateMode =
-    options.conversationStateMode ?? "previous_response_id";
+  const conversationStateMode = options.conversationStateMode ?? "manual";
   const isolation = runIsolationProbe();
   printIsolationProbeSummary(isolation);
   const security = runSecurityProbe();
@@ -254,8 +252,7 @@ export async function executeRepairProbe(options: {
   print?: boolean;
 }): Promise<RoutingProbeAttempt> {
   const print = options.print !== false;
-  const conversationStateMode =
-    options.conversationStateMode ?? "previous_response_id";
+  const conversationStateMode = options.conversationStateMode ?? "manual";
   return withIsolatedWorkspace(
     options.runId,
     async (config, workspace) => {
@@ -333,7 +330,7 @@ export async function executeRepairProbe(options: {
 
 export async function runRepairProbe(
   overlay?: RepairProbeOverlay,
-  conversationStateMode: ConversationStateMode = "previous_response_id",
+  conversationStateMode: ConversationStateMode = "manual",
 ): Promise<HarnessRunResult> {
   const runId = `R01-repair-${timestamp()}`;
   const attempt = await executeRepairProbe({
@@ -459,7 +456,7 @@ function printRepairProbeSummary(result: HarnessRunResult): void {
 }
 
 export async function runReviewProbe(
-  conversationStateMode: ConversationStateMode = "previous_response_id",
+  conversationStateMode: ConversationStateMode = "manual",
 ): Promise<HarnessRunResult> {
   const runId = `REV01-review-${timestamp()}`;
   return withIsolatedWorkspace(runId, async (config, workspace) => {
@@ -752,10 +749,10 @@ function parseArgs(argv: string[]): CliOptions {
     ? "variant"
     : "baseline";
   const conversationStateMode: ConversationStateMode = argv.includes(
-    "--manual-conversation",
+    "--previous-response-id",
   )
-    ? "manual"
-    : "previous_response_id";
+    ? "previous_response_id"
+    : "manual";
 
   if (argv.includes("--eval") || argv.includes("--fixed-suite")) {
     return {
@@ -959,7 +956,10 @@ async function main(): Promise<void> {
     console.log(`\norchestration_json: ${artifacts.jsonPath}`);
     console.log(`orchestration_report: ${artifacts.reportPath}`);
     process.exit(
-      result.decision.passed && result.manual.expectedMet === 3 ? 0 : 1,
+      result.manual.expectedMet === 3 &&
+        result.previousResponseId.expectedMet === 3
+        ? 0
+        : 1,
     );
     return;
   }
@@ -997,13 +997,13 @@ async function main(): Promise<void> {
 
   if (!all && !taskId) {
     console.error(
-      "Usage: npm run benchmark -- T01|T02|T03|T04 [--baseline|--variant] [--manual-conversation]",
+      "Usage: npm run benchmark -- T01|T02|T03|T04 [--baseline|--variant] [--previous-response-id]",
     );
     console.error(
-      "   or: npm run benchmark:all [--baseline|--variant] [--manual-conversation]",
+      "   or: npm run benchmark:all [--baseline|--variant] [--previous-response-id]",
     );
     console.error("   or: npm run benchmark:experiment");
-    console.error("   or: npm run benchmark:eval [-- --manual-conversation]");
+    console.error("   or: npm run benchmark:eval [-- --previous-response-id]");
     console.error("   or: npm run benchmark:routing");
     console.error("   or: npm run benchmark:orchestration");
     console.error("   or: npm run benchmark -- ISO01");

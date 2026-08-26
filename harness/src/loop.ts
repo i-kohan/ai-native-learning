@@ -115,7 +115,7 @@ export async function runAgentLoop(options: {
   const { config, task, runId, spec, reusableContext } = options;
   const phase: EpisodePhase = options.phase ?? "implementation";
   const conversationStateMode: ConversationStateMode =
-    options.conversationStateMode ?? "previous_response_id";
+    options.conversationStateMode ?? "manual";
   const startedAt = Date.now();
   const nested = Boolean(options.tracer);
   const tracer = options.tracer ?? new Tracer(config.tracesDir, runId);

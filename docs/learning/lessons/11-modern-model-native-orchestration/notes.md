@@ -8,7 +8,7 @@
 
 ## Что сдвинулось внутрь
 
-Между ходами одного `runAgentLoop` conversation/reasoning continuation больше не replay-ится клиентом целиком. Следующий Responses-вызов ссылается на `previous_response_id` и шлёт только новые `function_call_output`.
+Между ходами одного `runAgentLoop` variant может отдать continuation провайдеру: следующий Responses-вызов ссылается на `previous_response_id` и шлёт только новые `function_call_output`. Default по-прежнему ручной full-history replay.
 
 ## Что явно осталось outer
 
@@ -50,7 +50,7 @@ Path/`run_command` restrictions не менялись.
 ## Как устроено
 
 ```text
-conversationStateMode = previous_response_id | manual   (default после эксперимента: previous_response_id)
+conversationStateMode = manual | previous_response_id   (default: manual)
 
 manual:
   input = accumulated history including response.output + tool outputs
@@ -65,7 +65,7 @@ previous_response_id:
 - `cd harness && npm test`
 - `cd harness && npm run benchmark:orchestration`
 - `cd harness && npm run benchmark:eval`
-- сравнение с baseline: `npm run benchmark:eval -- --manual-conversation`
+- variant: `npm run benchmark:eval -- --previous-response-id`
 
 ## Файлы, которые стоит лично посмотреть
 
@@ -84,9 +84,11 @@ T02, `contextMode=variant`, 3 valid trials / arm.
 | manual | 3/3 | 43 / 53349 | 17178 / 1570 | ~24s |
 | previous_response_id | 3/3 | 7 / 14315 | 19831 / 1888 | ~32s |
 
-Decision rule: **passed**. Adopted as default.
+Decision: **keep baseline**. Criteria 1–5 held; criterion 6 **inconclusive** (n=3, no predefined token/latency bar). Variant remains implemented and selectable.
 
-## V3 regression (fixed-v3-m09, previous_response_id)
+## V3 regression (fixed-v3-m09, variant-mode suite)
+
+Run with `previous_response_id` selected. Evidence that the variant can pass V3, not that it became the default.
 
 ```text
 T01–T04 expected outcomes   4 / 4
@@ -105,7 +107,7 @@ Harness tests: 104 passed.
 ## Нюансы
 
 - Client replay/items/bytes упали; billed input tokens **не** упали. Провайдер всё равно считает continuation; в traces видны `cached_tokens`.
-- Wall time на n=3 выше у variant — не интерпретировать как доказанный latency regression.
+- Wall time на n=3 выше у variant. Criterion 6 inconclusive — не выдумывать 1.5x/2x bar после прогона.
 - `instructions` и tool definitions resend на каждый Responses request.
 - Spec-phase и reviewer loop **не** переведены на `previous_response_id` (эксперимент только `runAgentLoop`).
 - Не добавлялись Agents SDK, PTC, hosted shell, Sessions API, MCP, subagents, planner/worker, durable execution.
@@ -120,4 +122,4 @@ Harness tests: 104 passed.
 
 ## Personal takeaways
 
-Inner-loop continuation ≠ inner-loop authority. Можно отдать провайдеру replay истории и всё равно оставить VERIFY, tools и workflow completion на клиенте. Меньше client plumbing не значит меньше token cost.
+Inner-loop continuation ≠ inner-loop authority. Можно отдать провайдеру replay истории и всё равно оставить VERIFY, tools и workflow completion на клиенте. Меньше client plumbing не значит меньше token cost, и n=3 не даёт право принять latency/token verdict.

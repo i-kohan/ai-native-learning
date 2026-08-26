@@ -79,7 +79,8 @@ export type OrchestrationDecision = {
   variantReplayGone: boolean;
   toolObservabilityIntact: boolean;
   clientReplayMateriallyDecreased: boolean;
-  noClearRegression: boolean;
+  /** Token/latency comparison is not decided from n=3 without a predefined bar. */
+  noClearRegression: "inconclusive";
   passed: boolean;
   notes: string[];
 };
@@ -311,20 +312,12 @@ export function evaluateDecision(
     );
   }
 
-  const noClearRegression =
-    variantCorrect3of3 &&
-    manualExpected &&
-    !hasClearEfficiencyRegression(manual, previousResponseId);
-  if (!noClearRegression && variantCorrect3of3 && manualExpected) {
-    notes.push("possible token/latency regression vs manual arm");
-  }
+  const noClearRegression = "inconclusive" as const;
+  notes.push(
+    "criterion 6 inconclusive: n=3 is too small to judge token/latency; no predefined threshold",
+  );
 
-  const passed =
-    variantCorrect3of3 &&
-    variantReplayGone &&
-    toolObservabilityIntact &&
-    clientReplayMateriallyDecreased &&
-    noClearRegression;
+  const passed = false;
 
   return {
     variantCorrect3of3,
@@ -358,7 +351,7 @@ export function formatOrchestrationReport(
     `replay_gone: ${result.decision.variantReplayGone ? "yes" : "no"}`,
     `tool_observability: ${result.decision.toolObservabilityIntact ? "yes" : "no"}`,
     `client_replay_decreased: ${result.decision.clientReplayMateriallyDecreased ? "yes" : "no"}`,
-    `no_clear_regression: ${result.decision.noClearRegression ? "yes" : "no"}`,
+    `no_clear_regression: ${result.decision.noClearRegression}`,
     `candidate_to_adopt: ${result.decision.passed ? "yes" : "no"}`,
     ...(result.decision.notes.length
       ? result.decision.notes.map((note) => `note: ${note}`)
@@ -450,31 +443,6 @@ function averageMetrics(
     outputTokens: mean(metrics.map((item) => item.outputTokens)),
     wallTimeMs: mean(metrics.map((item) => item.wallTimeMs)),
   };
-}
-
-function hasClearEfficiencyRegression(
-  manual: OrchestrationArmReport,
-  variant: OrchestrationArmReport,
-): boolean {
-  const manualTokens = manual.averages.inputTokens;
-  const variantTokens = variant.averages.inputTokens;
-  if (
-    manualTokens !== null &&
-    variantTokens !== null &&
-    variantTokens > manualTokens * 1.5
-  ) {
-    return true;
-  }
-  const manualWall = manual.averages.wallTimeMs;
-  const variantWall = variant.averages.wallTimeMs;
-  if (
-    manualWall !== null &&
-    variantWall !== null &&
-    variantWall > manualWall * 2
-  ) {
-    return true;
-  }
-  return false;
 }
 
 function formatArm(arm: OrchestrationArmReport): string {

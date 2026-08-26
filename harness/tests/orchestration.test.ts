@@ -124,8 +124,8 @@ describe("orchestration experiment evidence", () => {
     );
   });
 
-  it("requires 3/3 plus replay reduction before adoption", () => {
-    const passed = evaluateDecision(
+  it("does not treat 3/3 plumbing success as adoption when criterion 6 is inconclusive", () => {
+    const held = evaluateDecision(
       arm("manual", [trial("manual"), trial("manual"), trial("manual")]),
       arm("previous_response_id", [
         trial("previous_response_id"),
@@ -133,7 +133,11 @@ describe("orchestration experiment evidence", () => {
         trial("previous_response_id"),
       ]),
     );
-    assert.equal(passed.passed, true);
+    assert.equal(held.variantCorrect3of3, true);
+    assert.equal(held.variantReplayGone, true);
+    assert.equal(held.clientReplayMateriallyDecreased, true);
+    assert.equal(held.noClearRegression, "inconclusive");
+    assert.equal(held.passed, false);
 
     const failed = evaluateDecision(
       arm("manual", [trial("manual"), trial("manual"), trial("manual")]),

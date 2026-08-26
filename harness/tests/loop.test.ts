@@ -187,7 +187,6 @@ describe("runAgentLoop conversation-state modes", () => {
       config,
       task: "inspect app.ts",
       runId: "manual-replay",
-      conversationStateMode: "manual",
       responsesCreate: create,
     });
 

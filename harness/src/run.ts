@@ -148,7 +148,7 @@ export async function runV1Harness(options: {
   const { config, task, runId } = options;
   const contextMode = options.contextMode ?? "baseline";
   const conversationStateMode: ConversationStateMode =
-    options.conversationStateMode ?? "previous_response_id";
+    options.conversationStateMode ?? "manual";
   const startedAt = Date.now();
   const tracer = new Tracer(config.tracesDir, runId);
   const beforeSnapshot =
