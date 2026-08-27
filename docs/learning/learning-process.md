@@ -70,6 +70,8 @@ When Master selects the next module, it always produces a ready-to-copy Topic Ch
 - explicit scope / non-goals;
 - relevant repository paths the Topic Chat may inspect.
 
+The starter prompt defines **boundaries and priorities**, not a requirement to lecture through every listed bullet at equal depth. Prefer the shortest prompt that still prevents scope drift and preserves the module's critical distinctions.
+
 ---
 
 ## 3. Topic Chat
@@ -77,6 +79,57 @@ When Master selects the next module, it always produces a ready-to-copy Topic Ch
 Each major module gets one Topic Chat when needed.
 
 Topic Chat works in this sequence:
+
+### Content density / minimum-sufficient explanation
+
+Optimize for **understanding per unit of attention**, not maximum coverage.
+
+Default teaching shape:
+
+```text
+core problem / why
+→ core mental model
+→ key execution flow
+→ 1–2 concrete examples
+→ important boundaries / trade-offs / failure modes
+→ our harness
+→ frontier / production lens
+```
+
+Rules:
+
+- do not treat the starter prompt as a checklist that requires a long explanation for every bullet;
+- combine overlapping concepts instead of defining near-synonyms separately when one distinction is sufficient;
+- prefer one strong concrete example over several weak examples;
+- omit edge cases, taxonomy, provider features, or production machinery that do not materially change the current concept;
+- explain extra detail when it is learning-critical, current-harness-critical, or requested by the user;
+- use the user's follow-up questions to deepen only the parts that remain unclear;
+- a shorter Topic is better when it preserves the same mental model, execution flow, important boundaries, and ability to reason about the mechanism.
+
+The goal is **minimum sufficient depth**, not superficiality: core topics can still be deep, but depth should come from causal understanding and concrete execution, not repetition or exhaustive enumeration.
+
+### Complexity / mechanism admission guardrail
+
+A roadmap topic does **not** imply that its mechanism must become permanent harness architecture.
+
+Before adding a new runtime mechanism, ask:
+
+```text
+What current workload / failure mode justifies this mechanism?
+Can the concept be learned with a bounded probe instead?
+What evidence would justify adopting it into the normal path?
+```
+
+If there is no real current need:
+
+- understand the concept;
+- run a small controlled experiment only if useful;
+- allow a negative / no-adoption conclusion;
+- do not build a framework merely to complete the roadmap.
+
+Controlled probes and representative capability benchmarks must remain distinct. As orchestration mechanisms become more sophisticated, benchmark/workload complexity should grow enough to make the mechanism meaningfully testable rather than manufacturing a mechanism-friendly toy task.
+
+Do not let experimental switches and scaffolding accumulate forever. After Phase 3, perform a small consolidation pass: keep normal architecture, retain only useful experimental seams, remove obsolete scaffolding, and capture a compact current architecture map before Durable Execution.
 
 ### Language / terminology convention
 
