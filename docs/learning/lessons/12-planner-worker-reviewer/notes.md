@@ -1,14 +1,8 @@
 # 12 — Planner / Worker / Reviewer
 
-Практический журнал. Controlled P01 probe: явный read-only Planner vs текущий implicit planning у Worker.
+Практический журнал Module 12. Conceptual material живёт в [`theory.md`](./theory.md); здесь — только implementation, experiment и evidence.
 
-**Status:** in progress — механизм и эксперимент записаны; модуль не закрыт.
-
-Theory: `theory.md`
-
-## Что это за урок одной фразой
-
-Planner — отдельный read-only episode с advisory Plan. Spec остаётся authority. Reviewer Plan не видит. Default не меняется без evidence.
+**Status:** ✅ completed — implementation, controlled experiment, review fixes, fixed regression и understanding check завершены.
 
 ## Что построили
 
@@ -17,66 +11,170 @@ BASELINE: Spec → Worker (implicit planning) → VERIFY / REVIEW
 VARIANT:  Spec → read-only Planner → advisory Plan → Worker → same VERIFY / REVIEW
 ```
 
-- `harness/src/plan.ts` — schema, admission, Worker handoff, likelyFiles ≠ edit scope
-- `harness/src/planner-phase.ts` — read-only tools + `submit_plan`
-- `run.ts` — `planningEnabled` default `false`
-- `benchmarks/P01/` — task + failing priority tests
-- `npm run benchmark:planning` — 3 valid trials × 2 arms
+- `harness/src/plan.ts` — Plan schema, deterministic admission, Worker handoff, `likelyFiles ≠ edit scope`;
+- `harness/src/planner-phase.ts` — отдельный read-only Planner episode;
+- `harness/src/run.ts` — optional `Spec → Planner → Worker`, `planningEnabled=false` по умолчанию;
+- Reviewer contract не изменён: Plan / Planner rationale / Worker conversation туда не передаются;
+- `benchmarks/P01/` — controlled planning-sensitive priority task;
+- `npm run benchmark:planning` — 3 valid trials × 2 arms.
 
-## Команды
+## Learning-critical files
 
-```bash
-cd harness && npm test
-cd harness && npm run benchmark:planning
+1. `harness/src/plan.ts` — `Spec > Plan`, Plan admission, Worker handoff.
+2. `harness/src/planner-phase.ts` — read-only tool boundary.
+3. `harness/src/run.ts` — lifecycle: Spec → optional Planner → Worker; Reviewer без Plan.
+4. `harness/src/planning-experiment.ts` — decision rule и end-to-end metrics.
+5. `docs/learning/lessons/12-planner-worker-reviewer/traces/planning-m12-2026-08-27T12-46-15-463Z.txt` — raw experiment report.
+
+## Controlled P01 experiment
+
+Task: добавить task priority `"normal" | "high"` через types → service → routes, сохранив status filtering и complete/reopen/`completedAt` semantics.
+
+Constants across arms:
+
+- exact committed base SHA;
+- same model;
+- `contextMode=variant`;
+- `conversationStateMode=manual`;
+- same Worker tools;
+- same VERIFY / Reviewer / repair budgets;
+- isolated worktree per trial.
+
+Contaminated trials: **0**.
+
+| Arm | expected | first VERIFY | repairs | model/tools avg | tokens in/out avg | wall avg | planner | worker |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| baseline | 3/3 | 3/3 PASS | 0 / 0 | 8 / 23 | 36.6k / 3.7k | ~51s | 0 / 0 | 5 / 12 |
+| variant | 3/3 | 3/3 PASS | 0 / 0 | 12 / 31 | 56.6k / 5.3k | ~64s | 2 / 8 | 7 / 12 |
+
+Quality одинаковая. Variant дороже по всем собранным end-to-end signals:
+
+```text
+model calls    8  → 12
+tool calls     23 → 31
+input tokens   ~36.6k → ~56.6k
+output tokens  ~3.7k  → ~5.3k
+wall           ~51s   → ~64s
 ```
 
-## Файлы, которые стоит лично посмотреть
+Worker в Variant тоже не стал дешевле.
 
-1. `harness/src/plan.ts` — Plan contract, admission, authority rule, handoff
-2. `harness/src/planner-phase.ts` — read-only Planner loop
-3. `harness/src/run.ts` — Spec → optional Planner → Worker; Reviewer без Plan
-4. `harness/src/planning-experiment.ts` — predefined decision rule + report
-5. traces: `docs/learning/lessons/12-planner-worker-reviewer/traces/planning-m12-2026-08-27T12-46-15-463Z.txt`
+Predefined rule → **reject explicit Planner for P01**.
 
-## Experiment (2026-08-27)
+Default остаётся:
 
-Оба arm 3/3 expected, first VERIFY PASS, 0 verification-repair, 0 review-repair. Contaminated: 0.
+```text
+Spec → Worker
+```
 
-| Arm | calls/tools | tokens in/out | wall | planner | worker |
-| --- | ----------- | ------------- | ---- | ------- | ------ |
-| baseline | 8 / 23 | 36.6k / 3.7k | ~51s | 0 / 0 | 5 / 12 |
-| variant | 12 / 31 | 56.6k / 5.3k | ~64s | 2 / 8 | 7 / 12 |
+Важно: это workload-bounded conclusion, а не доказательство, что Planner бесполезен на больших long-running changes.
 
-Quality equal. Variant дороже e2e по calls, tokens и wall. Worker-only не улучшился.
+### Plan deviation observation
 
-Predefined rule п.4 → **reject Planner**. Default остаётся Spec → Worker.
+В Variant #2/#3 `likelyFiles` включали tests / `package.json` / `tsconfig`, но Worker их не менял.
 
-Нюанс: в variant #2/#3 `likelyFiles` включали tests/package.json; Worker их не менял.
+Это полезное evidence, что:
 
-Harness unit tests at experiment time: 121 passed.
+```text
+likelyFiles = hints
+≠
+edit authority
+```
 
-## Review gap fixes (2026-08-27)
+## Review gap fixes
 
-1. **Cycle admission.** `parseSteps` rejects general `dependsOn` cycles (two-step and longer), not only self-deps / invalid indexes. Still no DAG executor.
-2. **Equal-quality decision.** No numeric meaningful e2e threshold was predefined, so directional improvement is `inconclusive`, not `candidate`. Compared signals: model calls, tool calls, input tokens, output tokens, wall time. Clear regression still `reject`. Historical P01 artifact unchanged; reject still holds.
+После ручного review были найдены и исправлены два небольших gap.
 
-P01 not rerun.
+### 1. General dependency cycles
 
-Harness unit tests after the fixes: **125 passed**.
+Plan admission первоначально запрещал self-dependency и invalid indexes, но не multi-step cycles.
 
-## Fixed V3 regression after gap fixes
+Теперь deterministic admission отклоняет:
 
-`npm run benchmark:eval` — Planner off. 6/6, ISO01 PASS, SEC01 PASS, no hard regressions.
+```text
+A → B → A
+A → B → C → A
+```
 
-Report: `traces/2026-08-27T13-21-46-170Z.txt`
+и принимает нормальный acyclic dependency graph.
 
-| Task  | expected | first-pass | verify    | model/tools | tokens in/out | wall |
-| ----- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
-| T01   | yes      | yes        | PASS      | 7 / 13      | 17288 / 1831  | ~28s |
-| T02   | yes      | yes        | PASS      | 8 / 14      | 17264 / 1644  | ~21s |
-| T03   | yes      | yes        | PASS      | 7 / 16      | 19304 / 1507  | ~21s |
-| T04   | yes      | n/a        | n/a       | 2 / 7       | 4445 / 952    | ~9s  |
-| R01   | yes      | no         | FAIL→PASS | 10 / 21     | 27527 / 2086  | ~27s |
-| REV01 | yes      | no         | PASS→PASS | 11 / 21     | 30156 / 2522  | ~34s |
+Это только validation; DAG executor / scheduler не добавлялся.
 
-Модуль **не** закрыт.
+### 2. Equal-quality efficiency semantics
+
+Первоначальная implementation decision rule могла трактовать любое directional e2e improvement как `candidate`, хотя заранее не было задано, что считается **meaningful** improvement.
+
+Исправлено:
+
+```text
+quality equal + clear e2e regression
+→ reject
+
+quality equal + conflicting e2e signals
+→ inconclusive
+
+quality equal + directionally better e2e,
+but no predefined meaningful threshold
+→ inconclusive
+```
+
+Сравниваются все собранные e2e signals:
+
+- model calls;
+- tool calls;
+- input tokens;
+- output tokens;
+- wall time.
+
+Historical P01 artifact не переписывался и не rerun'ился: его `reject` остаётся валидным, потому что Variant был хуже по всем пяти сигналам.
+
+Harness unit tests after fixes: **125 passed**.
+
+## Fixed V3 regression after fixes
+
+Evidence:
+
+`docs/learning/lessons/12-planner-worker-reviewer/traces/2026-08-27T13-21-46-170Z.txt`
+
+```text
+T01–T04 expected outcomes   4 / 4
+Executable first-pass       3 / 3
+Correct escalation T04      1 / 1
+R01 verification repair     PASS
+REV01 independent review    PASS
+All fixed V3 contracts      6 / 6
+ISO01                       PASS
+SEC01                       PASS
+Hard regressions            none
+```
+
+Planner был выключен во fixed regression, поэтому normal architecture осталась неизменной.
+
+## Understanding check
+
+Learner correctly identified that:
+
+- Worker может отклоняться от Plan, потому что Plan advisory, а Spec / repository truth выше по authority;
+- Worker-local savings нельзя считать системным выигрышем — Planner overhead нужно учитывать end-to-end;
+- explicit Planner потенциально оправдан на больших задачах, где upfront decomposition может уменьшить backtracking / wasted execution;
+- Reviewer не должен получать Plan, чтобы не получить anchoring / correlated judgment.
+
+Correction from the check:
+
+```text
+Spec   = WHAT must be true
+Planner = HOW we currently intend to get there
+Worker  = HOW to actually get there given repo reality
+```
+
+## Module decision
+
+M12 closes with this engineering choice:
+
+```text
+explicit Planner mechanism = implemented and understood
+explicit Planner default   = rejected for current feature-sized workload
+normal default              = Spec → Worker
+```
+
+Revisit explicit planning only when a larger planning-sensitive workload gives evidence that decomposition/reliability gains can repay coordination overhead.
