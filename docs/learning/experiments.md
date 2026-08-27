@@ -1385,6 +1385,8 @@ Encoded before the run in `harness/src/planning-experiment.ts`:
 4. Quality equal and Variant costs more e2e → reject.
 5. n=3 noisy / conflicting → inconclusive. Do not invent post-hoc numeric thresholds.
 
+Equal-quality operationalization (no numeric meaningful-efficiency threshold was predefined): do **not** emit `candidate` from directional e2e improvement alone. Clear e2e regression → reject. Conflicting e2e signals → inconclusive. Directionally better e2e without a predefined meaningful threshold → inconclusive, not candidate. Compared signals: model calls, tool calls, input tokens, output tokens, wall time.
+
 ### Results
 
 Evidence:
@@ -1423,9 +1425,9 @@ Changed files on every valid trial: `tasks/types.ts`, `tasks/task-service.ts`, `
 | ---- | ----------- |
 | 1. Variant worse correctness | no — both 3/3 expected, 3/3 first VERIFY PASS, 0 repairs |
 | 2. Variant clear reliability / first-pass improvement | no — quality equal |
-| 3. Quality equal → need meaningful e2e efficiency | not met — variant more expensive on calls, tokens, and wall |
+| 3. Quality equal → need meaningful e2e efficiency | not met — variant more expensive on model calls, tool calls, input tokens, output tokens, and wall |
 | 4. Quality equal and variant costs more e2e | **yes → reject** |
-| 5. Noisy / conflicting | no — all three e2e cost signals move the same way |
+| 5. Noisy / conflicting | no — all five collected e2e cost signals move the same way |
 
 **Conclusion: reject explicit Planner.** Default remains Spec → Worker. `planningEnabled` stays off.
 
@@ -1445,4 +1447,40 @@ On this P01 probe the predefined rule rejects adoption: quality equal, end-to-en
 This does **not** prove Planner is useless on larger multi-step work. It proves it is not justified on this controlled feature-sized task.
 
 Module 12 experiment recorded; module is **not** complete. Topic Chat still owns formal closure.
+
+### Review gap follow-up (admission + decision semantics)
+
+Plan admission now rejects general dependency cycles. This is schema validation only; there is still no DAG executor.
+
+The historical P01 artifact (`planning-m12-2026-08-27T12-46-15-463Z`) is unchanged. Its **reject** remains authoritative: quality was equal and Variant was clearly more expensive on all collected e2e signals. P01 was not rerun.
+
+Equal-quality `candidate` is no longer emitted from directional e2e improvement alone, because no numeric meaningful threshold was predefined.
+
+### Fixed V3 regression after gap fixes
+
+`docs/learning/lessons/12-planner-worker-reviewer/traces/2026-08-27T13-21-46-170Z.txt`  
+Suite label remains `fixed-v3-m09`. Planner stayed off (`planningEnabled=false`).
+
+```text
+T01–T04 expected outcomes   4 / 4
+Executable first-pass       3 / 3
+Correct escalation T04      1 / 1
+R01 verification repair     PASS
+REV01 independent review    PASS
+All fixed V3 contracts      6 / 6
+ISO01                       PASS
+SEC01                       PASS
+Hard regressions            none
+```
+
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 13      | 17288 / 1831  | ~28s |
+| T02   | capability | yes      | yes        | PASS      | 8 / 14      | 17264 / 1644  | ~21s |
+| T03   | capability | yes      | yes        | PASS      | 7 / 16      | 19304 / 1507  | ~21s |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4445 / 952    | ~9s  |
+| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 21     | 27527 / 2086  | ~27s |
+| REV01 | probe      | yes      | no         | PASS→PASS | 11 / 21     | 30156 / 2522  | ~34s |
+
+Harness unit tests after the gap fixes: 125 passed.
 

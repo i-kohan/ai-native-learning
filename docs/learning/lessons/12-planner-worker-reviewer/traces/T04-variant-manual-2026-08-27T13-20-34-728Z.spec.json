@@ -1,0 +1,71 @@
+{
+  "task": "# T04 — Ambiguity probe\n\nMake the task list less cluttered by hiding completed tasks when appropriate.",
+  "decision": "needs_human_judgment",
+  "spec": {
+    "goal": "Reduce task-list clutter by hiding completed tasks, but the task does not define the condition or interface under which completed tasks should be hidden.",
+    "requirements": [
+      "Preserve the existing task model and completion/reopen behavior unless the clarified product decision changes them.",
+      "Account for the existing GET /tasks status filter: status=pending and status=completed currently return matching tasks, while an omitted status currently returns all tasks."
+    ],
+    "constraints": [
+      "This repository exposes a request-handler/API-style task list rather than a UI; the externally observable behavior is GET /tasks and its status query parameter.",
+      "Existing tests currently assert that GET /tasks without a status returns both pending and completed tasks, but those tests only establish current behavior and do not resolve the requested behavior change.",
+      "Do not alter task creation, completion timestamps, reopening, or the meaning of explicit status filters without an explicit product decision."
+    ],
+    "nonGoals": [
+      "Do not add a UI layer; none exists in the repository.",
+      "Do not infer a retention/deletion policy for completed tasks.",
+      "Do not silently change explicit status=completed behavior as a consequence of hiding completed tasks by default."
+    ],
+    "acceptance": [
+      "After clarification, define and test the precise GET /tasks behavior for omitted status when pending and completed tasks coexist.",
+      "After clarification, define and test how callers can view completed tasks, if they remain viewable.",
+      "After clarification, retain or explicitly revise the existing status query contract and update tests accordingly."
+    ],
+    "verification": [
+      "Run the repository test suite after implementing the clarified rule.",
+      "Add request-level tests covering a mixed pending/completed list, omitted status, status=pending, and status=completed, according to the clarified contract."
+    ],
+    "ambiguities": [
+      {
+        "question": "What does “when appropriate” mean: should GET /tasks with no status hide completed tasks by default, or should hiding be controlled by a new query parameter or another caller-selected mode?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "The task gives no trigger or default rule. The repository has only an API-style GET /tasks endpoint and currently returns all tasks when status is omitted; existing tests confirm that current behavior but do not authorize the intended new behavior."
+      },
+      {
+        "question": "If completed tasks are hidden from the default list, how should clients explicitly retrieve them: retain status=completed, add an all/show-completed option, or use another contract?",
+        "classification": "requires_human_judgment",
+        "status": "unresolved",
+        "resolution": "",
+        "basis": "Multiple externally observable API contracts are possible, and the repository does not document a preferred one. The existing status=completed filter is available but does not by itself establish whether it should be the opt-in mechanism for the new behavior."
+      },
+      {
+        "question": "Should explicit GET /tasks?status=completed continue returning completed tasks, even if the default list hides them?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Treat explicit status filters as intentional caller selections and preserve their current semantics unless the clarification says otherwise.",
+        "basis": "The endpoint already documents its behavior through implementation and tests: status=completed returns only completed tasks, and changing that would be a separate material API change."
+      }
+    ]
+  },
+  "unresolvedQuestions": [
+    {
+      "question": "What does “when appropriate” mean: should GET /tasks with no status hide completed tasks by default, or should hiding be controlled by a new query parameter or another caller-selected mode?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "The task gives no trigger or default rule. The repository has only an API-style GET /tasks endpoint and currently returns all tasks when status is omitted; existing tests confirm that current behavior but do not authorize the intended new behavior."
+    },
+    {
+      "question": "If completed tasks are hidden from the default list, how should clients explicitly retrieve them: retain status=completed, add an all/show-completed option, or use another contract?",
+      "classification": "requires_human_judgment",
+      "status": "unresolved",
+      "resolution": "",
+      "basis": "Multiple externally observable API contracts are possible, and the repository does not document a preferred one. The existing status=completed filter is available but does not by itself establish whether it should be the opt-in mechanism for the new behavior."
+    }
+  ],
+  "implementationStarted": false,
+  "workflowStatus": "needs_human_judgment"
+}

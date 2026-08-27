@@ -80,6 +80,22 @@ Predefined rule: quality equal and Variant costs more end-to-end → **reject Pl
 
 Evidence: `docs/learning/lessons/12-planner-worker-reviewer/traces/planning-m12-2026-08-27T12-46-15-463Z.txt`
 
+## Review gap fixes
+
+- Plan admission now rejects general `dependsOn` cycles (not only self-deps / invalid indexes). Schema/admission only — no DAG executor.
+- Equal-quality decision: no numeric “meaningful” e2e threshold was predefined, so directional efficiency improvement is **inconclusive**, not `candidate`. Clear e2e regression → reject. Conflicting e2e signals → inconclusive. Compared signals: model calls, tool calls, input tokens, output tokens, wall time.
+- Historical P01 artifact is unchanged. Re-applying the operationalization still **rejects**: quality equal, all five e2e signals worse on Variant.
+
+P01 was not rerun (admission/decision-report changes do not affect recorded Planner execution).
+
+## Fixed V3 regression after gap fixes
+
+Suite: `fixed-v3-m09`. Planner stayed off. 6/6 contracts; ISO01 PASS; SEC01 PASS; no hard regressions.
+
+Evidence: `docs/learning/lessons/12-planner-worker-reviewer/traces/2026-08-27T13-21-46-170Z.txt`
+
+Harness unit tests: 125 passed.
+
 ---
 
 # Module 11 — Modern Model-Native Orchestration / Inner vs Outer Loop

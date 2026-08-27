@@ -19,6 +19,7 @@ export const PREDEFINED_DECISION_RULE = [
   "3. If quality is effectively equal: adopt Planner only if there is a meaningful END-TO-END efficiency improvement and no meaningful regression in tokens/latency/model calls. Worker-only discovery reduction is not sufficient.",
   "4. If quality is equal and Variant costs more end-to-end: reject Planner.",
   "5. If 3-trial evidence is noisy / conflicting: conclusion = inconclusive. Do not invent post-hoc numeric thresholds.",
+  "Equal-quality operationalization: no numeric meaningful-efficiency threshold was predefined, so do not emit candidate from directional e2e improvement alone. Clear e2e regression → reject. Conflicting e2e signals → inconclusive. Directionally better e2e without a predefined meaningful threshold → inconclusive, not candidate. Compare model calls, tool calls, input tokens, output tokens, and wall time.",
 ].join("\n");
 
 export type PlanningTrialValidityReason =
@@ -471,7 +472,9 @@ function compareEfficiency(
 ): PlanningEfficiencyComparison {
   const keys: Array<keyof PlanningArmAverages> = [
     "modelCalls",
+    "toolCalls",
     "inputTokens",
+    "outputTokens",
     "wallTimeMs",
   ];
   const better: string[] = [];
@@ -541,13 +544,10 @@ function conclusionFromRule(
   if (quality === "variant_better") {
     return "candidate";
   }
-  if (efficiency === "noisy") {
-    return "inconclusive";
+  if (efficiency === "variant_worse") {
+    return "reject";
   }
-  if (efficiency === "variant_better") {
-    return "candidate";
-  }
-  return "reject";
+  return "inconclusive";
 }
 
 function averageMetrics(trials: PlanningTrialRecord[]): PlanningArmAverages {

@@ -1,0 +1,50 @@
+{
+  "taskId": "ISO01",
+  "taskKind": "mechanism_probe",
+  "mechanism": "workspace_isolation",
+  "passed": true,
+  "baseRevision": "647e902179ba143cc32d51cb0db3ea1187a7a4de",
+  "workspaceA": {
+    "id": "ISO01-A-2026-08-27T13-19-20-395Z",
+    "root": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/ISO01-A-2026-08-27T13-19-20-395Z",
+    "baseRevision": "647e902179ba143cc32d51cb0db3ea1187a7a4de",
+    "ref": "HEAD"
+  },
+  "workspaceB": {
+    "id": "ISO01-B-2026-08-27T13-19-20-395Z",
+    "root": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/ISO01-B-2026-08-27T13-19-20-395Z",
+    "baseRevision": "647e902179ba143cc32d51cb0db3ea1187a7a4de",
+    "ref": "HEAD"
+  },
+  "initiallyEquivalent": true,
+  "mutationObservedInA": true,
+  "mutationAbsentInB": true,
+  "mainCheckoutUnchanged": true,
+  "verifierA": {
+    "passed": false,
+    "exitCode": 1,
+    "output": "> test\n> tsx --test tests/**/*.test.ts\n\n▶ GET /tasks/:id\n  ✖ returns 404 when the task does not exist (0.63975ms)\n  ✔ returns the task when it exists (0.101292ms)\n✖ GET /tasks/:id (1.056334ms)\n▶ complete and reopen\n  ✔ sets completedAt when a task becomes completed (0.80925ms)\n  ✔ clears completedAt when a completed task is reopened (0.155542ms)\n✔ complete and reopen (1.0385ms)\n▶ GET /tasks status filter\n  ✔ returns only matching tasks when status is provided (0.158834ms)\n  ✔ returns all tasks when status is omitted (0.058875ms)\n✔ GET /tasks status filter (0.277584ms)\nℹ tests 6\nℹ suites 3\nℹ pass 5\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 107.326416\n\n✖ failing tests:\n\ntest at tests/tasks.test.ts:6:3\n✖ returns 404 when the task does not exist (0.63975ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  500 !== 404\n  \n      at TestContext.<anonymous> (/Users/i.kohanvs/Desktop/ai-native/.worktrees/ISO01-A-2026-08-27T13-19-20-395Z/target-app/tests/tasks.test.ts:9:12)\n      at Test.runInAsyncScope (node:async_hooks:214:14)\n      at Test.run (node:internal/test_runner/test:1062:25)\n      at Test.start (node:internal/test_runner/test:959:17)\n      at node:internal/test_runner/test:1464:71\n      at node:internal/per_context/primordials:483:82\n      at new Promise (<anonymous>)\n      at new SafePromise (node:internal/per_context/primordials:451:29)\n      at node:internal/per_context/primordials:483:9\n      at Array.map (<anonymous>) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 500,\n    expected: 404,\n    operator: 'strictEqual'\n  }",
+    "durationMs": 392
+  },
+  "verifierB": {
+    "passed": true,
+    "exitCode": 0,
+    "output": "> test\n> tsx --test tests/**/*.test.ts\n\n▶ GET /tasks/:id\n  ✔ returns 404 when the task does not exist (0.519667ms)\n  ✔ returns the task when it exists (0.101667ms)\n✔ GET /tasks/:id (0.932542ms)\n▶ complete and reopen\n  ✔ sets completedAt when a task becomes completed (0.819375ms)\n  ✔ clears completedAt when a completed task is reopened (0.1635ms)\n✔ complete and reopen (1.055291ms)\n▶ GET /tasks status filter\n  ✔ returns only matching tasks when status is provided (0.143458ms)\n  ✔ returns all tasks when status is omitted (0.05675ms)\n✔ GET /tasks status filter (0.602041ms)\nℹ tests 6\nℹ suites 3\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 113.007542",
+    "durationMs": 406
+  },
+  "cleanedUp": true,
+  "cleanupRetrySafe": true,
+  "assertions": {
+    "sameBaseRevision": true,
+    "initiallyEquivalent": true,
+    "mutationObservedInA": true,
+    "mutationAbsentInB": true,
+    "mainUnchangedAfterMutation": true,
+    "verifierAFailed": true,
+    "verifierBPassed": true,
+    "cleanedUp": true,
+    "cleanupRetrySafe": true,
+    "mainCheckoutUnchanged": true
+  },
+  "evidencePath": "/Users/i.kohanvs/Desktop/ai-native/traces/ISO01-isolation-2026-08-27T13-19-22-261Z.json"
+}

@@ -154,6 +154,88 @@ describe("plan admission", () => {
     }
   });
 
+  it("rejects a two-step dependency cycle", () => {
+    const parsed = parsePlanPayload(
+      validPlan({
+        steps: [
+          {
+            intent: "First",
+            likelyFiles: ["src/tasks/types.ts"],
+            dependsOn: [1],
+          },
+          {
+            intent: "Second",
+            likelyFiles: ["src/tasks/task-service.ts"],
+            dependsOn: [0],
+          },
+        ],
+      }),
+    );
+    assert.equal(parsed.ok, false);
+    if (!parsed.ok) {
+      assert.match(parsed.error, /dependency cycle/);
+    }
+  });
+
+  it("rejects a longer dependency cycle", () => {
+    const parsed = parsePlanPayload(
+      validPlan({
+        steps: [
+          {
+            intent: "A",
+            likelyFiles: ["src/tasks/types.ts"],
+            dependsOn: [1],
+          },
+          {
+            intent: "B",
+            likelyFiles: ["src/tasks/task-service.ts"],
+            dependsOn: [2],
+          },
+          {
+            intent: "C",
+            likelyFiles: ["src/tasks/task-routes.ts"],
+            dependsOn: [0],
+          },
+        ],
+      }),
+    );
+    assert.equal(parsed.ok, false);
+    if (!parsed.ok) {
+      assert.match(parsed.error, /dependency cycle/);
+    }
+  });
+
+  it("accepts valid acyclic dependencies", () => {
+    const parsed = parsePlanPayload(
+      validPlan({
+        steps: [
+          {
+            intent: "Types",
+            likelyFiles: ["src/tasks/types.ts"],
+            dependsOn: [],
+          },
+          {
+            intent: "Service",
+            likelyFiles: ["src/tasks/task-service.ts"],
+            dependsOn: [0],
+          },
+          {
+            intent: "Routes",
+            likelyFiles: ["src/tasks/task-routes.ts"],
+            dependsOn: [0, 1],
+          },
+        ],
+      }),
+    );
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) {
+      assert.deepEqual(
+        parsed.value.steps.map((step) => step.dependsOn),
+        [[], [0], [0, 1]],
+      );
+    }
+  });
+
   it("rejects absolute and traversal likelyFiles", () => {
     const absolute = parsePlanPayload(
       validPlan({
@@ -384,7 +466,9 @@ describe("predefined planner decision rule", () => {
       arm("baseline", 3, {}),
       arm("variant", 3, {
         modelCalls: 12,
+        toolCalls: 24,
         inputTokens: 25000,
+        outputTokens: 2500,
         wallTimeMs: 40000,
       }),
     );
@@ -398,17 +482,38 @@ describe("predefined planner decision rule", () => {
     const decision = evaluatePlanningDecision(
       arm("baseline", 3, {
         modelCalls: 10,
+        toolCalls: 20,
         inputTokens: 20000,
+        outputTokens: 2000,
         wallTimeMs: 40000,
       }),
       arm("variant", 3, {
         modelCalls: 12,
+        toolCalls: 18,
         inputTokens: 18000,
+        outputTokens: 2200,
         wallTimeMs: 30000,
       }),
     );
     assert.equal(decision.quality, "equal");
     assert.equal(decision.efficiency, "noisy");
     assert.equal(decision.conclusion, "inconclusive");
+  });
+
+  it("does not emit candidate for directional e2e improvement without a predefined meaningful threshold", () => {
+    const decision = evaluatePlanningDecision(
+      arm("baseline", 3, {}),
+      arm("variant", 3, {
+        modelCalls: 8,
+        toolCalls: 16,
+        inputTokens: 18000,
+        outputTokens: 1800,
+        wallTimeMs: 25000,
+      }),
+    );
+    assert.equal(decision.quality, "equal");
+    assert.equal(decision.efficiency, "variant_better");
+    assert.equal(decision.conclusion, "inconclusive");
+    assert.notEqual(decision.conclusion, "candidate");
   });
 });

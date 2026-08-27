@@ -1,0 +1,59 @@
+{
+  "task": "Ensure POST /tasks/:id/complete marks an existing task completed, sets completedAt, and preserves existing missing-task behavior.\n\nDo not change unrelated behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure POST /tasks/:id/complete completes an existing task by setting status to \"completed\" and completedAt to a non-null ISO timestamp, while preserving the established missing-task response.",
+    "requirements": [
+      "For an existing task addressed by POST /tasks/:id/complete, return HTTP 200 and the task with status \"completed\".",
+      "Set completedAt on the completed task to a non-null timestamp string (consistent with the existing task model and service behavior).",
+      "For a nonexistent task, preserve the existing HTTP 404 response body {\"error\":\"task_not_found\"}.",
+      "Do not alter unrelated task routes or behaviors, including reopen and status filtering."
+    ],
+    "constraints": [
+      "Use the existing Task and TaskService/route abstractions and response conventions.",
+      "Do not modify tests.",
+      "Limit changes to the completion behavior needed for this endpoint; retain the existing missing-task behavior."
+    ],
+    "nonGoals": [
+      "Changing create, get, list, or reopen semantics.",
+      "Changing the missing-task status code or error payload.",
+      "Adding new request parameters, persistence, or API response fields."
+    ],
+    "acceptance": [
+      "Creating a task and posting to /tasks/:id/complete returns status 200 with status \"completed\" and completedAt as a non-empty string.",
+      "Posting to /tasks/missing/complete returns status 404 with body {\"error\":\"task_not_found\"}.",
+      "The completed task is observable as completed through existing task retrieval/list behavior.",
+      "Reopen behavior remains unchanged: reopening clears completedAt and sets status to \"pending\"."
+    ],
+    "verification": [
+      "Run the existing test suite via the repository's npm test script.",
+      "Confirm the completion test covers status and completedAt, the missing-task response remains covered or is verified, and the existing reopen/status-filter tests still pass."
+    ],
+    "ambiguities": [
+      {
+        "question": "What should POST /tasks/:id/complete do when the task is already completed, including whether completedAt must remain unchanged?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Treat repeated completion as the existing completion operation without introducing a new externally specified rule; preserve repository behavior unless the task explicitly requires idempotent timestamp preservation.",
+        "basis": "The task only requires completing an existing task and setting completedAt, and the repository's current service implementation applies completion to any existing task. No requirement specifies timestamp preservation across repeated calls."
+      },
+      {
+        "question": "What response should be returned for a missing task?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 404 with body {\"error\":\"task_not_found\"}.",
+        "basis": "task-routes.ts currently maps an undefined result from service.complete(id) to this response, and tests/tasks.test.ts establishes the same missing-task convention for GET /tasks/:id; the task explicitly requires preserving missing-task behavior."
+      },
+      {
+        "question": "What timestamp representation should completedAt use?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Use a non-null ISO-format timestamp string, consistent with new Date().toISOString() and the Task type's string|null field.",
+        "basis": "src/tasks/task-service.ts currently sets completedAt with new Date().toISOString(), src/tasks/types.ts defines completedAt as string|null, and the completion test asserts a non-empty string."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

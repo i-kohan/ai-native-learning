@@ -240,7 +240,40 @@ function parseSteps(
     }
     steps.push(parsed.value);
   }
+  if (hasDependencyCycle(steps)) {
+    return {
+      ok: false,
+      error: "steps contain a dependency cycle.",
+    };
+  }
   return { ok: true, value: steps };
+}
+
+function hasDependencyCycle(steps: PlanStep[]): boolean {
+  const color = Array.from({ length: steps.length }, () => 0);
+  const visit = (index: number): boolean => {
+    if (color[index] === 1) {
+      return true;
+    }
+    if (color[index] === 2) {
+      return false;
+    }
+    color[index] = 1;
+    for (const dependency of steps[index].dependsOn) {
+      if (visit(dependency)) {
+        return true;
+      }
+    }
+    color[index] = 2;
+    return false;
+  };
+
+  for (let index = 0; index < steps.length; index += 1) {
+    if (color[index] === 0 && visit(index)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function parseStep(

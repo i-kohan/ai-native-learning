@@ -53,4 +53,30 @@ Predefined rule п.4 → **reject Planner**. Default остаётся Spec → W
 
 Нюанс: в variant #2/#3 `likelyFiles` включали tests/package.json; Worker их не менял.
 
-Harness unit tests: 121 passed.
+Harness unit tests at experiment time: 121 passed.
+
+## Review gap fixes (2026-08-27)
+
+1. **Cycle admission.** `parseSteps` rejects general `dependsOn` cycles (two-step and longer), not only self-deps / invalid indexes. Still no DAG executor.
+2. **Equal-quality decision.** No numeric meaningful e2e threshold was predefined, so directional improvement is `inconclusive`, not `candidate`. Compared signals: model calls, tool calls, input tokens, output tokens, wall time. Clear regression still `reject`. Historical P01 artifact unchanged; reject still holds.
+
+P01 not rerun.
+
+Harness unit tests after the fixes: **125 passed**.
+
+## Fixed V3 regression after gap fixes
+
+`npm run benchmark:eval` — Planner off. 6/6, ISO01 PASS, SEC01 PASS, no hard regressions.
+
+Report: `traces/2026-08-27T13-21-46-170Z.txt`
+
+| Task  | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | yes      | yes        | PASS      | 7 / 13      | 17288 / 1831  | ~28s |
+| T02   | yes      | yes        | PASS      | 8 / 14      | 17264 / 1644  | ~21s |
+| T03   | yes      | yes        | PASS      | 7 / 16      | 19304 / 1507  | ~21s |
+| T04   | yes      | n/a        | n/a       | 2 / 7       | 4445 / 952    | ~9s  |
+| R01   | yes      | no         | FAIL→PASS | 10 / 21     | 27527 / 2086  | ~27s |
+| REV01 | yes      | no         | PASS→PASS | 11 / 21     | 30156 / 2522  | ~34s |
+
+Модуль **не** закрыт.
