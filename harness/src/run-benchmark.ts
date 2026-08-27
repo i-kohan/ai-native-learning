@@ -41,6 +41,13 @@ import {
   writeOrchestrationExperimentArtifact,
   type OrchestrationArmId,
 } from "./orchestration-experiment.ts";
+import {
+  isExpectedP01Outcome,
+  runPlanningExperiment,
+  writePlanningExperimentArtifact,
+  type PlanningArmId,
+  type PlanningProbeAttempt,
+} from "./planning-experiment.ts";
 import { runFinalVerification } from "./verify.ts";
 import {
   bindConfig,
@@ -63,6 +70,31 @@ export type BenchmarkRunLabel = {
   taskId: TaskId;
   contextMode: ContextMode;
 };
+
+export function prepareP01(config: HarnessConfig): {
+  task: string;
+  initialTestsPassed: boolean;
+  initialTestOutput: string;
+} {
+  restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
+  const hostP01 = path.join(REPO_ROOT, "benchmarks", "P01");
+  const taskPath = path.join(hostP01, "task.md");
+  const testPath = path.join(hostP01, "priority.test.ts");
+  if (!fs.existsSync(taskPath) || !fs.existsSync(testPath)) {
+    throw new Error(`Missing P01 fixture files under ${hostP01}`);
+  }
+  const task = fs.readFileSync(taskPath, "utf8").trim();
+  fs.copyFileSync(
+    testPath,
+    path.join(config.targetAppRoot, "tests", "priority.test.ts"),
+  );
+  const verification = runFinalVerification(config);
+  return {
+    task,
+    initialTestsPassed: verification.passed,
+    initialTestOutput: verification.output,
+  };
+}
 
 export function prepareBenchmark(
   taskId: TaskId,
@@ -358,6 +390,59 @@ export async function runModelRoutingExperiment() {
         },
       }),
     scoreExpected: isExpectedR01Outcome,
+  });
+}
+
+export async function executeP01Trial(options: {
+  arm: PlanningArmId;
+  runId: string;
+}): Promise<PlanningProbeAttempt> {
+  return withIsolatedWorkspace(options.runId, async (config, workspace) => {
+    let fixtureApplied = false;
+    try {
+      const prep = prepareP01(config);
+      if (prep.initialTestsPassed) {
+        return {
+          fixtureApplied: false,
+          result: null,
+          error:
+            "P01: expected initial tests to FAIL after priority tests were added, but they passed.",
+        };
+      }
+      fixtureApplied = true;
+      console.log(
+        `\n=== Preparing P01 (${options.arm}) workspace=${workspace.id} ===`,
+      );
+      console.log(
+        "initial_tests: FAIL (priority tests added to green fixture)",
+      );
+      const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+      const result = await runV1Harness({
+        config,
+        task: prep.task,
+        runId: options.runId,
+        beforeSnapshot,
+        contextMode: "variant",
+        conversationStateMode: "manual",
+        planningEnabled: options.arm === "variant",
+        workspace,
+      });
+      printHarnessResult(result);
+      return { fixtureApplied: true, result, error: null };
+    } catch (error) {
+      return {
+        fixtureApplied,
+        result: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+}
+
+export async function runPlannerWorkerExperiment() {
+  return runPlanningExperiment({
+    runTrial: (arm, runId) => executeP01Trial({ arm, runId }),
+    scoreExpected: isExpectedP01Outcome,
   });
 }
 
@@ -739,6 +824,7 @@ type CliOptions = {
   evalSuite: boolean;
   routingExperiment: boolean;
   orchestrationExperiment?: boolean;
+  planningExperiment?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
@@ -765,6 +851,21 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: true,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--planning") || argv.includes("planning")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      planningExperiment: true,
+      contextMode: "variant",
       conversationStateMode,
     };
   }
@@ -924,6 +1025,7 @@ async function main(): Promise<void> {
     evalSuite,
     routingExperiment,
     orchestrationExperiment,
+    planningExperiment,
     taskId,
     contextMode,
     conversationStateMode,
@@ -946,6 +1048,20 @@ async function main(): Promise<void> {
   if (evalSuite) {
     const evalResult = await runFixedSuite({ conversationStateMode });
     process.exit(evalResult.regressions.length === 0 ? 0 : 1);
+    return;
+  }
+
+  if (planningExperiment) {
+    const result = await runPlannerWorkerExperiment();
+    const artifacts = writePlanningExperimentArtifact(result);
+    console.log(`\n${result.report}`);
+    console.log(`\nplanning_json: ${artifacts.jsonPath}`);
+    console.log(`planning_report: ${artifacts.reportPath}`);
+    process.exit(
+      result.baseline.validTrials === 3 && result.variant.validTrials === 3
+        ? 0
+        : 1,
+    );
     return;
   }
 
@@ -1005,6 +1121,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark:experiment");
     console.error("   or: npm run benchmark:eval [-- --previous-response-id]");
     console.error("   or: npm run benchmark:routing");
+    console.error("   or: npm run benchmark:planning");
     console.error("   or: npm run benchmark:orchestration");
     console.error("   or: npm run benchmark -- ISO01");
     console.error("   or: npm run benchmark -- SEC01");

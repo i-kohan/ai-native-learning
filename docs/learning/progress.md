@@ -16,7 +16,7 @@ Completed modules:
 10. ✅ 10 — Model Routing
 11. ✅ 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
 
-Current module: none. Return to Master/Roadmap to select the next module from the current plan.
+Current module: **12 — Planner / Worker / Reviewer** (in progress, not complete).
 
 ---
 
@@ -50,6 +50,35 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 12 — Planner / Worker / Reviewer
+
+**Status:** in progress — not complete. Experiment recorded; Planner is not the default; Topic Chat has not closed the module.
+
+## Built
+
+- optional read-only Planner episode (`planningEnabled`, default `false`);
+- structured advisory `Plan` via `submit_plan` + deterministic admission;
+- Worker handoff: resolved Spec separately, Plan is hypothesis not authority;
+- Reviewer contract unchanged (no Plan / Planner rationale / Worker conversation);
+- P01 priority fixture + `npm run benchmark:planning`.
+
+## Controlled experiment
+
+Task: P01  
+Context: `contextMode=variant`, `conversationStateMode=manual`  
+Trials: 3 valid per arm, isolated worktree per trial. Contaminated: none.
+
+| Arm | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg |
+| --- | --- | --- | --- | --- | --- | --- |
+| BASELINE | 3/3 | 3/3 PASS | 0 / 0 | 8 / 23 | 36,589 / 3,700 | ~51s |
+| VARIANT | 3/3 | 3/3 PASS | 0 / 0 | 12 / 31 | 56,633 / 5,309 | ~64s |
+
+Predefined rule: quality equal and Variant costs more end-to-end → **reject Planner**. Default unchanged.
+
+Evidence: `docs/learning/lessons/12-planner-worker-reviewer/traces/planning-m12-2026-08-27T12-46-15-463Z.txt`
 
 ---
 
@@ -97,10 +126,10 @@ Task: T02
 Context: `contextMode=variant`  
 Trials: 3 per arm, isolated exact-base worktree per trial.
 
-| Arm | mode | expected | client items/bytes avg | tokens in/out avg | wall avg |
-| --- | --- | --- | --- | --- | --- |
-| A | manual | 3/3 | 43 / 53,349 | 17,178 / 1,570 | ~23.6s |
-| B | previous_response_id | 3/3 | 7 / 14,315 | 19,831 / 1,888 | ~32.3s |
+| Arm | mode                 | expected | client items/bytes avg | tokens in/out avg | wall avg |
+| --- | -------------------- | -------- | ---------------------- | ----------------- | -------- |
+| A   | manual               | 3/3      | 43 / 53,349            | 17,178 / 1,570    | ~23.6s   |
+| B   | previous_response_id | 3/3      | 7 / 14,315             | 19,831 / 1,888    | ~32.3s   |
 
 Supported:
 

@@ -9,6 +9,7 @@
     "benchmark": "npm run benchmark --prefix harness --",
     "benchmark:all": "npm run benchmark:all --prefix harness",
     "benchmark:eval": "npm run benchmark:eval --prefix harness",
-    "benchmark:routing": "npm run benchmark:routing --prefix harness"
+    "benchmark:routing": "npm run benchmark:routing --prefix harness",
+    "benchmark:planning": "npm run benchmark:planning --prefix harness"
   }
 }

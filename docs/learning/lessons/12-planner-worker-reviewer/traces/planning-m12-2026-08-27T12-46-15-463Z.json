@@ -1,0 +1,392 @@
+{
+  "experimentId": "m12-p01-planner",
+  "generatedAt": "2026-08-27T12:46:15.463Z",
+  "taskId": "P01",
+  "contextMode": "variant",
+  "conversationStateMode": "manual",
+  "hypothesis": "An explicit read-only Planner that emits a structured advisory Plan can improve Worker reliability or end-to-end efficiency on a multi-layer feature without becoming authority, without changing Reviewer independence, and without becoming the default architecture.",
+  "decisionRule": "Predefined decision rule (encoded before the experiment):\n1. If Variant has worse correctness/reliability than Baseline: reject explicit Planner.\n2. If Variant shows a clear reliability / first-pass-quality improvement (for example fewer failures/repairs or higher expected-outcome success): Planner becomes an adoption candidate even with modest extra overhead.\n3. If quality is effectively equal: adopt Planner only if there is a meaningful END-TO-END efficiency improvement and no meaningful regression in tokens/latency/model calls. Worker-only discovery reduction is not sufficient.\n4. If quality is equal and Variant costs more end-to-end: reject Planner.\n5. If 3-trial evidence is noisy / conflicting: conclusion = inconclusive. Do not invent post-hoc numeric thresholds.",
+  "baseline": {
+    "id": "baseline",
+    "label": "BASELINE — Spec → Worker (implicit planning)",
+    "planningEnabled": false,
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "expectedMet": 3,
+    "firstVerificationPass": 3,
+    "trials": [
+      {
+        "arm": "baseline",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-plan-baseline-1-2026-08-27T12-46-15-464Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-plan-baseline-1-2026-08-27T12-46-15-464Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 8,
+          "toolCalls": 25,
+          "inputTokens": 35935,
+          "outputTokens": 4065,
+          "wallTimeMs": 52327,
+          "plannerModelCalls": 0,
+          "plannerToolCalls": 0,
+          "plannerInputTokens": null,
+          "plannerOutputTokens": null,
+          "plannerWallTimeMs": 0,
+          "workerModelCalls": 5,
+          "workerToolCalls": 13,
+          "plannedLikelyFiles": [],
+          "actualChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "extraChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "unusedLikelyFiles": [],
+          "planningEnabled": false,
+          "planAccepted": false
+        }
+      },
+      {
+        "arm": "baseline",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-plan-baseline-2-2026-08-27T12-47-08-550Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-plan-baseline-2-2026-08-27T12-47-08-550Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 7,
+          "toolCalls": 20,
+          "inputTokens": 24769,
+          "outputTokens": 3482,
+          "wallTimeMs": 40109,
+          "plannerModelCalls": 0,
+          "plannerToolCalls": 0,
+          "plannerInputTokens": null,
+          "plannerOutputTokens": null,
+          "plannerWallTimeMs": 0,
+          "workerModelCalls": 4,
+          "workerToolCalls": 9,
+          "plannedLikelyFiles": [],
+          "actualChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "extraChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "unusedLikelyFiles": [],
+          "planningEnabled": false,
+          "planAccepted": false
+        }
+      },
+      {
+        "arm": "baseline",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-plan-baseline-3-2026-08-27T12-47-49-408Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-plan-baseline-3-2026-08-27T12-47-49-408Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 10,
+          "toolCalls": 24,
+          "inputTokens": 49064,
+          "outputTokens": 3553,
+          "wallTimeMs": 60714,
+          "plannerModelCalls": 0,
+          "plannerToolCalls": 0,
+          "plannerInputTokens": null,
+          "plannerOutputTokens": null,
+          "plannerWallTimeMs": 0,
+          "workerModelCalls": 7,
+          "workerToolCalls": 13,
+          "plannedLikelyFiles": [],
+          "actualChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "extraChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "unusedLikelyFiles": [],
+          "planningEnabled": false,
+          "planAccepted": false
+        }
+      }
+    ],
+    "contaminated": [],
+    "averages": {
+      "modelCalls": 8,
+      "toolCalls": 23,
+      "inputTokens": 36589,
+      "outputTokens": 3700,
+      "wallTimeMs": 51050,
+      "plannerModelCalls": 0,
+      "plannerToolCalls": 0,
+      "workerModelCalls": 5,
+      "workerToolCalls": 12,
+      "verificationRepairAttempts": 0,
+      "reviewRepairAttempts": 0
+    }
+  },
+  "variant": {
+    "id": "variant",
+    "label": "VARIANT — Spec → read-only Planner → Worker",
+    "planningEnabled": true,
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "expectedMet": 3,
+    "firstVerificationPass": 3,
+    "trials": [
+      {
+        "arm": "variant",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-plan-variant-1-2026-08-27T12-48-50-850Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-plan-variant-1-2026-08-27T12-48-50-850Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 11,
+          "toolCalls": 31,
+          "inputTokens": 57811,
+          "outputTokens": 5541,
+          "wallTimeMs": 61331,
+          "plannerModelCalls": 2,
+          "plannerToolCalls": 7,
+          "plannerInputTokens": 7621,
+          "plannerOutputTokens": 705,
+          "plannerWallTimeMs": 9230,
+          "workerModelCalls": 6,
+          "workerToolCalls": 13,
+          "plannedLikelyFiles": [
+            "src/tasks/types.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/task-routes.ts"
+          ],
+          "actualChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "extraChangedFiles": [],
+          "unusedLikelyFiles": [],
+          "planningEnabled": true,
+          "planAccepted": true
+        }
+      },
+      {
+        "arm": "variant",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-plan-variant-2-2026-08-27T12-49-52-965Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-plan-variant-2-2026-08-27T12-49-52-965Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 14,
+          "toolCalls": 33,
+          "inputTokens": 66461,
+          "outputTokens": 5818,
+          "wallTimeMs": 71370,
+          "plannerModelCalls": 2,
+          "plannerToolCalls": 9,
+          "plannerInputTokens": 7774,
+          "plannerOutputTokens": 761,
+          "plannerWallTimeMs": 9796,
+          "workerModelCalls": 8,
+          "workerToolCalls": 12,
+          "plannedLikelyFiles": [
+            "src/tasks/types.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/task-routes.ts",
+            "tests/priority.test.ts",
+            "tests/tasks.test.ts",
+            "package.json",
+            "tsconfig.json"
+          ],
+          "actualChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "extraChangedFiles": [],
+          "unusedLikelyFiles": [
+            "tests/priority.test.ts",
+            "tests/tasks.test.ts",
+            "package.json",
+            "tsconfig.json"
+          ],
+          "planningEnabled": true,
+          "planAccepted": true
+        }
+      },
+      {
+        "arm": "variant",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-plan-variant-3-2026-08-27T12-51-05-102Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-plan-variant-3-2026-08-27T12-51-05-102Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 11,
+          "toolCalls": 29,
+          "inputTokens": 45626,
+          "outputTokens": 4569,
+          "wallTimeMs": 58098,
+          "plannerModelCalls": 2,
+          "plannerToolCalls": 8,
+          "plannerInputTokens": 7744,
+          "plannerOutputTokens": 779,
+          "plannerWallTimeMs": 9983,
+          "workerModelCalls": 6,
+          "workerToolCalls": 10,
+          "plannedLikelyFiles": [
+            "src/tasks/types.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/task-routes.ts",
+            "tests/priority.test.ts",
+            "tests/tasks.test.ts",
+            "package.json"
+          ],
+          "actualChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "extraChangedFiles": [],
+          "unusedLikelyFiles": [
+            "tests/priority.test.ts",
+            "tests/tasks.test.ts",
+            "package.json"
+          ],
+          "planningEnabled": true,
+          "planAccepted": true
+        }
+      }
+    ],
+    "contaminated": [],
+    "averages": {
+      "modelCalls": 12,
+      "toolCalls": 31,
+      "inputTokens": 56633,
+      "outputTokens": 5309,
+      "wallTimeMs": 63600,
+      "plannerModelCalls": 2,
+      "plannerToolCalls": 8,
+      "workerModelCalls": 7,
+      "workerToolCalls": 12,
+      "verificationRepairAttempts": 0,
+      "reviewRepairAttempts": 0
+    }
+  },
+  "decision": {
+    "quality": "equal",
+    "efficiency": "variant_worse",
+    "conclusion": "reject",
+    "defaultUnchanged": true,
+    "notes": [
+      "e2e higher on variant: modelCalls 8→12; inputTokens 36589→56633; wallTimeMs 51050→63600",
+      "Planner is not made the default by this experiment code."
+    ]
+  },
+  "report": "=== Planner / Worker Experiment (m12-p01-planner) ===\n\ntask: P01\ncontext_mode: variant\nconversation_state_mode: manual\nhypothesis: An explicit read-only Planner that emits a structured advisory Plan can improve Worker reliability or end-to-end efficiency on a multi-layer feature without becoming authority, without changing Reviewer independence, and without becoming the default architecture.\n\nPredefined decision rule (encoded before the experiment):\n1. If Variant has worse correctness/reliability than Baseline: reject explicit Planner.\n2. If Variant shows a clear reliability / first-pass-quality improvement (for example fewer failures/repairs or higher expected-outcome success): Planner becomes an adoption candidate even with modest extra overhead.\n3. If quality is effectively equal: adopt Planner only if there is a meaningful END-TO-END efficiency improvement and no meaningful regression in tokens/latency/model calls. Worker-only discovery reduction is not sufficient.\n4. If quality is equal and Variant costs more end-to-end: reject Planner.\n5. If 3-trial evidence is noisy / conflicting: conclusion = inconclusive. Do not invent post-hoc numeric thresholds.\n\nBASELINE — Spec → Worker (implicit planning)\nplanning_enabled: no\nvalid_trials: 3 / attempted 3\ncontaminated: 0\nexpected: 3/3\nfirst_verify_pass: 3/3\n  valid#1 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=8/25 tokens=35935/4065 wall_ms=52327 planner=0/0 worker=5/13 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=(none) extra=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts unused=(none)\n  valid#2 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=7/20 tokens=24769/3482 wall_ms=40109 planner=0/0 worker=4/9 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=(none) extra=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts unused=(none)\n  valid#3 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=10/24 tokens=49064/3553 wall_ms=60714 planner=0/0 worker=7/13 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=(none) extra=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts unused=(none)\n  averages: calls=8/23 tokens=36589/3700 wall_ms=51050 planner=0/0 worker=5/12 repairs=0 review_repairs=0\n\nVARIANT — Spec → read-only Planner → Worker\nplanning_enabled: yes\nvalid_trials: 3 / attempted 3\ncontaminated: 0\nexpected: 3/3\nfirst_verify_pass: 3/3\n  valid#1 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=11/31 tokens=57811/5541 wall_ms=61331 planner=2/7 worker=6/13 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=src/tasks/types.ts,src/tasks/task-service.ts,src/tasks/task-routes.ts extra=(none) unused=(none)\n  valid#2 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=14/33 tokens=66461/5818 wall_ms=71370 planner=2/9 worker=8/12 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=src/tasks/types.ts,src/tasks/task-service.ts,src/tasks/task-routes.ts,tests/priority.test.ts,tests/tasks.test.ts,package.json,tsconfig.json extra=(none) unused=tests/priority.test.ts,tests/tasks.test.ts,package.json,tsconfig.json\n  valid#3 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=11/29 tokens=45626/4569 wall_ms=58098 planner=2/8 worker=6/10 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=src/tasks/types.ts,src/tasks/task-service.ts,src/tasks/task-routes.ts,tests/priority.test.ts,tests/tasks.test.ts,package.json extra=(none) unused=tests/priority.test.ts,tests/tasks.test.ts,package.json\n  averages: calls=12/31 tokens=56633/5309 wall_ms=63600 planner=2/8 worker=7/12 repairs=0 review_repairs=0\n\nDecision\nquality: equal\nend_to_end_efficiency: variant_worse\nconclusion: reject\ndefault_unchanged: yes\ncandidate_to_adopt: no\nnote: e2e higher on variant: modelCalls 8→12; inputTokens 36589→56633; wallTimeMs 51050→63600\nnote: Planner is not made the default by this experiment code."
+}

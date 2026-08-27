@@ -1351,3 +1351,98 @@ Hypothesis supported for **client conversation-state plumbing**, not as a token-
 This does **not** prove Sessions/Conversations API, PTC, hosted shell, MCP, or subagents would help. Those remain out of scope.
 
 Module 11 experiment recorded; formal module closure remains for Topic Chat. Do not treat `theory.md` as written yet.
+
+---
+
+## Module 12 — Planner / Worker / Reviewer (P01 controlled probe)
+
+### Hypothesis
+
+An explicit read-only Planner that emits a structured advisory Plan can improve Worker reliability or end-to-end efficiency on a multi-layer feature without becoming authority, without changing Reviewer independence, and without becoming the default architecture.
+
+This is **not** an adoption of Planner. Default remains Spec → Worker.
+
+### Task
+
+P01 — add task priority `"normal" | "high"` with POST default/validation, GET filter, composition with `status`, and unchanged complete/reopen/`completedAt`.
+
+### Arms
+
+BASELINE: Spec → Worker (implicit planning) → existing VERIFY / REVIEW  
+VARIANT: Spec → read-only Planner → advisory Plan → Worker → same VERIFY / REVIEW
+
+Constants: same committed base SHA, same task, same model, `contextMode=variant`, `conversationStateMode=manual`, same Worker tools, same verification/reviewer/repair budgets, same workspace isolation.
+
+Trials: 3 valid per arm.
+
+### Predefined decision rule
+
+Encoded before the run in `harness/src/planning-experiment.ts`:
+
+1. Variant worse correctness/reliability → reject Planner.
+2. Variant clear reliability / first-pass improvement → candidate even with modest extra overhead.
+3. Quality equal → adopt only if meaningful **end-to-end** efficiency and no meaningful token/latency/model-call regression. Worker-only savings insufficient.
+4. Quality equal and Variant costs more e2e → reject.
+5. n=3 noisy / conflicting → inconclusive. Do not invent post-hoc numeric thresholds.
+
+### Results
+
+Evidence:
+
+- report: `docs/learning/lessons/12-planner-worker-reviewer/traces/planning-m12-2026-08-27T12-46-15-463Z.txt`
+- json: `docs/learning/lessons/12-planner-worker-reviewer/traces/planning-m12-2026-08-27T12-46-15-463Z.json`
+- raw trial traces in the same folder
+
+Contaminated trials: **none** (3/3 attempted valid on both arms).
+
+#### BASELINE — implicit Worker planning
+
+| Trial | expected | workflow | verify | repairs | review_repairs | calls/tools | tokens in/out | wall | files |
+| ----- | -------- | -------- | ------ | ------- | -------------- | ----------- | ------------- | ---- | ----- |
+| 1     | yes      | success  | PASS→PASS | 0    | 0              | 8 / 25      | 35,935 / 4,065 | ~52s | types, service, routes |
+| 2     | yes      | success  | PASS→PASS | 0    | 0              | 7 / 20      | 24,769 / 3,482 | ~40s | types, service, routes |
+| 3     | yes      | success  | PASS→PASS | 0    | 0              | 10 / 24     | 49,064 / 3,553 | ~61s | types, service, routes |
+| avg   | 3/3      |          | first PASS 3/3 | 0 | 0           | 8 / 23      | 36,589 / 3,700 | ~51s | |
+
+Planner: 0/0.
+
+#### VARIANT — explicit read-only Planner
+
+| Trial | expected | workflow | verify | repairs | review_repairs | calls/tools | tokens in/out | wall | planner | worker |
+| ----- | -------- | -------- | ------ | ------- | -------------- | ----------- | ------------- | ---- | ------- | ------ |
+| 1     | yes      | success  | PASS→PASS | 0    | 0              | 11 / 31     | 57,811 / 5,541 | ~61s | 2 / 7   | 6 / 13 |
+| 2     | yes      | success  | PASS→PASS | 0    | 0              | 14 / 33     | 66,461 / 5,818 | ~71s | 2 / 9   | 8 / 12 |
+| 3     | yes      | success  | PASS→PASS | 0    | 0              | 11 / 29     | 45,626 / 4,569 | ~58s | 2 / 8   | 6 / 10 |
+| avg   | 3/3      |          | first PASS 3/3 | 0 | 0           | 12 / 31     | 56,633 / 5,309 | ~64s | 2 / 8   | 7 / 12 |
+
+Changed files on every valid trial: `tasks/types.ts`, `tasks/task-service.ts`, `tasks/task-routes.ts`.
+
+### Predefined decision-rule evaluation
+
+| Rule | Observation |
+| ---- | ----------- |
+| 1. Variant worse correctness | no — both 3/3 expected, 3/3 first VERIFY PASS, 0 repairs |
+| 2. Variant clear reliability / first-pass improvement | no — quality equal |
+| 3. Quality equal → need meaningful e2e efficiency | not met — variant more expensive on calls, tokens, and wall |
+| 4. Quality equal and variant costs more e2e | **yes → reject** |
+| 5. Noisy / conflicting | no — all three e2e cost signals move the same way |
+
+**Conclusion: reject explicit Planner.** Default remains Spec → Worker. `planningEnabled` stays off.
+
+Harness unit tests at experiment time: 121 passed. No contaminated trials.
+
+### Failures / unexpected behavior
+
+- Variant trials 2–3 listed tests/`package.json` in `likelyFiles`. Worker did not edit them. Plan stayed advisory.
+- Worker-only calls did **not** fall (5→7). Planner overhead was not offset.
+
+### Conclusion
+
+Mechanism supported: dedicated read-only Planner, structured Plan, Worker handoff with Spec as authority, Reviewer without Plan, default unchanged.
+
+On this P01 probe the predefined rule rejects adoption: quality equal, end-to-end cost higher.
+
+This does **not** prove Planner is useless on larger multi-step work. It proves it is not justified on this controlled feature-sized task.
+
+Module 12 experiment recorded; module is **not** complete. Topic Chat still owns formal closure.
+

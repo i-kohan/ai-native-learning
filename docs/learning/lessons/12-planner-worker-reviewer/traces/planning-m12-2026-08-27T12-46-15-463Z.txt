@@ -1,0 +1,44 @@
+=== Planner / Worker Experiment (m12-p01-planner) ===
+
+task: P01
+context_mode: variant
+conversation_state_mode: manual
+hypothesis: An explicit read-only Planner that emits a structured advisory Plan can improve Worker reliability or end-to-end efficiency on a multi-layer feature without becoming authority, without changing Reviewer independence, and without becoming the default architecture.
+
+Predefined decision rule (encoded before the experiment):
+1. If Variant has worse correctness/reliability than Baseline: reject explicit Planner.
+2. If Variant shows a clear reliability / first-pass-quality improvement (for example fewer failures/repairs or higher expected-outcome success): Planner becomes an adoption candidate even with modest extra overhead.
+3. If quality is effectively equal: adopt Planner only if there is a meaningful END-TO-END efficiency improvement and no meaningful regression in tokens/latency/model calls. Worker-only discovery reduction is not sufficient.
+4. If quality is equal and Variant costs more end-to-end: reject Planner.
+5. If 3-trial evidence is noisy / conflicting: conclusion = inconclusive. Do not invent post-hoc numeric thresholds.
+
+BASELINE — Spec → Worker (implicit planning)
+planning_enabled: no
+valid_trials: 3 / attempted 3
+contaminated: 0
+expected: 3/3
+first_verify_pass: 3/3
+  valid#1 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=8/25 tokens=35935/4065 wall_ms=52327 planner=0/0 worker=5/13 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=(none) extra=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts unused=(none)
+  valid#2 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=7/20 tokens=24769/3482 wall_ms=40109 planner=0/0 worker=4/9 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=(none) extra=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts unused=(none)
+  valid#3 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=10/24 tokens=49064/3553 wall_ms=60714 planner=0/0 worker=7/13 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=(none) extra=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts unused=(none)
+  averages: calls=8/23 tokens=36589/3700 wall_ms=51050 planner=0/0 worker=5/12 repairs=0 review_repairs=0
+
+VARIANT — Spec → read-only Planner → Worker
+planning_enabled: yes
+valid_trials: 3 / attempted 3
+contaminated: 0
+expected: 3/3
+first_verify_pass: 3/3
+  valid#1 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=11/31 tokens=57811/5541 wall_ms=61331 planner=2/7 worker=6/13 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=src/tasks/types.ts,src/tasks/task-service.ts,src/tasks/task-routes.ts extra=(none) unused=(none)
+  valid#2 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=14/33 tokens=66461/5818 wall_ms=71370 planner=2/9 worker=8/12 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=src/tasks/types.ts,src/tasks/task-service.ts,src/tasks/task-routes.ts,tests/priority.test.ts,tests/tasks.test.ts,package.json,tsconfig.json extra=(none) unused=tests/priority.test.ts,tests/tasks.test.ts,package.json,tsconfig.json
+  valid#3 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=11/29 tokens=45626/4569 wall_ms=58098 planner=2/8 worker=6/10 files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts planned=src/tasks/types.ts,src/tasks/task-service.ts,src/tasks/task-routes.ts,tests/priority.test.ts,tests/tasks.test.ts,package.json extra=(none) unused=tests/priority.test.ts,tests/tasks.test.ts,package.json
+  averages: calls=12/31 tokens=56633/5309 wall_ms=63600 planner=2/8 worker=7/12 repairs=0 review_repairs=0
+
+Decision
+quality: equal
+end_to_end_efficiency: variant_worse
+conclusion: reject
+default_unchanged: yes
+candidate_to_adopt: no
+note: e2e higher on variant: modelCalls 8→12; inputTokens 36589→56633; wallTimeMs 51050→63600
+note: Planner is not made the default by this experiment code.

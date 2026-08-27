@@ -57,6 +57,7 @@ export type ContextRunMetrics = {
 
 export type TokenUsagePhase =
   | "spec"
+  | "plan"
   | "implementation"
   | "repair"
   | "review"
@@ -67,6 +68,8 @@ export type TokenUsageSummary = {
   totalOutputTokens: number | null;
   specInputTokens: number | null;
   specOutputTokens: number | null;
+  plannerInputTokens: number | null;
+  plannerOutputTokens: number | null;
   implInputTokens: number | null;
   implOutputTokens: number | null;
   repairInputTokens: number | null;
@@ -265,6 +268,8 @@ export function emptyTokenUsage(): TokenUsageSummary {
     totalOutputTokens: null,
     specInputTokens: null,
     specOutputTokens: null,
+    plannerInputTokens: null,
+    plannerOutputTokens: null,
     implInputTokens: null,
     implOutputTokens: null,
     repairInputTokens: null,
@@ -302,6 +307,14 @@ export function combineTokenUsage(
     specOutputTokens: addNullableTokens(
       merged.specOutputTokens,
       part.specOutputTokens,
+    ),
+    plannerInputTokens: addNullableTokens(
+      merged.plannerInputTokens,
+      part.plannerInputTokens,
+    ),
+    plannerOutputTokens: addNullableTokens(
+      merged.plannerOutputTokens,
+      part.plannerOutputTokens,
     ),
     implInputTokens: addNullableTokens(
       merged.implInputTokens,
@@ -345,6 +358,8 @@ function addPhaseInput(
 ): void {
   if (phase === "spec") {
     base.specInputTokens = addNullable(base.specInputTokens, input);
+  } else if (phase === "plan") {
+    base.plannerInputTokens = addNullable(base.plannerInputTokens, input);
   } else if (phase === "repair") {
     base.repairInputTokens = addNullable(base.repairInputTokens, input);
   } else if (phase === "review") {
@@ -366,6 +381,8 @@ function addPhaseOutput(
 ): void {
   if (phase === "spec") {
     base.specOutputTokens = addNullable(base.specOutputTokens, output);
+  } else if (phase === "plan") {
+    base.plannerOutputTokens = addNullable(base.plannerOutputTokens, output);
   } else if (phase === "repair") {
     base.repairOutputTokens = addNullable(base.repairOutputTokens, output);
   } else if (phase === "review") {

@@ -1,0 +1,74 @@
+{
+  "task": "# P01 — Task priority\n\nAdd task priority support:\n\n- Task priority is `\"normal\" | \"high\"`.\n- `POST /tasks` accepts optional `priority`.\n- Missing priority defaults to `\"normal\"`.\n- Invalid priority returns HTTP 400.\n- `GET /tasks` accepts `?priority=normal|high`.\n- Existing `?status=pending|completed` remains supported.\n- `status` and `priority` filters must compose.\n- Omitting priority preserves existing list behavior.\n- Invalid `priority` query returns HTTP 400.\n- Existing complete/reopen/`completedAt` semantics must remain unchanged.\n\nImplement the missing behavior and verify with tests.\nDo not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Add end-to-end task priority support to the existing in-memory TypeScript Task Board while preserving current task lifecycle and status-filter behavior.",
+    "requirements": [
+      "Define a TaskPriority type with exactly the values \"normal\" and \"high\", and add a required priority field to Task.",
+      "Extend task creation so POST /tasks accepts an optional priority field. If omitted, store and return priority \"normal\"; if provided, accept only \"normal\" or \"high\" and return HTTP 400 for any other value.",
+      "Extend task listing so GET /tasks accepts an optional priority query parameter whose valid values are \"normal\" and \"high\". Return HTTP 400 for an invalid supplied priority query value.",
+      "Retain the existing status query parameter and its pending/completed validation and filtering behavior.",
+      "Apply status and priority filters together when both are supplied; a task must satisfy both filters to be listed.",
+      "When priority is omitted from GET /tasks, preserve existing list behavior by returning all tasks subject only to any supplied status filter.",
+      "Preserve task creation, retrieval, completion, reopening, and completedAt behavior. Completion must still set status to completed and a nonempty ISO timestamp; reopening must still set status to pending and completedAt to null. Priority must remain unchanged through completion and reopening.",
+      "Use the repository's existing HTTP response conventions for validation errors, including HTTP 400 and an error object; the analogous priority error should be represented consistently with the existing invalid_status error."
+    ],
+    "constraints": [
+      "Do not modify tests.",
+      "Do not change the public route shapes or existing complete/reopen endpoints.",
+      "Keep the existing in-memory TaskService architecture and insertion/list ordering unless required to add priority filtering.",
+      "Maintain strict TypeScript compatibility with the repository's NodeNext/ES2022 configuration.",
+      "Do not alter title validation or trimming semantics.",
+      "Do not alter completedAt timestamp generation or clearing semantics."
+    ],
+    "nonGoals": [
+      "No priority update endpoint or mutation of priority after creation.",
+      "No new priority values, ranking/sorting behavior, or default other than normal for omitted POST priority.",
+      "No persistence, authentication, pagination, or unrelated route changes.",
+      "No changes to status semantics or lifecycle timestamp policy."
+    ],
+    "acceptance": [
+      "A POST /tasks request with a valid title and no priority returns 201 and a task with priority \"normal\".",
+      "A POST /tasks request with priority \"high\" or \"normal\" returns 201 and preserves that value in the returned task.",
+      "A POST /tasks request with an invalid priority returns 400 and does not create a task.",
+      "GET /tasks?priority=high returns only high-priority tasks, and GET /tasks?priority=normal returns only normal-priority tasks.",
+      "GET /tasks?priority=<invalid> returns 400.",
+      "Existing GET /tasks?status=pending and GET /tasks?status=completed behavior remains intact.",
+      "GET /tasks?status=pending&priority=high returns only tasks matching both criteria.",
+      "GET /tasks without priority continues to return all tasks, including tasks of both priorities, subject to an optional status filter.",
+      "Created tasks, including those with high priority, retain priority across GET, complete, and reopen operations; completion/reopening preserve the existing completedAt assertions."
+    ],
+    "verification": [
+      "Run the existing test suite with the repository's package script: npm test.",
+      "The existing tests in tests/tasks.test.ts should continue to pass, confirming retrieval, status filtering, completion, reopening, and completedAt behavior.",
+      "The existing tests in tests/priority.test.ts cover default priority, valid and invalid POST priority, priority filtering, invalid query priority, status compatibility, combined filters, omitted-priority listing, and lifecycle preservation; all should pass without test modifications.",
+      "Run TypeScript checking consistent with the repository configuration (for example, npx tsc --noEmit) if available in the implementation environment."
+    ],
+    "ambiguities": [
+      {
+        "question": "What error object should invalid priority input use beyond the required HTTP 400 status?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Use the existing validation-error shape with an error code of invalid_priority, analogous to the existing invalid_status response.",
+        "basis": "src/tasks/task-routes.ts returns { status: 400, body: { error: \"invalid_status\" } } for invalid status values; priority validation should follow that established route convention. The task only requires HTTP 400, so this is the least-surprising repository-consistent code."
+      },
+      {
+        "question": "How should priority be represented in the service API and task model?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Add a TaskPriority union type in src/tasks/types.ts, add priority to Task, accept priority in TaskService.create, and extend TaskService.list to optionally filter by priority while retaining optional status filtering.",
+        "basis": "The current architecture centralizes Task shape in src/tasks/types.ts, creation and listing in TaskService, and request validation/filter extraction in src/tasks/task-routes.ts."
+      },
+      {
+        "question": "Should completion or reopening alter priority?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Neither operation alters priority.",
+        "basis": "The task explicitly requires existing complete/reopen/completedAt semantics to remain unchanged, and tests/priority.test.ts explicitly assert high priority remains high after completion and reopening."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

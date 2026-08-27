@@ -101,7 +101,7 @@ export function executeReadOnlyTool(
   if (name !== "list_files" && name !== "read_file") {
     return {
       ok: false,
-      output: `Spec phase is read-only. Tool not allowed: ${name}`,
+      output: `This phase is read-only. Tool not allowed: ${name}`,
     };
   }
   return executeTool(config, name, argsJson);

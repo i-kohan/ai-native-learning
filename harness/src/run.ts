@@ -37,7 +37,6 @@ import { runIndependentReview } from "./review-phase.ts";
 import type { SkillLoadRecord } from "./skills.ts";
 import { buildSpec } from "./spec-phase.ts";
 import {
-  formatSpecContract,
   summarizeAmbiguities,
   writeSpecArtifact,
   type Ambiguity,
@@ -45,6 +44,8 @@ import {
   type SpecDecision,
 } from "./spec.ts";
 import { resolveModel, routingTraceFields } from "./model-routing.ts";
+import { formatWorkerTask, shouldRunPlanner, type Plan } from "./plan.ts";
+import { buildPlan, type PlannerPhaseResult } from "./planner-phase.ts";
 import { Tracer } from "./trace.ts";
 import { runFinalVerification, type VerificationResult } from "./verify.ts";
 import type { Workspace } from "./workspace.ts";
@@ -54,6 +55,7 @@ export type WorkflowStatus = "success" | "failure" | "needs_human_judgment";
 export type WorkflowFailureReason =
   | AgentRunResult["failureReason"]
   | "spec_phase_failed"
+  | "plan_phase_failed"
   | "final_verification_failed"
   | "review_parse_failed"
   | "review_unresolved_blocker";
@@ -96,6 +98,12 @@ export type HarnessRunResult = {
   specTurns: number;
   specModelCalls: number;
   specToolCalls: number;
+  planningEnabled: boolean;
+  plan: Plan | null;
+  plannerTurns: number;
+  plannerModelCalls: number;
+  plannerToolCalls: number;
+  plannerDurationMs: number;
   turns: number;
   modelCalls: number;
   toolCalls: number;
@@ -141,6 +149,8 @@ export async function runV1Harness(options: {
   contextMode?: ContextMode;
   conversationStateMode?: ConversationStateMode;
   architectureConstraints?: ArchitectureConstraint[];
+  /** Experiment-only. Default architecture does not run an explicit Planner. */
+  planningEnabled?: boolean;
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
@@ -149,6 +159,7 @@ export async function runV1Harness(options: {
   const contextMode = options.contextMode ?? "baseline";
   const conversationStateMode: ConversationStateMode =
     options.conversationStateMode ?? "manual";
+  const planningEnabled = shouldRunPlanner(options.planningEnabled === true);
   const startedAt = Date.now();
   const tracer = new Tracer(config.tracesDir, runId);
   const beforeSnapshot =
@@ -178,6 +189,7 @@ export async function runV1Harness(options: {
     maxReviewRepairAttempts: config.maxReviewRepairAttempts,
     contextMode,
     conversationStateMode,
+    planningEnabled,
     repoRoot: config.repoRoot,
     targetAppRoot: config.targetAppRoot,
     targetSrcRoot: config.targetSrcRoot,
@@ -216,6 +228,8 @@ export async function runV1Harness(options: {
       implementationStarted: false,
       implementation: null,
       specPhase,
+      plannerPhase: emptyPlannerPhase(),
+      planningEnabled,
       contextMode,
       conversationStateMode,
       contextPreparation,
@@ -264,6 +278,8 @@ export async function runV1Harness(options: {
       implementationStarted: false,
       implementation: null,
       specPhase,
+      plannerPhase: emptyPlannerPhase(),
+      planningEnabled,
       contextMode,
       conversationStateMode,
       contextPreparation,
@@ -287,11 +303,6 @@ export async function runV1Harness(options: {
     return result;
   }
 
-  tracer.record("harness_gate", {
-    action: "execute",
-    implementationStarted: true,
-  });
-
   const reusableContext: ReusableContext | undefined =
     contextMode === "variant" && repositoryMap
       ? {
@@ -300,9 +311,73 @@ export async function runV1Harness(options: {
         }
       : undefined;
 
+  let plannerPhase: PlannerPhaseResult = emptyPlannerPhase();
+  if (planningEnabled) {
+    plannerPhase = await buildPlan({
+      config,
+      task,
+      spec: decision.spec,
+      tracer,
+      repositoryMap,
+      specInspectedPaths: specPhase.inspectedPaths,
+    });
+
+    if (!plannerPhase.plan) {
+      const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
+      const { changedFiles, unifiedDiff } = diffSnapshots(
+        beforeSnapshot,
+        afterSnapshot,
+      );
+      const result = baseResult({
+        task,
+        workflowStatus: "failure",
+        failureReason: "plan_phase_failed",
+        specDecision: decision,
+        unresolvedQuestions: [],
+        implementationStarted: false,
+        implementation: null,
+        specPhase,
+        plannerPhase,
+        planningEnabled,
+        contextMode,
+        conversationStateMode,
+        contextPreparation,
+        receivedTerminalResponse: false,
+        verificationAttempts: 0,
+        repairAttempts: 0,
+        repeatedFailure: false,
+        verifications: [],
+        repairs: [],
+        finalVerificationPassed: false,
+        finalVerification: null,
+        modelFinalResponse: plannerPhase.modelFinalResponse,
+        changedFiles,
+        unifiedDiff,
+        tracePath: tracer.tracePath,
+        durationMs: Date.now() - startedAt,
+        skillLoads: [],
+        workspace: options.workspace,
+      });
+      tracer.record("harness_gate", {
+        action: "abort",
+        reason: plannerPhase.failureReason ?? "plan_phase_failed",
+        implementationStarted: false,
+      });
+      await finishRun(tracer, result);
+      return result;
+    }
+  }
+
+  tracer.record("harness_gate", {
+    action: "execute",
+    implementationStarted: true,
+    planningEnabled,
+    planAccepted: Boolean(plannerPhase.plan),
+  });
+
   const implementation = await runAgentLoop({
     config,
-    task: formatSpecContract(task, decision.spec),
+    task: formatWorkerTask(task, decision.spec, plannerPhase.plan),
     runId,
     beforeSnapshot,
     spec: decision.spec,
@@ -410,6 +485,8 @@ export async function runV1Harness(options: {
     implementationStarted: true,
     implementation,
     specPhase,
+    plannerPhase,
+    planningEnabled,
     contextMode,
     conversationStateMode,
     contextPreparation,
@@ -445,6 +522,10 @@ export function printHarnessResult(result: HarnessRunResult): void {
   }
   console.log(`workflow_status: ${result.workflowStatus}`);
   console.log(`spec_decision: ${result.specDecision?.status ?? "(none)"}`);
+  console.log(`planning_enabled: ${result.planningEnabled}`);
+  console.log(
+    `plan: ${result.plan ? `${result.plan.steps.length} steps` : "(none)"}`,
+  );
   console.log(`implementation_started: ${result.implementationStarted}`);
   if (result.failureReason) {
     console.log(`failure_reason: ${result.failureReason}`);
@@ -497,9 +578,11 @@ export function printHarnessResult(result: HarnessRunResult): void {
     }
   }
   console.log(
-    `turns/model_calls: ${result.turns}/${result.modelCalls} (spec ${result.specTurns}/${result.specModelCalls})`,
+    `turns/model_calls: ${result.turns}/${result.modelCalls} (spec ${result.specTurns}/${result.specModelCalls}; planner ${result.plannerTurns}/${result.plannerModelCalls})`,
   );
-  console.log(`tool_calls: ${result.toolCalls} (spec ${result.specToolCalls})`);
+  console.log(
+    `tool_calls: ${result.toolCalls} (spec ${result.specToolCalls}; planner ${result.plannerToolCalls})`,
+  );
   console.log(
     `verification_attempts: ${result.verificationAttempts} | repair_attempts: ${result.repairAttempts} | repeated_failure: ${result.repeatedFailure}`,
   );
@@ -572,7 +655,7 @@ function printContextMetrics(metrics: ContextRunMetrics): void {
   if (metrics.tokenUsage) {
     const usage = metrics.tokenUsage;
     console.log(
-      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"}; repair in=${usage.repairInputTokens ?? "n/a"} out=${usage.repairOutputTokens ?? "n/a"}; review in=${usage.reviewInputTokens ?? "n/a"} out=${usage.reviewOutputTokens ?? "n/a"}; review_repair in=${usage.reviewRepairInputTokens ?? "n/a"} out=${usage.reviewRepairOutputTokens ?? "n/a"})`,
+      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; planner in=${usage.plannerInputTokens ?? "n/a"} out=${usage.plannerOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"}; repair in=${usage.repairInputTokens ?? "n/a"} out=${usage.repairOutputTokens ?? "n/a"}; review in=${usage.reviewInputTokens ?? "n/a"} out=${usage.reviewOutputTokens ?? "n/a"}; review_repair in=${usage.reviewRepairInputTokens ?? "n/a"} out=${usage.reviewRepairOutputTokens ?? "n/a"})`,
     );
   }
 }
@@ -1182,6 +1265,15 @@ function baseResult(fields: {
     discovery: PhaseDiscoveryMetrics;
     tokenUsage: TokenUsageSummary | null;
   };
+  plannerPhase: {
+    plan: Plan | null;
+    turns: number;
+    modelCalls: number;
+    toolCalls: number;
+    durationMs: number;
+    tokenUsage: TokenUsageSummary | null;
+  };
+  planningEnabled: boolean;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
   contextPreparation: ContextPreparation | null;
@@ -1229,6 +1321,7 @@ function baseResult(fields: {
       implementation?.implNavCallsBeforeFirstWrite ?? null,
     tokenUsage: combineTokenUsage(
       fields.specPhase.tokenUsage,
+      fields.plannerPhase.tokenUsage,
       implementation?.tokenUsage ?? null,
       ...repairTokenUsage,
       ...reviewTokenUsage,
@@ -1298,19 +1391,28 @@ function baseResult(fields: {
     specTurns: fields.specPhase.turns,
     specModelCalls: fields.specPhase.modelCalls,
     specToolCalls: fields.specPhase.toolCalls,
+    planningEnabled: fields.planningEnabled,
+    plan: fields.plannerPhase.plan,
+    plannerTurns: fields.plannerPhase.turns,
+    plannerModelCalls: fields.plannerPhase.modelCalls,
+    plannerToolCalls: fields.plannerPhase.toolCalls,
+    plannerDurationMs: fields.plannerPhase.durationMs,
     turns:
       fields.specPhase.turns +
+      fields.plannerPhase.turns +
       (implementation?.turns ?? 0) +
       repairTurns +
       reviewRepairTurns,
     modelCalls:
       fields.specPhase.modelCalls +
+      fields.plannerPhase.modelCalls +
       (implementation?.modelCalls ?? 0) +
       repairModelCalls +
       reviewModelCalls +
       reviewRepairModelCalls,
     toolCalls:
       fields.specPhase.toolCalls +
+      fields.plannerPhase.toolCalls +
       (implementation?.toolCalls ?? 0) +
       repairToolCalls +
       reviewToolCalls +
@@ -1386,6 +1488,11 @@ async function finishRun(
     toolCalls: result.toolCalls,
     specModelCalls: result.specModelCalls,
     specToolCalls: result.specToolCalls,
+    planningEnabled: result.planningEnabled,
+    plan: result.plan,
+    plannerModelCalls: result.plannerModelCalls,
+    plannerToolCalls: result.plannerToolCalls,
+    plannerDurationMs: result.plannerDurationMs,
     receivedTerminalResponse: result.receivedTerminalResponse,
     verificationAttempts: result.verificationAttempts,
     repairAttempts: result.repairAttempts,
@@ -1459,6 +1566,25 @@ async function finishRun(
     skillLoads: result.skillLoads,
   });
   await tracer.close();
+}
+
+function emptyPlannerPhase(): PlannerPhaseResult {
+  return {
+    plan: null,
+    turns: 0,
+    modelCalls: 0,
+    toolCalls: 0,
+    durationMs: 0,
+    inspectedPaths: { readFiles: [], listedPaths: [] },
+    discovery: {
+      listFilesCalls: 0,
+      readFileCalls: 0,
+      readFilePaths: [],
+      listedPaths: [],
+    },
+    tokenUsage: null,
+    modelFinalResponse: "",
+  };
 }
 
 function collectedSkillLoads(result: AgentRunResult): SkillLoadRecord[] {

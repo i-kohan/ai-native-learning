@@ -2,6 +2,7 @@ import type { HarnessConfig } from "./config.ts";
 
 export type ModelEpisode =
   | "spec"
+  | "plan"
   | "implementation"
   | "repair"
   | "review"

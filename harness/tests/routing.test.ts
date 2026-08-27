@@ -27,6 +27,7 @@ import {
 
 const EPISODES: ModelEpisode[] = [
   "spec",
+  "plan",
   "implementation",
   "repair",
   "review",
@@ -89,6 +90,7 @@ describe("model routing", () => {
     const config = routingConfig(REPAIR_OVERRIDE);
     const expected: Record<ModelEpisode, { model: string; reason: string }> = {
       spec: { model: DEFAULT_MODEL, reason: "default" },
+      plan: { model: DEFAULT_MODEL, reason: "default" },
       implementation: { model: DEFAULT_MODEL, reason: "default" },
       repair: { model: REPAIR_OVERRIDE, reason: "repair_override" },
       review: { model: DEFAULT_MODEL, reason: "default" },
