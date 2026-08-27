@@ -15,8 +15,9 @@ Completed modules:
 9. ✅ 09 — Security Fundamentals
 10. ✅ 10 — Model Routing
 11. ✅ 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
+12. ✅ 12 — Planner / Worker / Reviewer
 
-Current module: **12 — Planner / Worker / Reviewer** (in progress, not complete).
+Current module: **none — return to Master/Roadmap chat for next-module selection from the authoritative roadmap.**
 
 ---
 
@@ -31,16 +32,17 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - workspace-bound `repoRoot / targetAppRoot / targetSrcRoot`, so tools/context/snapshots/verifier operate on the run's workspace;
 - verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`;
 - deterministic harness-owned model routing through `resolveModel(episode, config)`; current normal policy keeps all episodes on `gpt-5.6-luna`;
-- optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`; default remains manual full-history replay because the Module 11 efficiency/adoption criterion was inconclusive.
+- optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`; default remains manual full-history replay because the Module 11 efficiency/adoption criterion was inconclusive;
+- optional explicit read-only Planner mechanism exists behind `planningEnabled`, but remains off by default because Module 12 P01 showed equal quality with worse end-to-end cost.
 
-Conceptual flow:
+Conceptual default flow:
 
 ```text
 raw task
 → isolated workspace from exact committed SHA
 → targeted context
 → read-only spec / ambiguity gate
-→ implementation
+→ implementation Worker (implicit planning)
 → deterministic VERIFY / bounded repair
 → independent REVIEW / bounded review repair
 → measured outcome
@@ -55,7 +57,49 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 12 — Planner / Worker / Reviewer
 
-**Status:** in progress — not complete. Experiment recorded; Planner is not the default; Topic Chat has not closed the module.
+**Status:** ✅ COMPLETED — formally closed by Topic Chat on 2026-08-27 after implementation review, controlled experiment, gap fixes, fresh fixed regression, theory rewrite, and understanding check.
+
+Theory:
+
+`docs/learning/lessons/12-planner-worker-reviewer/theory.md`
+
+Practical notes/evidence:
+
+`docs/learning/lessons/12-planner-worker-reviewer/notes.md`
+
+## Learning-critical model
+
+```text
+Spec
+WHAT must be true
+(authority)
+
+Planner
+HOW we currently think we should get there
+(advisory hypothesis)
+
+Worker
+HOW to actually get there given repository reality
+(execution + local adaptation)
+
+Reviewer
+WHAT is wrong with what was actually produced
+(independent judgment)
+
+Orchestrator / harness
+WHETHER each phase may run and WHAT happens next
+(authority / lifecycle)
+```
+
+Key boundaries:
+
+- `Spec > Plan`;
+- Planner proposes; harness authorizes;
+- role ≠ agent instance ≠ parallelism;
+- Worker may locally adapt away from Plan based on repository truth;
+- Reviewer does not receive Plan / Planner rationale / Worker reasoning by default;
+- deterministic Plan admission checks structure, not semantic truth;
+- explicit planning is an optimization candidate, not a mandatory layer.
 
 ## Built
 
@@ -80,6 +124,14 @@ Predefined rule: quality equal and Variant costs more end-to-end → **reject Pl
 
 Evidence: `docs/learning/lessons/12-planner-worker-reviewer/traces/planning-m12-2026-08-27T12-46-15-463Z.txt`
 
+Important interpretation:
+
+```text
+Worker-local savings ≠ system savings.
+```
+
+On P01 there were not even Worker-local savings: Worker model calls increased on Variant. The result only supports a workload-bounded conclusion: explicit Planner is not justified for this feature-sized task. It does not prove that explicit planning cannot help larger long-running work.
+
 ## Review gap fixes
 
 - Plan admission now rejects general `dependsOn` cycles (not only self-deps / invalid indexes). Schema/admission only — no DAG executor.
@@ -95,6 +147,35 @@ Suite: `fixed-v3-m09`. Planner stayed off. 6/6 contracts; ISO01 PASS; SEC01 PASS
 Evidence: `docs/learning/lessons/12-planner-worker-reviewer/traces/2026-08-27T13-21-46-170Z.txt`
 
 Harness unit tests: 125 passed.
+
+## Understanding check
+
+Final Topic Chat check passed after one terminology correction.
+
+The learner correctly identified that:
+
+- Worker can deviate from Plan because Plan is advisory and repository truth may invalidate implementation details;
+- Planner overhead must be counted end-to-end, not hidden by Worker-local metrics;
+- an explicit Planner becomes more plausible on large/complex work where upfront decomposition may reduce backtracking and wasted execution;
+- Reviewer should not receive Plan because anchoring can correlate Planner/Worker/Reviewer errors.
+
+Correction:
+
+```text
+Spec    = WHAT must be true
+Planner = HOW we currently intend to get there
+Worker  = HOW to actually get there given repository reality
+```
+
+## Module decision
+
+```text
+explicit Planner mechanism = implemented and understood
+explicit Planner default   = rejected for current feature-sized workload
+normal default              = Spec → Worker
+```
+
+Revisit explicit planning only when a larger planning-sensitive workload provides evidence that decomposition/reliability gains can repay coordination overhead.
 
 ---
 
