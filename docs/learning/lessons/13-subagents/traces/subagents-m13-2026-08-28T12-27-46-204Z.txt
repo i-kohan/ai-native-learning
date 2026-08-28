@@ -1,0 +1,51 @@
+=== Subagents Research Child Experiment (m13-p01-subagents) ===
+
+task: P01
+context_mode: variant
+conversation_state_mode: manual
+hypothesis: An optional bounded research child invoked as a Worker tool can return validated EvidenceReport advice without becoming authority, and may or may not repay coordination cost on a small feature-sized task.
+
+Predefined decision rule (encoded before the experiment):
+1. If Variant has worse correctness/reliability than Baseline: reject Subagents.
+2. If Variant shows a clear reliability / first-pass-quality improvement: Subagents becomes an inspection candidate even with modest extra overhead. Do not auto-adopt.
+3. If quality is equal and Variant is clearly more expensive end-to-end: reject for current workload.
+4. If quality is equal and the mechanism works but the workload is too small to show a benefit: mechanism understood / ROI inconclusive. Do not invent a post-hoc numeric threshold.
+5. A correct EvidenceReport proves only mechanism correctness, not adoption.
+6. Unused optional delegation is evidence, not a reason to force the prompt.
+Equal-quality operationalization: no numeric meaningful-efficiency threshold was predefined. Clear e2e regression → reject. Conflicting or directionally better e2e without a predefined meaningful threshold → inconclusive, not candidate. Compare model calls, tool calls, input tokens, output tokens, and wall time. Child cost is included in end-to-end totals.
+
+BASELINE — Spec → Worker (no research child)
+subagents_enabled: no
+valid_trials: 3 / attempted 3
+contaminated: 0
+expected: 3/3
+first_verify_pass: 3/3
+delegation_invoked: 0/3
+  valid#1 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=10/23 tokens=49943/3815 wall_ms=49291 worker=7/12 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts
+  valid#2 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=7/20 tokens=26740/3872 wall_ms=40577 worker=4/9 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts
+  valid#3 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=10/21 tokens=39054/4421 wall_ms=50164 worker=7/10 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts
+  averages: calls=9/21 tokens=38579/4036 wall_ms=46677 worker=6/10 child=0/0 repairs=0 review_repairs=0
+
+VARIANT — Spec → Worker with optional delegate_research
+subagents_enabled: yes
+valid_trials: 3 / attempted 3
+contaminated: 0
+expected: 3/3
+first_verify_pass: 3/3
+delegation_invoked: 0/3
+  valid#1 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=7/20 tokens=25168/3493 wall_ms=40531 worker=4/9 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts
+  valid#2 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=8/23 tokens=35938/3467 wall_ms=41662 worker=5/12 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts
+  valid#3 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=8/22 tokens=37940/3996 wall_ms=45050 worker=5/11 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts
+  averages: calls=8/22 tokens=33015/3652 wall_ms=42414 worker=5/11 child=0/0 repairs=0 review_repairs=0
+
+Decision
+quality: equal
+end_to_end_efficiency: noisy
+conclusion: inconclusive
+adoption_status: mechanism understood / ROI inconclusive
+default_unchanged: yes
+candidate_to_adopt: no
+note: variant never invoked delegate_research; unused optional capability is evidence, not a quality win
+note: e2e lower on variant: modelCalls 9→8; inputTokens 38579→33015; outputTokens 4036→3652; wallTimeMs 46677→42414
+note: e2e higher on variant: toolCalls 21→22
+note: Subagents are not made the default by this experiment code.

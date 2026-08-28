@@ -196,6 +196,7 @@ describe("V1 expected outcomes", () => {
       specModelCalls: 1,
       specToolCalls: 1,
       planningEnabled: false,
+      subagentsEnabled: false,
       plan: null,
       plannerTurns: 0,
       plannerModelCalls: 0,

@@ -1,0 +1,105 @@
+{
+  "task": "# P01 — Task priority\n\nAdd task priority support:\n\n- Task priority is `\"normal\" | \"high\"`.\n- `POST /tasks` accepts optional `priority`.\n- Missing priority defaults to `\"normal\"`.\n- Invalid priority returns HTTP 400.\n- `GET /tasks` accepts `?priority=normal|high`.\n- Existing `?status=pending|completed` remains supported.\n- `status` and `priority` filters must compose.\n- Omitting priority preserves existing list behavior.\n- Invalid `priority` query returns HTTP 400.\n- Existing complete/reopen/`completedAt` semantics must remain unchanged.\n\nImplement the missing behavior and verify with tests.\nDo not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Add end-to-end task priority support to the existing TypeScript Task Board without changing current task lifecycle behavior.",
+    "requirements": [
+      "Extend the task model with priority: \"normal\" | \"high\".",
+      "POST /tasks accepts an optional priority. If omitted, create the task with priority \"normal\"; if supplied with either \"normal\" or \"high\", persist and return that value.",
+      "A supplied POST priority outside \"normal\" | \"high\" is rejected with HTTP 400 and does not create a task.",
+      "GET /tasks accepts priority=normal or priority=high and returns only tasks matching that priority.",
+      "An invalid GET priority query value is rejected with HTTP 400.",
+      "Continue supporting status=pending and status=completed on GET /tasks, including their current invalid-status HTTP 400 behavior.",
+      "When both status and priority are supplied, return only tasks satisfying both filters.",
+      "When priority is omitted from GET /tasks, preserve the existing list behavior (all tasks, or the status-filtered set when status is present).",
+      "Preserve complete/reopen behavior: completion sets status to completed and a non-null ISO timestamp, reopening sets status to pending and completedAt to null; priority remains unchanged through both operations.",
+      "Keep existing title validation, task IDs, response status codes, not-found behavior, and list ordering unchanged."
+    ],
+    "constraints": [
+      "Do not modify tests.",
+      "Make the change within the existing Task model, TaskService, and task route structure unless a small supporting type/helper is needed.",
+      "Use the repository's existing TypeScript/tsx test setup and conventions.",
+      "No persistence or new external dependency is required; the service remains in-memory.",
+      "Invalid priority handling must be validation-only and must not mutate task state."
+    ],
+    "nonGoals": [
+      "Changing task title validation or normalization.",
+      "Changing status filter semantics or lifecycle timestamp semantics.",
+      "Adding priority update endpoints or allowing complete/reopen requests to alter priority.",
+      "Changing storage, ordering, routing outside the requested POST and GET /tasks behavior.",
+      "Adding a third priority value or defining priority sorting."
+    ],
+    "acceptance": [
+      "A task created without priority has a returned and stored priority of \"normal\".",
+      "A task created with priority \"high\" or \"normal\" returns and stores the requested priority.",
+      "POST /tasks with an invalid priority returns 400.",
+      "GET /tasks?priority=high returns only high-priority tasks; GET /tasks?priority=normal returns only normal-priority tasks.",
+      "GET /tasks with an invalid priority returns 400.",
+      "Existing status-only filtering still returns the correct pending/completed tasks.",
+      "Combined status and priority filtering returns the intersection of both filters.",
+      "GET /tasks without priority still returns all tasks, including both priority values, and status-only behavior remains unchanged.",
+      "Completing and reopening a prioritized task preserves its priority while retaining existing status and completedAt behavior.",
+      "All existing tests and the repository's priority tests pass without test changes."
+    ],
+    "verification": [
+      "Run the existing test command `npm test` (or the equivalent package script) after implementation.",
+      "Use the existing tests in tests/priority.test.ts to verify defaulting, explicit high priority, invalid POST/GET values, priority filtering, composition, omission behavior, and lifecycle preservation.",
+      "Use tests/tasks.test.ts to verify existing retrieval, status filtering, completion, reopening, completedAt, and not-found behavior.",
+      "If adding implementation-focused tests is necessary, do not alter the supplied tests; however, the supplied priority test suite already covers the requested behavior."
+    ],
+    "ambiguities": [
+      {
+        "question": "What are the authoritative priority values and the missing-POST default?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Use exactly \"normal\" and \"high\"; an omitted POST priority defaults to \"normal\".",
+        "basis": "The task explicitly specifies these values and default, and tests/priority.test.ts asserts both default normal and explicit high behavior."
+      },
+      {
+        "question": "Should status and priority filters compose as an intersection?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Apply both predicates so only tasks matching both filters are returned.",
+        "basis": "The task explicitly requires composition, and tests/priority.test.ts asserts GET /tasks?status=pending&priority=high returns only the matching pending high task."
+      },
+      {
+        "question": "What should happen for invalid priority values?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 400 for both invalid POST priority and invalid GET priority query values, without creating or altering tasks.",
+        "basis": "The task explicitly requires HTTP 400, and tests/priority.test.ts asserts status 400 for both invalid request forms."
+      },
+      {
+        "question": "What existing lifecycle behavior must be preserved when priority is present?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Priority is retained while complete sets completedAt and reopen clears it, with the existing status transitions unchanged.",
+        "basis": "The task explicitly requires unchanged semantics, and tests/tasks.test.ts plus tests/priority.test.ts assert these transitions and priority preservation."
+      },
+      {
+        "question": "What exact error payload should invalid priority use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Follow the existing route convention with a stable invalid-priority error identifier (for example, { error: \"invalid_priority\" }); the externally mandatory contract is HTTP 400.",
+        "basis": "Existing status validation returns { error: \"invalid_status\" }, while the supplied priority tests assert status rather than a payload; matching the established naming convention is low-risk."
+      },
+      {
+        "question": "How should an omitted priority query differ from an invalid/empty supplied query?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Treat absence of the query parameter as no priority filter; treat a present value that is not exactly \"normal\" or \"high\" (including an empty value) as invalid and return 400.",
+        "basis": "This mirrors the existing status query validation, which distinguishes query.get(...) === null from unsupported values, and the task defines the accepted query values."
+      },
+      {
+        "question": "How should multiple occurrences of the same priority query parameter be handled?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use the existing URLSearchParams single-value convention (the first value returned by query.get); no multi-value priority contract is introduced.",
+        "basis": "The current status filter already uses query.get(\"status\"), and the task does not define repeated-parameter semantics."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

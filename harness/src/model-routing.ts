@@ -4,6 +4,7 @@ export type ModelEpisode =
   | "spec"
   | "plan"
   | "implementation"
+  | "research"
   | "repair"
   | "review"
   | "review_repair";

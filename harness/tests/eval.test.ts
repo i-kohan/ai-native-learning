@@ -91,6 +91,7 @@ function harnessResult(
     specModelCalls: 2,
     specToolCalls: 4,
     planningEnabled: false,
+    subagentsEnabled: false,
     plan: null,
     plannerTurns: 0,
     plannerModelCalls: 0,

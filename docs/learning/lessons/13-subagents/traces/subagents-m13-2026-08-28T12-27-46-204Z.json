@@ -1,0 +1,379 @@
+{
+  "experimentId": "m13-p01-subagents",
+  "generatedAt": "2026-08-28T12:27:46.204Z",
+  "taskId": "P01",
+  "contextMode": "variant",
+  "conversationStateMode": "manual",
+  "hypothesis": "An optional bounded research child invoked as a Worker tool can return validated EvidenceReport advice without becoming authority, and may or may not repay coordination cost on a small feature-sized task.",
+  "decisionRule": "Predefined decision rule (encoded before the experiment):\n1. If Variant has worse correctness/reliability than Baseline: reject Subagents.\n2. If Variant shows a clear reliability / first-pass-quality improvement: Subagents becomes an inspection candidate even with modest extra overhead. Do not auto-adopt.\n3. If quality is equal and Variant is clearly more expensive end-to-end: reject for current workload.\n4. If quality is equal and the mechanism works but the workload is too small to show a benefit: mechanism understood / ROI inconclusive. Do not invent a post-hoc numeric threshold.\n5. A correct EvidenceReport proves only mechanism correctness, not adoption.\n6. Unused optional delegation is evidence, not a reason to force the prompt.\nEqual-quality operationalization: no numeric meaningful-efficiency threshold was predefined. Clear e2e regression → reject. Conflicting or directionally better e2e without a predefined meaningful threshold → inconclusive, not candidate. Compare model calls, tool calls, input tokens, output tokens, and wall time. Child cost is included in end-to-end totals.",
+  "baseline": {
+    "id": "baseline",
+    "label": "BASELINE — Spec → Worker (no research child)",
+    "subagentsEnabled": false,
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "expectedMet": 3,
+    "firstVerificationPass": 3,
+    "delegationInvoked": 0,
+    "trials": [
+      {
+        "arm": "baseline",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-subagents-baseline-1-2026-08-28T12-27-46-205Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-subagents-baseline-1-2026-08-28T12-27-46-205Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 10,
+          "toolCalls": 23,
+          "inputTokens": 49943,
+          "outputTokens": 3815,
+          "wallTimeMs": 49291,
+          "workerModelCalls": 7,
+          "workerToolCalls": 12,
+          "workerReadPaths": [
+            "package.json",
+            "src/app.ts",
+            "src/tasks/task-routes.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/types.ts",
+            "tests/priority.test.ts",
+            "tests/tasks.test.ts"
+          ],
+          "childModelCalls": 0,
+          "childToolCalls": 0,
+          "childInputTokens": null,
+          "childOutputTokens": null,
+          "childDurationMs": 0,
+          "childInspectedPaths": [],
+          "duplicatedReadPaths": [],
+          "delegationInvoked": false,
+          "delegationCount": 0,
+          "evidenceReport": null,
+          "subagentsEnabled": false
+        }
+      },
+      {
+        "arm": "baseline",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-subagents-baseline-2-2026-08-28T12-28-36-246Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-subagents-baseline-2-2026-08-28T12-28-36-246Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 7,
+          "toolCalls": 20,
+          "inputTokens": 26740,
+          "outputTokens": 3872,
+          "wallTimeMs": 40577,
+          "workerModelCalls": 4,
+          "workerToolCalls": 9,
+          "workerReadPaths": [
+            "src/app.ts",
+            "src/tasks/task-routes.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/types.ts"
+          ],
+          "childModelCalls": 0,
+          "childToolCalls": 0,
+          "childInputTokens": null,
+          "childOutputTokens": null,
+          "childDurationMs": 0,
+          "childInspectedPaths": [],
+          "duplicatedReadPaths": [],
+          "delegationInvoked": false,
+          "delegationCount": 0,
+          "evidenceReport": null,
+          "subagentsEnabled": false
+        }
+      },
+      {
+        "arm": "baseline",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-subagents-baseline-3-2026-08-28T12-29-17-555Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-subagents-baseline-3-2026-08-28T12-29-17-555Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 10,
+          "toolCalls": 21,
+          "inputTokens": 39054,
+          "outputTokens": 4421,
+          "wallTimeMs": 50164,
+          "workerModelCalls": 7,
+          "workerToolCalls": 10,
+          "workerReadPaths": [
+            "src/app.ts",
+            "src/tasks/task-routes.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/types.ts"
+          ],
+          "childModelCalls": 0,
+          "childToolCalls": 0,
+          "childInputTokens": null,
+          "childOutputTokens": null,
+          "childDurationMs": 0,
+          "childInspectedPaths": [],
+          "duplicatedReadPaths": [],
+          "delegationInvoked": false,
+          "delegationCount": 0,
+          "evidenceReport": null,
+          "subagentsEnabled": false
+        }
+      }
+    ],
+    "contaminated": [],
+    "averages": {
+      "modelCalls": 9,
+      "toolCalls": 21,
+      "inputTokens": 38579,
+      "outputTokens": 4036,
+      "wallTimeMs": 46677,
+      "workerModelCalls": 6,
+      "workerToolCalls": 10,
+      "childModelCalls": 0,
+      "childToolCalls": 0,
+      "verificationRepairAttempts": 0,
+      "reviewRepairAttempts": 0
+    }
+  },
+  "variant": {
+    "id": "variant",
+    "label": "VARIANT — Spec → Worker with optional delegate_research",
+    "subagentsEnabled": true,
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "expectedMet": 3,
+    "firstVerificationPass": 3,
+    "delegationInvoked": 0,
+    "trials": [
+      {
+        "arm": "variant",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-subagents-variant-1-2026-08-28T12-30-08-460Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-subagents-variant-1-2026-08-28T12-30-08-460Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 7,
+          "toolCalls": 20,
+          "inputTokens": 25168,
+          "outputTokens": 3493,
+          "wallTimeMs": 40531,
+          "workerModelCalls": 4,
+          "workerToolCalls": 9,
+          "workerReadPaths": [
+            "package.json",
+            "src/app.ts",
+            "src/tasks/task-routes.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/types.ts"
+          ],
+          "childModelCalls": 0,
+          "childToolCalls": 0,
+          "childInputTokens": null,
+          "childOutputTokens": null,
+          "childDurationMs": 0,
+          "childInspectedPaths": [],
+          "duplicatedReadPaths": [],
+          "delegationInvoked": false,
+          "delegationCount": 0,
+          "evidenceReport": null,
+          "subagentsEnabled": true
+        }
+      },
+      {
+        "arm": "variant",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-subagents-variant-2-2026-08-28T12-30-49-701Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-subagents-variant-2-2026-08-28T12-30-49-701Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 8,
+          "toolCalls": 23,
+          "inputTokens": 35938,
+          "outputTokens": 3467,
+          "wallTimeMs": 41662,
+          "workerModelCalls": 5,
+          "workerToolCalls": 12,
+          "workerReadPaths": [
+            "package.json",
+            "src/app.ts",
+            "src/tasks/task-routes.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/types.ts",
+            "tests/priority.test.ts",
+            "tests/tasks.test.ts"
+          ],
+          "childModelCalls": 0,
+          "childToolCalls": 0,
+          "childInputTokens": null,
+          "childOutputTokens": null,
+          "childDurationMs": 0,
+          "childInspectedPaths": [],
+          "duplicatedReadPaths": [],
+          "delegationInvoked": false,
+          "delegationCount": 0,
+          "evidenceReport": null,
+          "subagentsEnabled": true
+        }
+      },
+      {
+        "arm": "variant",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P01-subagents-variant-3-2026-08-28T12-31-32-166Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P01-subagents-variant-3-2026-08-28T12-31-32-166Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "modelCalls": 8,
+          "toolCalls": 22,
+          "inputTokens": 37940,
+          "outputTokens": 3996,
+          "wallTimeMs": 45050,
+          "workerModelCalls": 5,
+          "workerToolCalls": 11,
+          "workerReadPaths": [
+            "package.json",
+            "src/app.ts",
+            "src/tasks/task-routes.ts",
+            "src/tasks/task-service.ts",
+            "src/tasks/types.ts",
+            "tests/priority.test.ts",
+            "tests/tasks.test.ts"
+          ],
+          "childModelCalls": 0,
+          "childToolCalls": 0,
+          "childInputTokens": null,
+          "childOutputTokens": null,
+          "childDurationMs": 0,
+          "childInspectedPaths": [],
+          "duplicatedReadPaths": [],
+          "delegationInvoked": false,
+          "delegationCount": 0,
+          "evidenceReport": null,
+          "subagentsEnabled": true
+        }
+      }
+    ],
+    "contaminated": [],
+    "averages": {
+      "modelCalls": 8,
+      "toolCalls": 22,
+      "inputTokens": 33015,
+      "outputTokens": 3652,
+      "wallTimeMs": 42414,
+      "workerModelCalls": 5,
+      "workerToolCalls": 11,
+      "childModelCalls": 0,
+      "childToolCalls": 0,
+      "verificationRepairAttempts": 0,
+      "reviewRepairAttempts": 0
+    }
+  },
+  "decision": {
+    "quality": "equal",
+    "efficiency": "noisy",
+    "conclusion": "inconclusive",
+    "defaultUnchanged": true,
+    "adoptionStatus": "mechanism understood / ROI inconclusive",
+    "notes": [
+      "variant never invoked delegate_research; unused optional capability is evidence, not a quality win",
+      "e2e lower on variant: modelCalls 9→8; inputTokens 38579→33015; outputTokens 4036→3652; wallTimeMs 46677→42414",
+      "e2e higher on variant: toolCalls 21→22",
+      "Subagents are not made the default by this experiment code."
+    ]
+  },
+  "report": "=== Subagents Research Child Experiment (m13-p01-subagents) ===\n\ntask: P01\ncontext_mode: variant\nconversation_state_mode: manual\nhypothesis: An optional bounded research child invoked as a Worker tool can return validated EvidenceReport advice without becoming authority, and may or may not repay coordination cost on a small feature-sized task.\n\nPredefined decision rule (encoded before the experiment):\n1. If Variant has worse correctness/reliability than Baseline: reject Subagents.\n2. If Variant shows a clear reliability / first-pass-quality improvement: Subagents becomes an inspection candidate even with modest extra overhead. Do not auto-adopt.\n3. If quality is equal and Variant is clearly more expensive end-to-end: reject for current workload.\n4. If quality is equal and the mechanism works but the workload is too small to show a benefit: mechanism understood / ROI inconclusive. Do not invent a post-hoc numeric threshold.\n5. A correct EvidenceReport proves only mechanism correctness, not adoption.\n6. Unused optional delegation is evidence, not a reason to force the prompt.\nEqual-quality operationalization: no numeric meaningful-efficiency threshold was predefined. Clear e2e regression → reject. Conflicting or directionally better e2e without a predefined meaningful threshold → inconclusive, not candidate. Compare model calls, tool calls, input tokens, output tokens, and wall time. Child cost is included in end-to-end totals.\n\nBASELINE — Spec → Worker (no research child)\nsubagents_enabled: no\nvalid_trials: 3 / attempted 3\ncontaminated: 0\nexpected: 3/3\nfirst_verify_pass: 3/3\ndelegation_invoked: 0/3\n  valid#1 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=10/23 tokens=49943/3815 wall_ms=49291 worker=7/12 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts\n  valid#2 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=7/20 tokens=26740/3872 wall_ms=40577 worker=4/9 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts\n  valid#3 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=10/21 tokens=39054/4421 wall_ms=50164 worker=7/10 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts\n  averages: calls=9/21 tokens=38579/4036 wall_ms=46677 worker=6/10 child=0/0 repairs=0 review_repairs=0\n\nVARIANT — Spec → Worker with optional delegate_research\nsubagents_enabled: yes\nvalid_trials: 3 / attempted 3\ncontaminated: 0\nexpected: 3/3\nfirst_verify_pass: 3/3\ndelegation_invoked: 0/3\n  valid#1 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=7/20 tokens=25168/3493 wall_ms=40531 worker=4/9 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts\n  valid#2 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=8/23 tokens=35938/3467 wall_ms=41662 worker=5/12 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts\n  valid#3 expected=yes workflow=success verify=PASS→PASS repairs=0 review_repairs=0 blocking=0 calls=8/22 tokens=37940/3996 wall_ms=45050 worker=5/11 child=0/0 delegated=no duplicate_reads=(none) files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts\n  averages: calls=8/22 tokens=33015/3652 wall_ms=42414 worker=5/11 child=0/0 repairs=0 review_repairs=0\n\nDecision\nquality: equal\nend_to_end_efficiency: noisy\nconclusion: inconclusive\nadoption_status: mechanism understood / ROI inconclusive\ndefault_unchanged: yes\ncandidate_to_adopt: no\nnote: variant never invoked delegate_research; unused optional capability is evidence, not a quality win\nnote: e2e lower on variant: modelCalls 9→8; inputTokens 38579→33015; outputTokens 4036→3652; wallTimeMs 46677→42414\nnote: e2e higher on variant: toolCalls 21→22\nnote: Subagents are not made the default by this experiment code."
+}

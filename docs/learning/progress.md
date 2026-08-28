@@ -17,7 +17,7 @@ Completed modules:
 11. ✅ 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
 12. ✅ 12 — Planner / Worker / Reviewer
 
-Current module: **none — return to Master/Roadmap chat for next-module selection from the authoritative roadmap.**
+Current module: **13 — Subagents** (mechanism probe in progress; not adopted; default architecture unchanged).
 
 ---
 
@@ -33,7 +33,8 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - verification children (`run_command("npm test")` and `runFinalVerification`) share one minimal env allowlist, so repository code does not inherit harness secrets such as `OPENAI_API_KEY`;
 - deterministic harness-owned model routing through `resolveModel(episode, config)`; current normal policy keeps all episodes on `gpt-5.6-luna`;
 - optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`; default remains manual full-history replay because the Module 11 efficiency/adoption criterion was inconclusive;
-- optional explicit read-only Planner mechanism exists behind `planningEnabled`, but remains off by default because Module 12 P01 showed equal quality with worse end-to-end cost.
+- optional explicit read-only Planner mechanism exists behind `planningEnabled`, but remains off by default because Module 12 P01 showed equal quality with worse end-to-end cost;
+- optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. This is a Module 13 mechanism probe, not a change to the normal lifecycle.
 
 Conceptual default flow:
 
@@ -52,6 +53,81 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 13 — Subagents (bounded research child)
+
+**Status:** mechanism implemented and measured; **not complete**. Topic Chat still owns review, theory, and formal closure. Default architecture is unchanged.
+
+Theory draft:
+
+`docs/learning/lessons/13-subagents/theory.md`
+
+Practical notes/evidence:
+
+`docs/learning/lessons/13-subagents/notes.md`
+
+## Learning-critical model
+
+```text
+Worker tool call
+→ harness-owned delegation boundary
+→ separate read-only child episode
+→ validated EvidenceReport (advice, not authority)
+→ Worker continues implementation
+→ unchanged VERIFY / REVIEW
+```
+
+Key boundaries:
+
+- agent-as-tool ≠ outer Planner phase;
+- EvidenceReport ≠ Spec / permission / verification / success;
+- child tools are physically restricted (`list_files` / `read_file` / `submit_evidence_report`);
+- at most one child per Worker implementation episode;
+- `subagentsEnabled=false` remains the default.
+
+## Built
+
+- optional Worker capability `delegate_research({ objective, scope })`;
+- harness intercept in `runAgentLoop`;
+- bounded read-only child in the same workspace;
+- deterministic EvidenceReport admission;
+- P01 experiment `npm run benchmark:subagents`.
+
+## Controlled experiment
+
+Task: P01  
+Context: `contextMode=variant`, `conversationStateMode=manual`  
+Trials: 3 valid per arm. Contaminated: none.  
+Delegation on variant: **0/3**.
+
+| Arm      | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg | delegated |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- | --------- |
+| BASELINE | 3/3      | 3/3 PASS     | 0 / 0   | 9 / 21          | 38,579 / 4,036    | ~47s     | 0/3       |
+| VARIANT  | 3/3      | 3/3 PASS     | 0 / 0   | 8 / 22          | 33,015 / 3,652    | ~42s     | 0/3       |
+
+Quality equal. Child never ran, so e2e movement is Worker variance, not subagent ROI. Predefined rule → **mechanism understood / ROI inconclusive**. Do not treat unused `delegate_research` as a win or a reason to force the prompt.
+
+Evidence: `docs/learning/lessons/13-subagents/traces/subagents-m13-2026-08-28T12-27-46-204Z.txt`
+
+Mechanism correctness was proven separately by mocked unit tests (child cannot write/run/delegate; invalid report rejected; second call denied; parent continues).
+
+## Fixed V3 regression
+
+Suite: `fixed-v3-m09`. Subagents stayed off. 6/6 contracts; ISO01 PASS; SEC01 PASS; no hard regressions.
+
+Evidence: `docs/learning/lessons/13-subagents/traces/2026-08-28T12-35-16-210Z.txt`
+
+Harness unit tests: 135 passed.
+
+## Module decision (pending Topic Chat)
+
+```text
+research-child mechanism = implemented and understood
+natural P01 adoption     = not justified / ROI inconclusive
+normal default           = Spec → Worker, subagentsEnabled=false
+```
 
 ---
 
@@ -115,10 +191,10 @@ Task: P01
 Context: `contextMode=variant`, `conversationStateMode=manual`  
 Trials: 3 valid per arm, isolated worktree per trial. Contaminated: none.
 
-| Arm | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg |
-| --- | --- | --- | --- | --- | --- | --- |
-| BASELINE | 3/3 | 3/3 PASS | 0 / 0 | 8 / 23 | 36,589 / 3,700 | ~51s |
-| VARIANT | 3/3 | 3/3 PASS | 0 / 0 | 12 / 31 | 56,633 / 5,309 | ~64s |
+| Arm      | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
+| BASELINE | 3/3      | 3/3 PASS     | 0 / 0   | 8 / 23          | 36,589 / 3,700    | ~51s     |
+| VARIANT  | 3/3      | 3/3 PASS     | 0 / 0   | 12 / 31         | 56,633 / 5,309    | ~64s     |
 
 Predefined rule: quality equal and Variant costs more end-to-end → **reject Planner**. Default unchanged.
 

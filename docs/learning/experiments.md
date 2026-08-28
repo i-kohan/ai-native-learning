@@ -1399,35 +1399,35 @@ Contaminated trials: **none** (3/3 attempted valid on both arms).
 
 #### BASELINE — implicit Worker planning
 
-| Trial | expected | workflow | verify | repairs | review_repairs | calls/tools | tokens in/out | wall | files |
-| ----- | -------- | -------- | ------ | ------- | -------------- | ----------- | ------------- | ---- | ----- |
-| 1     | yes      | success  | PASS→PASS | 0    | 0              | 8 / 25      | 35,935 / 4,065 | ~52s | types, service, routes |
-| 2     | yes      | success  | PASS→PASS | 0    | 0              | 7 / 20      | 24,769 / 3,482 | ~40s | types, service, routes |
-| 3     | yes      | success  | PASS→PASS | 0    | 0              | 10 / 24     | 49,064 / 3,553 | ~61s | types, service, routes |
-| avg   | 3/3      |          | first PASS 3/3 | 0 | 0           | 8 / 23      | 36,589 / 3,700 | ~51s | |
+| Trial | expected | workflow | verify         | repairs | review_repairs | calls/tools | tokens in/out  | wall | files                  |
+| ----- | -------- | -------- | -------------- | ------- | -------------- | ----------- | -------------- | ---- | ---------------------- |
+| 1     | yes      | success  | PASS→PASS      | 0       | 0              | 8 / 25      | 35,935 / 4,065 | ~52s | types, service, routes |
+| 2     | yes      | success  | PASS→PASS      | 0       | 0              | 7 / 20      | 24,769 / 3,482 | ~40s | types, service, routes |
+| 3     | yes      | success  | PASS→PASS      | 0       | 0              | 10 / 24     | 49,064 / 3,553 | ~61s | types, service, routes |
+| avg   | 3/3      |          | first PASS 3/3 | 0       | 0              | 8 / 23      | 36,589 / 3,700 | ~51s |                        |
 
 Planner: 0/0.
 
 #### VARIANT — explicit read-only Planner
 
-| Trial | expected | workflow | verify | repairs | review_repairs | calls/tools | tokens in/out | wall | planner | worker |
-| ----- | -------- | -------- | ------ | ------- | -------------- | ----------- | ------------- | ---- | ------- | ------ |
-| 1     | yes      | success  | PASS→PASS | 0    | 0              | 11 / 31     | 57,811 / 5,541 | ~61s | 2 / 7   | 6 / 13 |
-| 2     | yes      | success  | PASS→PASS | 0    | 0              | 14 / 33     | 66,461 / 5,818 | ~71s | 2 / 9   | 8 / 12 |
-| 3     | yes      | success  | PASS→PASS | 0    | 0              | 11 / 29     | 45,626 / 4,569 | ~58s | 2 / 8   | 6 / 10 |
-| avg   | 3/3      |          | first PASS 3/3 | 0 | 0           | 12 / 31     | 56,633 / 5,309 | ~64s | 2 / 8   | 7 / 12 |
+| Trial | expected | workflow | verify         | repairs | review_repairs | calls/tools | tokens in/out  | wall | planner | worker |
+| ----- | -------- | -------- | -------------- | ------- | -------------- | ----------- | -------------- | ---- | ------- | ------ |
+| 1     | yes      | success  | PASS→PASS      | 0       | 0              | 11 / 31     | 57,811 / 5,541 | ~61s | 2 / 7   | 6 / 13 |
+| 2     | yes      | success  | PASS→PASS      | 0       | 0              | 14 / 33     | 66,461 / 5,818 | ~71s | 2 / 9   | 8 / 12 |
+| 3     | yes      | success  | PASS→PASS      | 0       | 0              | 11 / 29     | 45,626 / 4,569 | ~58s | 2 / 8   | 6 / 10 |
+| avg   | 3/3      |          | first PASS 3/3 | 0       | 0              | 12 / 31     | 56,633 / 5,309 | ~64s | 2 / 8   | 7 / 12 |
 
 Changed files on every valid trial: `tasks/types.ts`, `tasks/task-service.ts`, `tasks/task-routes.ts`.
 
 ### Predefined decision-rule evaluation
 
-| Rule | Observation |
-| ---- | ----------- |
-| 1. Variant worse correctness | no — both 3/3 expected, 3/3 first VERIFY PASS, 0 repairs |
-| 2. Variant clear reliability / first-pass improvement | no — quality equal |
-| 3. Quality equal → need meaningful e2e efficiency | not met — variant more expensive on model calls, tool calls, input tokens, output tokens, and wall |
-| 4. Quality equal and variant costs more e2e | **yes → reject** |
-| 5. Noisy / conflicting | no — all five collected e2e cost signals move the same way |
+| Rule                                                  | Observation                                                                                        |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1. Variant worse correctness                          | no — both 3/3 expected, 3/3 first VERIFY PASS, 0 repairs                                           |
+| 2. Variant clear reliability / first-pass improvement | no — quality equal                                                                                 |
+| 3. Quality equal → need meaningful e2e efficiency     | not met — variant more expensive on model calls, tool calls, input tokens, output tokens, and wall |
+| 4. Quality equal and variant costs more e2e           | **yes → reject**                                                                                   |
+| 5. Noisy / conflicting                                | no — all five collected e2e cost signals move the same way                                         |
 
 **Conclusion: reject explicit Planner.** Default remains Spec → Worker. `planningEnabled` stays off.
 
@@ -1484,3 +1484,130 @@ Hard regressions            none
 
 Harness unit tests after the gap fixes: 125 passed.
 
+---
+
+## Module 13 — Subagents (P01 bounded research child)
+
+### Hypothesis
+
+An optional bounded research child invoked as a Worker tool can return a validated `EvidenceReport` without becoming authority. On a small feature-sized task this may or may not repay extra model calls, duplicated reads, handoff risk, and latency.
+
+This is **not** an adoption of Subagents. Default remains Spec → Worker. `subagentsEnabled=false`.
+
+### Task
+
+P01 — add task priority `"normal" | "high"` through types → service → routes. Repository was **not** enlarged with decoy files.
+
+### Arms
+
+BASELINE: `subagentsEnabled=false`, Spec → Worker → existing VERIFY / REVIEW  
+VARIANT: `subagentsEnabled=true`, same Spec → Worker may call `delegate_research` at most once → Worker continues → same VERIFY / REVIEW
+
+Constants: same committed base SHA, same task, same model, `contextMode=variant`, `conversationStateMode=manual`, same Worker read/write/run tools except the optional research tool, same verification/reviewer/repair budgets, isolated worktree per trial.
+
+Trials: 3 valid per arm. Delegation was optional. The prompt did not force a child run.
+
+### Predefined decision rule
+
+Encoded before the run in `harness/src/subagents-experiment.ts`:
+
+1. Variant worse quality → reject.
+2. Variant clear reliability / first-pass improvement → inspection candidate; do not auto-adopt.
+3. Quality equal + clearly higher e2e cost → reject for current workload.
+4. Quality equal + mechanism works but workload too small → mechanism understood / ROI inconclusive.
+5. A correct EvidenceReport proves only mechanism correctness.
+6. Unused optional delegation is evidence, not a reason to force the prompt.
+
+Equal-quality operationalization: no numeric meaningful-efficiency threshold was predefined. Clear e2e regression → reject. Conflicting or directionally better e2e → inconclusive, not candidate. Child cost counts in e2e totals.
+
+### Results
+
+Command: `cd harness && npm run benchmark:subagents`
+
+Evidence:
+
+- report: `docs/learning/lessons/13-subagents/traces/subagents-m13-2026-08-28T12-27-46-204Z.txt`
+- json: `docs/learning/lessons/13-subagents/traces/subagents-m13-2026-08-28T12-27-46-204Z.json`
+- raw trial traces in the same folder
+
+Contaminated trials: **none** (3/3 attempted valid on both arms).  
+Natural `delegate_research` invocations: **0/3 on Variant**.
+
+#### BASELINE — no research child
+
+| Trial | expected | workflow | verify         | repairs | review_repairs | calls/tools | tokens in/out  | wall | files                  |
+| ----- | -------- | -------- | -------------- | ------- | -------------- | ----------- | -------------- | ---- | ---------------------- |
+| 1     | yes      | success  | PASS→PASS      | 0       | 0              | 10 / 23     | 49,943 / 3,815 | ~49s | types, service, routes |
+| 2     | yes      | success  | PASS→PASS      | 0       | 0              | 7 / 20      | 26,740 / 3,872 | ~41s | types, service, routes |
+| 3     | yes      | success  | PASS→PASS      | 0       | 0              | 10 / 21     | 39,054 / 4,421 | ~50s | types, service, routes |
+| avg   | 3/3      |          | first PASS 3/3 | 0       | 0              | 9 / 21      | 38,579 / 4,036 | ~47s |                        |
+
+Child: 0/0.
+
+#### VARIANT — optional `delegate_research`
+
+| Trial | expected | workflow | verify         | repairs | review_repairs | calls/tools | tokens in/out  | wall | delegated | child |
+| ----- | -------- | -------- | -------------- | ------- | -------------- | ----------- | -------------- | ---- | --------- | ----- |
+| 1     | yes      | success  | PASS→PASS      | 0       | 0              | 7 / 20      | 25,168 / 3,493 | ~41s | no        | 0 / 0 |
+| 2     | yes      | success  | PASS→PASS      | 0       | 0              | 8 / 23      | 35,938 / 3,467 | ~42s | no        | 0 / 0 |
+| 3     | yes      | success  | PASS→PASS      | 0       | 0              | 8 / 22      | 37,940 / 3,996 | ~45s | no        | 0 / 0 |
+| avg   | 3/3      |          | first PASS 3/3 | 0       | 0              | 8 / 22      | 33,015 / 3,652 | ~42s | 0/3       | 0 / 0 |
+
+Changed files on every valid trial: `tasks/types.ts`, `tasks/task-service.ts`, `tasks/task-routes.ts`.
+
+### Predefined decision-rule evaluation
+
+| Rule                                                  | Observation                                                                                 |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 1. Variant worse correctness                          | no — both 3/3 expected, 3/3 first VERIFY PASS, 0 repairs                                    |
+| 2. Variant clear reliability / first-pass improvement | no — quality equal                                                                          |
+| 3. Quality equal + clearly higher e2e                 | no — signals conflict (tool calls 21→22 worse; model calls/tokens/wall directionally lower) |
+| 4. Quality equal, workload too small / unused child   | **yes** — child never ran                                                                   |
+| 5. EvidenceReport ≠ adoption                          | n/a — no natural report in the ROI arm                                                      |
+| 6. Do not force delegation                            | followed                                                                                    |
+
+**Conclusion: mechanism understood / ROI inconclusive.** Default remains Spec → Worker. `subagentsEnabled` stays off.
+
+The directional cheaper Variant numbers are **not** a Subagents win: the child did not run. That movement is ordinary Worker variance plus the unused optional tool in the Worker schema.
+
+Mechanism correctness is supported by the mocked unit tests, kept separate from this ROI comparison.
+
+Harness unit tests at experiment time: 135 passed. No contaminated trials.
+
+### Failures / unexpected behavior
+
+None against the mechanism tests. Natural P01 Workers did not delegate, which the protocol treated as evidence rather than a prompt bug.
+
+### Fixed V3 regression after the probe
+
+`docs/learning/lessons/13-subagents/traces/2026-08-28T12-35-16-210Z.txt`  
+Suite label remains `fixed-v3-m09`. Subagents stayed off (`subagentsEnabled=false`).
+
+```text
+T01–T04 expected outcomes   4 / 4
+Executable first-pass       3 / 3
+Correct escalation T04      1 / 1
+R01 verification repair     PASS
+REV01 independent review    PASS
+All fixed V3 contracts      6 / 6
+ISO01                       PASS
+SEC01                       PASS
+Hard regressions            none
+```
+
+| Task  | Kind       | expected | first-pass | verify    | model/tools | tokens in/out | wall |
+| ----- | ---------- | -------- | ---------- | --------- | ----------- | ------------- | ---- |
+| T01   | capability | yes      | yes        | PASS      | 7 / 13      | 18621 / 1809  | ~23s |
+| T02   | capability | yes      | yes        | PASS      | 7 / 15      | 16286 / 1749  | ~28s |
+| T03   | capability | yes      | yes        | PASS      | 7 / 15      | 18943 / 1497  | ~23s |
+| T04   | capability | yes      | n/a        | n/a       | 2 / 7       | 4445 / 824    | ~10s |
+| R01   | probe      | yes      | no         | FAIL→PASS | 10 / 20     | 27215 / 2111  | ~33s |
+| REV01 | probe      | yes      | no         | PASS→PASS | 11 / 22     | 29401 / 2771  | ~36s |
+
+### Conclusion
+
+Mechanism supported: Worker can request one bounded read-only child; the harness validates `EvidenceReport`; VERIFY/REVIEW stay outer; default stays off.
+
+On this P01 probe the predefined rule does **not** adopt Subagents: quality equal, child unused, e2e noisy, workload too small for an ROI claim.
+
+Module 13 experiment recorded; module is **not** complete. Topic Chat still owns formal closure.

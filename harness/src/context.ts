@@ -59,6 +59,7 @@ export type TokenUsagePhase =
   | "spec"
   | "plan"
   | "implementation"
+  | "research"
   | "repair"
   | "review"
   | "review_repair";
@@ -72,6 +73,8 @@ export type TokenUsageSummary = {
   plannerOutputTokens: number | null;
   implInputTokens: number | null;
   implOutputTokens: number | null;
+  researchInputTokens: number | null;
+  researchOutputTokens: number | null;
   repairInputTokens: number | null;
   repairOutputTokens: number | null;
   reviewInputTokens: number | null;
@@ -272,6 +275,8 @@ export function emptyTokenUsage(): TokenUsageSummary {
     plannerOutputTokens: null,
     implInputTokens: null,
     implOutputTokens: null,
+    researchInputTokens: null,
+    researchOutputTokens: null,
     repairInputTokens: null,
     repairOutputTokens: null,
     reviewInputTokens: null,
@@ -324,6 +329,14 @@ export function combineTokenUsage(
       merged.implOutputTokens,
       part.implOutputTokens,
     ),
+    researchInputTokens: addNullableTokens(
+      merged.researchInputTokens,
+      part.researchInputTokens,
+    ),
+    researchOutputTokens: addNullableTokens(
+      merged.researchOutputTokens,
+      part.researchOutputTokens,
+    ),
     repairInputTokens: addNullableTokens(
       merged.repairInputTokens,
       part.repairInputTokens,
@@ -369,6 +382,8 @@ function addPhaseInput(
       base.reviewRepairInputTokens,
       input,
     );
+  } else if (phase === "research") {
+    base.researchInputTokens = addNullable(base.researchInputTokens, input);
   } else {
     base.implInputTokens = addNullable(base.implInputTokens, input);
   }
@@ -392,6 +407,8 @@ function addPhaseOutput(
       base.reviewRepairOutputTokens,
       output,
     );
+  } else if (phase === "research") {
+    base.researchOutputTokens = addNullable(base.researchOutputTokens, output);
   } else {
     base.implOutputTokens = addNullable(base.implOutputTokens, output);
   }

@@ -11,6 +11,13 @@ import {
   type TokenUsageSummary,
 } from "./context.ts";
 import {
+  MAX_RESEARCH_DELEGATIONS,
+  RESEARCH_CHILD_MAX_TURNS,
+  parseDelegateResearch,
+  shouldEnableSubagents,
+  workerToolsForEpisode,
+} from "./evidence.ts";
+import {
   formatProceduralContext,
   skillIdForPhase,
   loadSkill,
@@ -18,7 +25,13 @@ import {
   type SkillLoadRecord,
 } from "./skills.ts";
 import { resolveModel, routingTraceFields } from "./model-routing.ts";
-import { TOOL_DEFINITIONS, executeTool } from "./tools.ts";
+import { WORKER_RESEARCH_INSTRUCTIONS } from "./research-instructions.ts";
+import {
+  deniedResearchDelegation,
+  runResearchSubagent,
+  type ResearchDelegationRecord,
+} from "./research-subagent.ts";
+import { executeTool } from "./tools.ts";
 import { Tracer } from "./trace.ts";
 import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
 import {
@@ -90,6 +103,7 @@ export type AgentRunResult = {
   conversationStateMode: ConversationStateMode;
   clientInputItemsSent: number;
   clientInputBytesSent: number;
+  researchDelegations: ResearchDelegationRecord[];
 };
 
 type FunctionCallItem = {
@@ -109,6 +123,8 @@ export async function runAgentLoop(options: {
   reusableContext?: ReusableContext;
   phase?: EpisodePhase;
   conversationStateMode?: ConversationStateMode;
+  /** Experiment-only Worker capability. Default architecture does not expose it. */
+  subagentsEnabled?: boolean;
   /** Test injection only. Production uses the OpenAI Responses client. */
   responsesCreate?: ResponsesCreateFn;
 }): Promise<AgentRunResult> {
@@ -116,6 +132,9 @@ export async function runAgentLoop(options: {
   const phase: EpisodePhase = options.phase ?? "implementation";
   const conversationStateMode: ConversationStateMode =
     options.conversationStateMode ?? "manual";
+  const subagentsEnabled = shouldEnableSubagents(
+    options.subagentsEnabled === true,
+  );
   const startedAt = Date.now();
   const nested = Boolean(options.tracer);
   const tracer = options.tracer ?? new Tracer(config.tracesDir, runId);
@@ -124,15 +143,16 @@ export async function runAgentLoop(options: {
   const discovery = new DiscoveryTracker();
   let tokenUsage: TokenUsageSummary | null = null;
   const selection = resolveModel(phase, config);
+  const tools = workerToolsForEpisode({ phase, subagentsEnabled });
+  const researchDelegations: ResearchDelegationRecord[] = [];
+  let remainingDelegations =
+    subagentsEnabled && phase === "implementation"
+      ? MAX_RESEARCH_DELEGATIONS
+      : 0;
 
   const createResponse =
     options.responsesCreate ?? defaultResponsesCreate(config.apiKey);
-  const instructions =
-    phase === "repair"
-      ? REPAIR_INSTRUCTIONS
-      : phase === "review_repair"
-        ? REVIEW_REPAIR_INSTRUCTIONS
-        : AGENT_INSTRUCTIONS;
+  const instructions = episodeInstructions(phase, subagentsEnabled);
 
   const selectedSkillId = skillIdForPhase(phase);
   const loadedSkill = selectedSkillId
@@ -182,6 +202,7 @@ export async function runAgentLoop(options: {
       requirementCount: spec?.requirements.length ?? 0,
       reusableContextProvided: Boolean(reusableContext),
       conversationStateMode,
+      subagentsEnabled,
     });
   }
 
@@ -198,7 +219,7 @@ export async function runAgentLoop(options: {
         model: selection.model,
         instructions,
         input,
-        tools: TOOL_DEFINITIONS,
+        tools,
         mode: conversationStateMode,
         previousResponseId,
       });
@@ -286,7 +307,20 @@ export async function runAgentLoop(options: {
           turns,
         );
 
-        const result = executeTool(config, call.name, call.arguments);
+        const result = await executeWorkerTool({
+          config,
+          remainingDelegations,
+          subagentsEnabled,
+          name: call.name,
+          argsJson: call.arguments,
+          tracer,
+          reusableContext,
+          responsesCreate: options.responsesCreate,
+        });
+        if (result.delegation) {
+          researchDelegations.push(result.delegation);
+          remainingDelegations = 0;
+        }
         if (
           result.ok &&
           (call.name === "list_files" ||
@@ -379,6 +413,7 @@ export async function runAgentLoop(options: {
     conversationStateMode,
     clientInputItemsSent,
     clientInputBytesSent,
+    researchDelegations,
   };
 
   if (!nested) {
@@ -399,6 +434,7 @@ export async function runAgentLoop(options: {
       conversationStateMode,
       clientInputItemsSent,
       clientInputBytesSent,
+      researchDelegations: result.researchDelegations,
     });
     await tracer.close();
   }
@@ -494,6 +530,117 @@ export function buildResponsesRequest(options: {
     ...(options.mode === "previous_response_id" && options.previousResponseId
       ? { previous_response_id: options.previousResponseId }
       : {}),
+  };
+}
+
+function episodeInstructions(
+  phase: EpisodePhase,
+  subagentsEnabled: boolean,
+): string {
+  if (phase === "repair") {
+    return REPAIR_INSTRUCTIONS;
+  }
+  if (phase === "review_repair") {
+    return REVIEW_REPAIR_INSTRUCTIONS;
+  }
+  if (subagentsEnabled) {
+    return `${AGENT_INSTRUCTIONS.trim()}\n${WORKER_RESEARCH_INSTRUCTIONS.trim()}\n`;
+  }
+  return AGENT_INSTRUCTIONS;
+}
+
+async function executeWorkerTool(options: {
+  config: HarnessConfig;
+  remainingDelegations: number;
+  subagentsEnabled: boolean;
+  name: string;
+  argsJson: string;
+  tracer: Tracer;
+  reusableContext?: ReusableContext;
+  responsesCreate?: ResponsesCreateFn;
+}): Promise<{
+  ok: boolean;
+  output: string;
+  delegation?: ResearchDelegationRecord;
+}> {
+  if (options.name !== "delegate_research") {
+    return executeTool(options.config, options.name, options.argsJson);
+  }
+  if (!options.subagentsEnabled) {
+    return executeTool(options.config, options.name, options.argsJson);
+  }
+
+  const parsed = parseDelegateResearch(options.argsJson);
+  const objective = parsed.ok ? parsed.value.objective : "";
+  const scope = parsed.ok ? parsed.value.scope : "";
+  const childModel = resolveModel("research", options.config).model;
+
+  if (options.remainingDelegations <= 0) {
+    const reason =
+      "delegate_research denied: at most one research delegation is allowed per Worker implementation episode.";
+    options.tracer.record("research_delegation_requested", {
+      parentEpisode: "implementation",
+      objective,
+      scope,
+      denied: true,
+      reason,
+    });
+    return {
+      ok: false,
+      output: reason,
+      delegation: deniedResearchDelegation({
+        objective,
+        scope,
+        childModel,
+        workspaceRoot: options.config.repoRoot,
+        reason,
+      }),
+    };
+  }
+
+  if (!parsed.ok) {
+    const record: ResearchDelegationRecord = {
+      ...deniedResearchDelegation({
+        objective,
+        scope,
+        childModel,
+        workspaceRoot: options.config.repoRoot,
+        reason: parsed.error,
+      }),
+      outcome: "invalid_args",
+    };
+    options.tracer.record("research_delegation_requested", {
+      parentEpisode: "implementation",
+      objective,
+      scope,
+      denied: true,
+      reason: parsed.error,
+    });
+    return { ok: false, output: parsed.error, delegation: record };
+  }
+
+  options.tracer.record("research_delegation_requested", {
+    parentEpisode: "implementation",
+    objective: parsed.value.objective,
+    scope: parsed.value.scope,
+    denied: false,
+    childModel,
+    grantedTools: ["list_files", "read_file", "submit_evidence_report"],
+    turnBudget: RESEARCH_CHILD_MAX_TURNS,
+  });
+
+  const child = await runResearchSubagent({
+    config: options.config,
+    objective: parsed.value.objective,
+    scope: parsed.value.scope,
+    tracer: options.tracer,
+    repositoryMap: options.reusableContext?.repositoryMap,
+    responsesCreate: options.responsesCreate,
+  });
+  return {
+    ok: child.ok,
+    output: child.output,
+    delegation: child.record,
   };
 }
 

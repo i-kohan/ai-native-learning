@@ -15,6 +15,7 @@
     "benchmark:routing": "tsx src/run-benchmark.ts --routing",
     "benchmark:orchestration": "tsx src/run-benchmark.ts --orchestration",
     "benchmark:planning": "tsx src/run-benchmark.ts --planning",
+    "benchmark:subagents": "tsx src/run-benchmark.ts --subagents",
     "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },
   "dependencies": {

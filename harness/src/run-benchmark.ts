@@ -48,6 +48,12 @@ import {
   type PlanningArmId,
   type PlanningProbeAttempt,
 } from "./planning-experiment.ts";
+import {
+  runSubagentsExperiment,
+  writeSubagentsExperimentArtifact,
+  type SubagentsArmId,
+  type SubagentsProbeAttempt,
+} from "./subagents-experiment.ts";
 import { runFinalVerification } from "./verify.ts";
 import {
   bindConfig,
@@ -446,6 +452,59 @@ export async function runPlannerWorkerExperiment() {
   });
 }
 
+export async function executeP01SubagentsTrial(options: {
+  arm: SubagentsArmId;
+  runId: string;
+}): Promise<SubagentsProbeAttempt> {
+  return withIsolatedWorkspace(options.runId, async (config, workspace) => {
+    let fixtureApplied = false;
+    try {
+      const prep = prepareP01(config);
+      if (prep.initialTestsPassed) {
+        return {
+          fixtureApplied: false,
+          result: null,
+          error:
+            "P01: expected initial tests to FAIL after priority tests were added, but they passed.",
+        };
+      }
+      fixtureApplied = true;
+      console.log(
+        `\n=== Preparing P01 subagents (${options.arm}) workspace=${workspace.id} ===`,
+      );
+      console.log(
+        "initial_tests: FAIL (priority tests added to green fixture)",
+      );
+      const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+      const result = await runV1Harness({
+        config,
+        task: prep.task,
+        runId: options.runId,
+        beforeSnapshot,
+        contextMode: "variant",
+        conversationStateMode: "manual",
+        subagentsEnabled: options.arm === "variant",
+        workspace,
+      });
+      printHarnessResult(result);
+      return { fixtureApplied: true, result, error: null };
+    } catch (error) {
+      return {
+        fixtureApplied,
+        result: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+}
+
+export async function runResearchSubagentExperiment() {
+  return runSubagentsExperiment({
+    runTrial: (arm, runId) => executeP01SubagentsTrial({ arm, runId }),
+    scoreExpected: isExpectedP01Outcome,
+  });
+}
+
 export async function runConversationStateExperiment() {
   return runOrchestrationExperiment({
     runTrial: async (arm: OrchestrationArmId, runId: string) =>
@@ -825,6 +884,7 @@ type CliOptions = {
   routingExperiment: boolean;
   orchestrationExperiment?: boolean;
   planningExperiment?: boolean;
+  subagentsExperiment?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
@@ -851,6 +911,21 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: true,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--subagents") || argv.includes("subagents")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      subagentsExperiment: true,
+      contextMode: "variant",
       conversationStateMode,
     };
   }
@@ -1026,6 +1101,7 @@ async function main(): Promise<void> {
     routingExperiment,
     orchestrationExperiment,
     planningExperiment,
+    subagentsExperiment,
     taskId,
     contextMode,
     conversationStateMode,
@@ -1057,6 +1133,20 @@ async function main(): Promise<void> {
     console.log(`\n${result.report}`);
     console.log(`\nplanning_json: ${artifacts.jsonPath}`);
     console.log(`planning_report: ${artifacts.reportPath}`);
+    process.exit(
+      result.baseline.validTrials === 3 && result.variant.validTrials === 3
+        ? 0
+        : 1,
+    );
+    return;
+  }
+
+  if (subagentsExperiment) {
+    const result = await runResearchSubagentExperiment();
+    const artifacts = writeSubagentsExperimentArtifact(result);
+    console.log(`\n${result.report}`);
+    console.log(`\nsubagents_json: ${artifacts.jsonPath}`);
+    console.log(`subagents_report: ${artifacts.reportPath}`);
     process.exit(
       result.baseline.validTrials === 3 && result.variant.validTrials === 3
         ? 0
@@ -1122,6 +1212,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark:eval [-- --previous-response-id]");
     console.error("   or: npm run benchmark:routing");
     console.error("   or: npm run benchmark:planning");
+    console.error("   or: npm run benchmark:subagents");
     console.error("   or: npm run benchmark:orchestration");
     console.error("   or: npm run benchmark -- ISO01");
     console.error("   or: npm run benchmark -- SEC01");

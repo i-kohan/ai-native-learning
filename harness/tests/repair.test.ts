@@ -294,6 +294,7 @@ describe("R01 expected outcome", () => {
       specModelCalls: 1,
       specToolCalls: 1,
       planningEnabled: false,
+      subagentsEnabled: false,
       plan: null,
       plannerTurns: 0,
       plannerModelCalls: 0,

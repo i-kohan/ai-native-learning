@@ -46,6 +46,7 @@ import {
 import { resolveModel, routingTraceFields } from "./model-routing.ts";
 import { formatWorkerTask, shouldRunPlanner, type Plan } from "./plan.ts";
 import { buildPlan, type PlannerPhaseResult } from "./planner-phase.ts";
+import { shouldEnableSubagents } from "./evidence.ts";
 import { Tracer } from "./trace.ts";
 import { runFinalVerification, type VerificationResult } from "./verify.ts";
 import type { Workspace } from "./workspace.ts";
@@ -104,6 +105,7 @@ export type HarnessRunResult = {
   plannerModelCalls: number;
   plannerToolCalls: number;
   plannerDurationMs: number;
+  subagentsEnabled: boolean;
   turns: number;
   modelCalls: number;
   toolCalls: number;
@@ -151,6 +153,8 @@ export async function runV1Harness(options: {
   architectureConstraints?: ArchitectureConstraint[];
   /** Experiment-only. Default architecture does not run an explicit Planner. */
   planningEnabled?: boolean;
+  /** Experiment-only. Default architecture does not expose Worker subagents. */
+  subagentsEnabled?: boolean;
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
@@ -160,6 +164,9 @@ export async function runV1Harness(options: {
   const conversationStateMode: ConversationStateMode =
     options.conversationStateMode ?? "manual";
   const planningEnabled = shouldRunPlanner(options.planningEnabled === true);
+  const subagentsEnabled = shouldEnableSubagents(
+    options.subagentsEnabled === true,
+  );
   const startedAt = Date.now();
   const tracer = new Tracer(config.tracesDir, runId);
   const beforeSnapshot =
@@ -190,6 +197,7 @@ export async function runV1Harness(options: {
     contextMode,
     conversationStateMode,
     planningEnabled,
+    subagentsEnabled,
     repoRoot: config.repoRoot,
     targetAppRoot: config.targetAppRoot,
     targetSrcRoot: config.targetSrcRoot,
@@ -230,6 +238,7 @@ export async function runV1Harness(options: {
       specPhase,
       plannerPhase: emptyPlannerPhase(),
       planningEnabled,
+      subagentsEnabled,
       contextMode,
       conversationStateMode,
       contextPreparation,
@@ -280,6 +289,7 @@ export async function runV1Harness(options: {
       specPhase,
       plannerPhase: emptyPlannerPhase(),
       planningEnabled,
+      subagentsEnabled,
       contextMode,
       conversationStateMode,
       contextPreparation,
@@ -339,6 +349,7 @@ export async function runV1Harness(options: {
         specPhase,
         plannerPhase,
         planningEnabled,
+        subagentsEnabled,
         contextMode,
         conversationStateMode,
         contextPreparation,
@@ -372,6 +383,7 @@ export async function runV1Harness(options: {
     action: "execute",
     implementationStarted: true,
     planningEnabled,
+    subagentsEnabled,
     planAccepted: Boolean(plannerPhase.plan),
   });
 
@@ -385,6 +397,7 @@ export async function runV1Harness(options: {
     reusableContext,
     phase: "implementation",
     conversationStateMode,
+    subagentsEnabled,
   });
 
   tracer.record("implementation_completed", {
@@ -394,6 +407,7 @@ export async function runV1Harness(options: {
     toolCalls: implementation.toolCalls,
     changedFiles: implementation.changedFiles,
     durationMs: implementation.durationMs,
+    researchDelegations: implementation.researchDelegations,
   });
 
   if (options.afterImplementationEpisode) {
@@ -487,6 +501,7 @@ export async function runV1Harness(options: {
     specPhase,
     plannerPhase,
     planningEnabled,
+    subagentsEnabled,
     contextMode,
     conversationStateMode,
     contextPreparation,
@@ -523,6 +538,10 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(`workflow_status: ${result.workflowStatus}`);
   console.log(`spec_decision: ${result.specDecision?.status ?? "(none)"}`);
   console.log(`planning_enabled: ${result.planningEnabled}`);
+  console.log(`subagents_enabled: ${result.subagentsEnabled}`);
+  console.log(
+    `research_delegations: ${result.implementation?.researchDelegations.length ?? 0}`,
+  );
   console.log(
     `plan: ${result.plan ? `${result.plan.steps.length} steps` : "(none)"}`,
   );
@@ -655,7 +674,7 @@ function printContextMetrics(metrics: ContextRunMetrics): void {
   if (metrics.tokenUsage) {
     const usage = metrics.tokenUsage;
     console.log(
-      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; planner in=${usage.plannerInputTokens ?? "n/a"} out=${usage.plannerOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"}; repair in=${usage.repairInputTokens ?? "n/a"} out=${usage.repairOutputTokens ?? "n/a"}; review in=${usage.reviewInputTokens ?? "n/a"} out=${usage.reviewOutputTokens ?? "n/a"}; review_repair in=${usage.reviewRepairInputTokens ?? "n/a"} out=${usage.reviewRepairOutputTokens ?? "n/a"})`,
+      `tokens: in=${usage.totalInputTokens ?? "n/a"} out=${usage.totalOutputTokens ?? "n/a"} (spec in=${usage.specInputTokens ?? "n/a"} out=${usage.specOutputTokens ?? "n/a"}; planner in=${usage.plannerInputTokens ?? "n/a"} out=${usage.plannerOutputTokens ?? "n/a"}; impl in=${usage.implInputTokens ?? "n/a"} out=${usage.implOutputTokens ?? "n/a"}; research in=${usage.researchInputTokens ?? "n/a"} out=${usage.researchOutputTokens ?? "n/a"}; repair in=${usage.repairInputTokens ?? "n/a"} out=${usage.repairOutputTokens ?? "n/a"}; review in=${usage.reviewInputTokens ?? "n/a"} out=${usage.reviewOutputTokens ?? "n/a"}; review_repair in=${usage.reviewRepairInputTokens ?? "n/a"} out=${usage.reviewRepairOutputTokens ?? "n/a"})`,
     );
   }
 }
@@ -1274,6 +1293,7 @@ function baseResult(fields: {
     tokenUsage: TokenUsageSummary | null;
   };
   planningEnabled: boolean;
+  subagentsEnabled: boolean;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
   contextPreparation: ContextPreparation | null;
@@ -1311,6 +1331,23 @@ function baseResult(fields: {
     (item) => item.tokenUsage,
   );
 
+  const researchDelegations = implementation?.researchDelegations ?? [];
+  const researchTokenUsage = researchDelegations.map(
+    (item) => item.childTokenUsage,
+  );
+  const researchTurns = researchDelegations.reduce(
+    (sum, item) => sum + item.childTurns,
+    0,
+  );
+  const researchModelCalls = researchDelegations.reduce(
+    (sum, item) => sum + item.childModelCalls,
+    0,
+  );
+  const researchToolCalls = researchDelegations.reduce(
+    (sum, item) => sum + item.childToolCalls,
+    0,
+  );
+
   const contextMetrics: ContextRunMetrics = {
     mode: fields.contextMode,
     preparation: fields.contextPreparation,
@@ -1323,6 +1360,7 @@ function baseResult(fields: {
       fields.specPhase.tokenUsage,
       fields.plannerPhase.tokenUsage,
       implementation?.tokenUsage ?? null,
+      ...researchTokenUsage,
       ...repairTokenUsage,
       ...reviewTokenUsage,
       ...reviewRepairTokenUsage,
@@ -1397,16 +1435,19 @@ function baseResult(fields: {
     plannerModelCalls: fields.plannerPhase.modelCalls,
     plannerToolCalls: fields.plannerPhase.toolCalls,
     plannerDurationMs: fields.plannerPhase.durationMs,
+    subagentsEnabled: fields.subagentsEnabled,
     turns:
       fields.specPhase.turns +
       fields.plannerPhase.turns +
       (implementation?.turns ?? 0) +
+      researchTurns +
       repairTurns +
       reviewRepairTurns,
     modelCalls:
       fields.specPhase.modelCalls +
       fields.plannerPhase.modelCalls +
       (implementation?.modelCalls ?? 0) +
+      researchModelCalls +
       repairModelCalls +
       reviewModelCalls +
       reviewRepairModelCalls,
@@ -1414,6 +1455,7 @@ function baseResult(fields: {
       fields.specPhase.toolCalls +
       fields.plannerPhase.toolCalls +
       (implementation?.toolCalls ?? 0) +
+      researchToolCalls +
       repairToolCalls +
       reviewToolCalls +
       reviewRepairToolCalls,
@@ -1493,6 +1535,8 @@ async function finishRun(
     plannerModelCalls: result.plannerModelCalls,
     plannerToolCalls: result.plannerToolCalls,
     plannerDurationMs: result.plannerDurationMs,
+    subagentsEnabled: result.subagentsEnabled,
+    researchDelegations: result.implementation?.researchDelegations ?? [],
     receivedTerminalResponse: result.receivedTerminalResponse,
     verificationAttempts: result.verificationAttempts,
     repairAttempts: result.repairAttempts,
