@@ -83,6 +83,7 @@ Key boundaries:
 
 - agent-as-tool ≠ outer Planner phase;
 - EvidenceReport ≠ Spec / permission / verification / success;
+- evidence provenance is harness-observed: a child may only cite paths it actually read;
 - child tools are physically restricted (`list_files` / `read_file` / `submit_evidence_report`);
 - at most one child per Worker implementation episode;
 - `subagentsEnabled=false` remains the default.
@@ -92,7 +93,7 @@ Key boundaries:
 - optional Worker capability `delegate_research({ objective, scope })`;
 - harness intercept in `runAgentLoop`;
 - bounded read-only child in the same workspace;
-- deterministic EvidenceReport admission;
+- deterministic EvidenceReport admission, including harness-observed read provenance;
 - P01 experiment `npm run benchmark:subagents`.
 
 ## Controlled experiment
@@ -111,7 +112,7 @@ Quality equal. Child never ran, so e2e movement is Worker variance, not subagent
 
 Evidence: `docs/learning/lessons/13-subagents/traces/subagents-m13-2026-08-28T12-27-46-204Z.txt`
 
-Mechanism correctness was proven separately by mocked unit tests (child cannot write/run/delegate; invalid report rejected; second call denied; parent continues).
+Mechanism correctness was proven separately by mocked unit tests (child cannot write/run/delegate; unread citations rejected; second call denied; parent continues).
 
 ## Fixed V3 regression
 
@@ -119,7 +120,7 @@ Suite: `fixed-v3-m09`. Subagents stayed off. 6/6 contracts; ISO01 PASS; SEC01 PA
 
 Evidence: `docs/learning/lessons/13-subagents/traces/2026-08-28T12-35-16-210Z.txt`
 
-Harness unit tests: 135 passed.
+Harness unit tests: 140 passed.
 
 ## Module decision (pending Topic Chat)
 

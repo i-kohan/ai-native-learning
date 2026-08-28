@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import type { HarnessConfig } from "../src/config.ts";
 import {
+  admitEvidenceReport,
   parseEvidencePayload,
   parseSubmitEvidenceReport,
   shouldEnableSubagents,
@@ -224,6 +225,83 @@ describe("EvidenceReport admission", () => {
   });
 });
 
+describe("EvidenceReport provenance", () => {
+  it("accepts a citation of a file the child actually read", () => {
+    const parsed = parseEvidencePayload(validReport());
+    assert.equal(parsed.ok, true);
+    if (!parsed.ok) {
+      return;
+    }
+    const admitted = admitEvidenceReport(parsed.value, ["src/app.ts"]);
+    assert.equal(admitted.ok, true);
+    if (admitted.ok) {
+      assert.deepEqual(admitted.value.inspectedPaths, ["src/app.ts"]);
+    }
+  });
+
+  it("rejects a citation of a file the child never read", () => {
+    const parsed = parseEvidencePayload(
+      validReport({
+        findings: [
+          {
+            claim: "Other file exists",
+            evidencePaths: ["src/other.ts"],
+          },
+        ],
+      }),
+    );
+    assert.equal(parsed.ok, true);
+    if (!parsed.ok) {
+      return;
+    }
+    const admitted = admitEvidenceReport(parsed.value, ["src/app.ts"]);
+    assert.equal(admitted.ok, false);
+    if (!admitted.ok) {
+      assert.match(admitted.error, /not read/);
+      assert.match(admitted.error, /src\/other\.ts/);
+    }
+  });
+
+  it("replaces model-supplied inspectedPaths with harness-observed reads", () => {
+    const parsed = parseEvidencePayload(
+      validReport({ inspectedPaths: ["src/other.ts"] }),
+    );
+    assert.equal(parsed.ok, true);
+    if (!parsed.ok) {
+      return;
+    }
+    const admitted = admitEvidenceReport(parsed.value, ["src/app.ts"]);
+    assert.equal(admitted.ok, true);
+    if (admitted.ok) {
+      assert.deepEqual(admitted.value.inspectedPaths, ["src/app.ts"]);
+      assert.equal(
+        admitted.value.findings[0].evidencePaths.includes("src/other.ts"),
+        false,
+      );
+    }
+  });
+
+  it("treats equivalent path forms as the same observed read", () => {
+    const parsed = parseEvidencePayload(
+      validReport({
+        findings: [
+          {
+            claim: "Priority lives on Task",
+            evidencePaths: ["target-app/src/tasks/types.ts"],
+          },
+        ],
+        inspectedPaths: ["tasks/types.ts"],
+      }),
+    );
+    assert.equal(parsed.ok, true);
+    if (!parsed.ok) {
+      return;
+    }
+    const admitted = admitEvidenceReport(parsed.value, ["src/tasks/types.ts"]);
+    assert.equal(admitted.ok, true);
+  });
+});
+
 describe("bounded research delegation", () => {
   it("runs the child in the parent workspace and lets the parent continue after a valid report", async () => {
     const config = tempConfig();
@@ -270,6 +348,7 @@ describe("bounded research delegation", () => {
     assert.equal(delegation.outcome, "accepted");
     assert.equal(delegation.workspaceRoot, config.repoRoot);
     assert.ok(delegation.inspectedPaths.readFiles.includes("src/app.ts"));
+    assert.deepEqual(delegation.report?.inspectedPaths, ["src/app.ts"]);
     assert.equal(delegation.report?.findings.length, 1);
     assert.match(create.requests[2].instructions, /read-only/i);
     assert.deepEqual(toolNames(create.requests[0]).slice(-1), [
@@ -297,6 +376,63 @@ describe("bounded research delegation", () => {
     assert.equal(result.receivedTerminalResponse, true);
     assert.equal(result.modelCalls, 3);
     assert.equal(delegation.childModelCalls, 2);
+  });
+
+  it("rejects an unread evidence path and accepts a corrected report", async () => {
+    const config = tempConfig();
+    const create = scriptedCreate([
+      {
+        id: "parent_delegate",
+        output: [
+          functionCall("d1", "delegate_research", {
+            objective: "Where is the marker constant?",
+            scope: "src/app.ts",
+          }),
+        ],
+      },
+      {
+        id: "child_read",
+        output: [functionCall("c1", "read_file", { path: "src/app.ts" })],
+      },
+      {
+        id: "child_bad_report",
+        output: [
+          functionCall(
+            "c2",
+            "submit_evidence_report",
+            validReport({
+              findings: [
+                {
+                  claim: "unread file",
+                  evidencePaths: ["src/other.ts"],
+                },
+              ],
+              inspectedPaths: ["src/other.ts"],
+            }),
+          ),
+        ],
+      },
+      {
+        id: "child_good_report",
+        output: [functionCall("c3", "submit_evidence_report", validReport())],
+      },
+      terminal("used corrected evidence"),
+    ]);
+
+    const result = await runAgentLoop({
+      config,
+      task: "inspect then implement",
+      runId: "unread-citation",
+      subagentsEnabled: true,
+      responsesCreate: create,
+    });
+
+    assert.equal(result.researchDelegations[0]?.outcome, "accepted");
+    assert.deepEqual(result.researchDelegations[0]?.report?.inspectedPaths, [
+      "src/app.ts",
+    ]);
+    assert.match(JSON.stringify(create.requests[3].input), /not read/);
+    assert.equal(result.receivedTerminalResponse, true);
   });
 
   it("returns invalid EvidenceReport as a child failure and still continues the parent", async () => {
@@ -354,6 +490,10 @@ describe("bounded research delegation", () => {
         ],
       },
       {
+        id: "child_read",
+        output: [functionCall("c0", "read_file", { path: "src/app.ts" })],
+      },
+      {
         id: "child_report",
         output: [functionCall("c1", "submit_evidence_report", validReport())],
       },
@@ -385,7 +525,7 @@ describe("bounded research delegation", () => {
     const childRequests = create.requests.filter((request) =>
       toolNames(request).includes("submit_evidence_report"),
     );
-    assert.equal(childRequests.length, 1);
+    assert.equal(childRequests.length, 2);
   });
 
   it("uses the same model as the Worker", () => {

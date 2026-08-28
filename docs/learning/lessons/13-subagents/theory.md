@@ -59,6 +59,15 @@ submit_evidence_report
 
 Budget is also harness-owned: one parent call, small child turn limit, no descendants.
 
+Evidence provenance is harness-observed:
+
+```text
+finding.evidencePaths ⊆ actual child read_file paths
+inspectedPaths = DiscoveryTracker reads
+```
+
+A child may only cite paths it actually read. The harness does not try to prove that a semantic claim is true.
+
 ## 4. Adoption is an end-to-end question
 
 A correct EvidenceReport proves the mechanism.
@@ -78,5 +87,6 @@ Do not force delegation to manufacture an ROI comparison.
 - Subagent ≠ extra authority.
 - Nested research ≠ Planner.
 - Typed handoff beats conversation replay.
+- Evidence provenance is harness-observed: a child may only cite paths it actually read.
 - Optional capability that is never used is still evidence.
 - Mechanism correctness ≠ adoption.

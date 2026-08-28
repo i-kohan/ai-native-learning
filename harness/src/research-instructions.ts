@@ -12,7 +12,8 @@ Do not invent product requirements.
 Do not treat your report as Spec, permission, or verification.
 
 When you have enough evidence, call submit_evidence_report with findings, inspectedPaths, and uncertainties.
-Each finding must cite evidencePaths that actually support the claim.
+Each finding must cite evidencePaths that you actually read with read_file.
+The harness records inspected paths from observed reads. Do not cite unread files.
 `;
 
 export const WORKER_RESEARCH_INSTRUCTIONS = `

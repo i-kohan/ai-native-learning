@@ -73,7 +73,7 @@ export const SUBMIT_EVIDENCE_REPORT_TOOL = {
               type: "array",
               items: { type: "string" },
               description:
-                "Workspace-relative paths that support the claim. Provenance only, not an edit allowlist.",
+                "Workspace-relative paths that support the claim. Must be files actually read with read_file.",
             },
           },
           required: ["claim", "evidencePaths"],
@@ -83,7 +83,8 @@ export const SUBMIT_EVIDENCE_REPORT_TOOL = {
       inspectedPaths: {
         type: "array",
         items: { type: "string" },
-        description: "Workspace-relative paths the child actually inspected.",
+        description:
+          "Hint only. The harness overwrites this with observed read_file paths.",
       },
       uncertainties: {
         type: "array",
@@ -212,8 +213,8 @@ export function formatResearchHandoff(options: {
     "## Output contract",
     EVIDENCE_AUTHORITY_RULE,
     "Call submit_evidence_report with findings, inspectedPaths, and uncertainties.",
-    "Each finding needs a claim and evidencePaths that actually support it.",
-    "inspectedPaths is provenance for what you looked at, not an edit allowlist.",
+    "Each finding needs a claim and evidencePaths that you actually read with read_file.",
+    "The harness records inspectedPaths from observed reads. You cannot cite a file you did not read.",
   ];
 
   if (options.repositoryMap) {
@@ -230,6 +231,32 @@ export function formatEvidenceObservation(report: EvidenceReport): string {
     "",
     JSON.stringify(report, null, 2),
   ].join("\n");
+}
+
+export function admitEvidenceReport(
+  report: EvidenceReport,
+  observedReadPaths: string[],
+): ParseEvidenceResult {
+  const observed = new Set(observedReadPaths.map(normalizeEvidencePath));
+  for (let index = 0; index < report.findings.length; index += 1) {
+    const prefix = `findings[${index}].evidencePaths`;
+    for (const cited of report.findings[index].evidencePaths) {
+      if (!observed.has(normalizeEvidencePath(cited))) {
+        return {
+          ok: false,
+          error: `${prefix} cites a path that was not read: ${cited}`,
+        };
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    value: {
+      ...report,
+      inspectedPaths: uniqueSorted(observedReadPaths),
+    },
+  };
 }
 
 export function evidencePathsOf(report: EvidenceReport): string[] {
@@ -343,7 +370,7 @@ function parseStringArray(
   return { ok: true, value: items };
 }
 
-function normalizeEvidencePath(value: string): string {
+export function normalizeEvidencePath(value: string): string {
   return value
     .replace(/\\/g, "/")
     .replace(/^(\.\/)+/, "")

@@ -15,6 +15,7 @@ import {
 import {
   RESEARCH_CHILD_MAX_TURNS,
   SUBMIT_EVIDENCE_REPORT_TOOL,
+  admitEvidenceReport,
   formatEvidenceObservation,
   formatResearchHandoff,
   parseSubmitEvidenceReport,
@@ -227,9 +228,22 @@ export async function runResearchSubagent(options: {
           typeof text === "string" ? text : "",
         );
         if (parsed.ok) {
-          report = parsed.value;
-          modelFinalResponse = text || "(structured report from terminal text)";
-          break;
+          const admitted = admitEvidenceReport(
+            parsed.value,
+            discovery.toInspectedPaths().readFiles,
+          );
+          if (admitted.ok) {
+            report = admitted.value;
+            modelFinalResponse =
+              text || "(structured report from terminal text)";
+            break;
+          }
+          modelFinalResponse = admitted.error;
+          input.push({
+            role: "user",
+            content: admitted.error,
+          });
+          continue;
         }
         modelFinalResponse = text || "(empty research-child response)";
         input.push({
@@ -261,6 +275,46 @@ export async function runResearchSubagent(options: {
           discovery.record(call.name, call.arguments, "spec");
         }
 
+        if (call.name === "submit_evidence_report") {
+          const admitted =
+            result.report === null
+              ? { ok: false as const, error: result.output }
+              : admitEvidenceReport(
+                  result.report,
+                  discovery.toInspectedPaths().readFiles,
+                );
+          const output = admitted.ok
+            ? formatEvidenceObservation(admitted.value)
+            : admitted.error;
+          tracer.record(
+            "research_child_tool_result",
+            {
+              tool: call.name,
+              callId: call.call_id,
+              ok: admitted.ok,
+              durationMs: Date.now() - toolStarted,
+              outputPreview: truncate(output, 4000),
+            },
+            turns,
+          );
+          if (!admitted.ok) {
+            input.push({
+              type: "function_call_output",
+              call_id: call.call_id,
+              output,
+            });
+            continue;
+          }
+          report = admitted.value;
+          modelFinalResponse = `submit_evidence_report:${report.findings.length}`;
+          input.push({
+            type: "function_call_output",
+            call_id: call.call_id,
+            output,
+          });
+          break;
+        }
+
         tracer.record(
           "research_child_tool_result",
           {
@@ -272,17 +326,6 @@ export async function runResearchSubagent(options: {
           },
           turns,
         );
-
-        if (call.name === "submit_evidence_report" && result.report) {
-          report = result.report;
-          modelFinalResponse = `submit_evidence_report:${report.findings.length}`;
-          input.push({
-            type: "function_call_output",
-            call_id: call.call_id,
-            output: result.output,
-          });
-          break;
-        }
 
         input.push({
           type: "function_call_output",

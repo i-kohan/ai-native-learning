@@ -13,7 +13,7 @@ VARIANT:  Spec → Worker with optional delegate_research → at most one read-o
 
 Это **agent-as-tool**, не новый outer phase как Planner.
 
-- `harness/src/evidence.ts` — `EvidenceReport` schema, admission, `delegate_research` / `submit_evidence_report`
+- `harness/src/evidence.ts` — `EvidenceReport` schema, provenance admission, `delegate_research` / `submit_evidence_report`
 - `harness/src/research-subagent.ts` — отдельный read-only child episode в том же workspace
 - `harness/src/loop.ts` — harness intercept `delegate_research`; бюджет 1 вызов
 - `subagentsEnabled=false` по умолчанию; default tools не меняются
@@ -29,12 +29,15 @@ VARIANT:  Spec → Worker with optional delegate_research → at most one read-o
 
 ## Mechanism tests
 
-Harness unit suite: **135 passed**.
+Harness unit suite: **140 passed**.
 
 Covered without LLM:
 
 - child cannot `write_file` / `run_command` / `delegate_research`
 - invalid EvidenceReport rejected
+- unread `evidencePaths` rejected; child may correct within the existing turn budget
+- lying `inspectedPaths` replaced with observed `read_file` paths
+- equivalent path forms do not false-reject
 - second delegation denied
 - child uses parent workspace
 - parent continues after a valid report
@@ -53,6 +56,8 @@ EvidenceReport = advice/evidence
 ```
 
 Child не получает Worker history. Outer harness по-прежнему владеет lifecycle.
+
+Evidence provenance is harness-observed: a child may only cite paths it actually read. `inspectedPaths` is overwritten from DiscoveryTracker, not from the model.
 
 ## Controlled P01 experiment
 
