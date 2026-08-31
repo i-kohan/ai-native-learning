@@ -658,17 +658,11 @@ function hasGenuineReviewSurfaces(variant: DecompositionArmReport): boolean {
 
 function ownsP02Capability(acceptance: string): boolean {
   const text = acceptance.toLowerCase();
-  if (isExistingBehaviorCriterion(text)) {
-    return true;
-  }
-  if (
-    text.includes("patch") &&
-    !mentionsCreate(text) &&
-    !mentionsPreserve(text)
-  ) {
-    return false;
-  }
-  return mentionsCreate(text) || mentionsPreserve(text);
+  return (
+    isExistingBehaviorCriterion(text) ||
+    mentionsCreate(text) ||
+    mentionsLifecycleDueAtPreservation(text)
+  );
 }
 
 function ownsP02Mutation(acceptance: string): boolean {
@@ -702,15 +696,15 @@ function mentionsCreate(text: string): boolean {
   );
 }
 
-function mentionsPreserve(text: string): boolean {
-  return (
-    text.includes("complete") ||
-    text.includes("reopen") ||
+function mentionsLifecycleDueAtPreservation(text: string): boolean {
+  const mentionsLifecyclePair = text.includes("complet") && text.includes("reopen");
+  const mentionsDueAt = text.includes("dueat") || text.includes("due date");
+  const mentionsPreservation =
     text.includes("preserve") ||
-    text.includes("retain dueat") ||
-    text.includes("survive complete") ||
-    text.includes("due dates survive")
-  );
+    text.includes("retain") ||
+    text.includes("unchanged") ||
+    text.includes("survive");
+  return mentionsLifecyclePair && mentionsDueAt && mentionsPreservation;
 }
 
 function isExistingBehaviorCriterion(text: string): boolean {

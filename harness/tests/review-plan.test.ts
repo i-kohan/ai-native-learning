@@ -272,7 +272,7 @@ describe("manual P02 ReviewPlan binding", () => {
     );
   });
 
-  it("covers a real P02 Spec.acceptance list with shared complete/reopen/overdue ownership", () => {
+  it("covers a real P02 Spec.acceptance list with precise and shared ownership", () => {
     const spec = sampleSpec(VARIANT1_ACCEPTANCE);
     const bound = bindP02ReviewPlan(spec);
     assert.equal(bound.ok, true);
@@ -280,17 +280,37 @@ describe("manual P02 ReviewPlan binding", () => {
       return;
     }
     const byId = new Map(bound.value.units.map((unit) => [unit.id, unit]));
+    const patch = VARIANT1_ACCEPTANCE[3];
+    const overdueOnly = VARIANT1_ACCEPTANCE[4];
     const shared = VARIANT1_ACCEPTANCE[5];
+
     assert.equal(byId.get("A")?.acceptanceRefs.includes(shared), true);
     assert.equal(byId.get("C")?.acceptanceRefs.includes(shared), true);
-    assert.equal(
-      byId.get("B")?.acceptanceRefs.includes(VARIANT1_ACCEPTANCE[3]),
-      true,
-    );
-    assert.equal(
-      byId.get("A")?.acceptanceRefs.includes(VARIANT1_ACCEPTANCE[3]),
-      false,
-    );
+    assert.equal(byId.get("B")?.acceptanceRefs.includes(shared), false);
+
+    assert.equal(byId.get("B")?.acceptanceRefs.includes(patch), true);
+    assert.equal(byId.get("A")?.acceptanceRefs.includes(patch), false);
+
+    assert.equal(byId.get("C")?.acceptanceRefs.includes(overdueOnly), true);
+    assert.equal(byId.get("A")?.acceptanceRefs.includes(overdueOnly), false);
+  });
+
+  it("does not treat completed-overdue wording as lifecycle preservation", () => {
+    const overdueOnly =
+      "Completed tasks are excluded from GET /tasks?due=overdue results.";
+    const spec = sampleSpec([
+      "A task created without dueAt is returned with dueAt null.",
+      "PATCH /tasks/:id/due-date updates dueAt.",
+      overdueOnly,
+    ]);
+    const bound = bindP02ReviewPlan(spec);
+    assert.equal(bound.ok, true);
+    if (!bound.ok) {
+      return;
+    }
+    const byId = new Map(bound.value.units.map((unit) => [unit.id, unit]));
+    assert.equal(byId.get("A")?.acceptanceRefs.includes(overdueOnly), false);
+    assert.equal(byId.get("C")?.acceptanceRefs.includes(overdueOnly), true);
   });
 
   it("keeps ReviewPlan advisory and UnitExecutionScope harness-owned", () => {

@@ -2,7 +2,7 @@
 
 Практический журнал Module 14. Conceptual material: [`theory.md`](./theory.md). Принятие — Topic Chat / Master.
 
-**Status:** mechanism + correction + two P02 experiments + first fixed regression done; **not** accepted by Master.
+**Status:** mechanism + correction + two P02 experiments + post-review ownership cleanup done; **not** accepted by Master.
 
 ## Что построили
 
@@ -16,7 +16,7 @@ VARIANT:  Spec → manual advisory ReviewPlan → UnitExecutionScope per episode
 - `benchmarks/P02/` — due dates
 - `harness/src/review-plan.ts` — schema, admission, `UnitExecutionScope`, handoff
 - `harness/src/run.ts` — sequential unit Workers; failed scoped verify stops later units
-- `harness/src/decomposition-experiment.ts` — P02 `owns()` bind + decision rule
+- `harness/src/decomposition-experiment.ts` — P02 semantic ownership bind + decision rule
 - `npm run benchmark:decomposition`
 - Default unchanged: Spec → one Worker. No LLM Review Planner.
 
@@ -24,7 +24,7 @@ VARIANT:  Spec → manual advisory ReviewPlan → UnitExecutionScope per episode
 
 1. `harness/src/review-plan.ts` — Spec / ReviewPlan / UnitExecutionScope; coverage; shared ownership.
 2. `harness/src/run.ts` — real unit diffs; intermediate VERIFY is a hard gate.
-3. `harness/src/decomposition-experiment.ts` — explicit `owns()` mapping; cost does not auto-reject.
+3. `harness/src/decomposition-experiment.ts` — P02 ownership mapping; cost does not auto-reject.
 4. `benchmarks/P02/` — task + three unit test files.
 5. First experiment: `traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
 6. Corrected experiment: `traces/decomposition-m14-corrected-2026-08-31T12-13-58-044Z.txt`
@@ -45,8 +45,11 @@ No `likelyFiles`.
 
 - A: create/default/invalid `dueAt`, complete/reopen preserve `dueAt`
 - B: PATCH set/clear / 400 / 404
-- C: `due=overdue` + status composition
-- Shared: complete/reopen + reopened overdue appears in overdue; existing tests may attach to all units
+- C: `due=overdue` + completed exclusion + status composition
+- Shared A+C: lifecycle preservation criterion that also states reopened overdue behavior
+- Existing-regression criteria may attach to all units because every intermediate state must preserve them
+
+Ownership is semantic, not substring-by-file or winner-takes-all. In particular, the word `completed` inside an overdue-only criterion must **not** make that criterion belong to A.
 
 ## First P02 experiment (keep)
 
@@ -71,12 +74,12 @@ Evidence: `traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
 
 1. Split ReviewPlan (advisory) from `UnitExecutionScope` (harness-owned episode control).
 2. Failed intermediate scoped VERIFY stops later units (`unit_verification_failed`); final full VERIFY still runs.
-3. Explicit `owns()` mapping; shared AC is valid; unmapped coverage fails bind.
+3. Shared AC ownership is valid; unmapped coverage fails bind.
 4. Decision: worse quality / invalid intermediate → reject; empty later diffs → `mechanism_failed`; equal quality + real A/B/C diffs → `candidate_pending_human_review` even if more expensive. No auto-adopt.
 
 ## Corrected P02 experiment
 
-Same 3×3, model, `contextMode=variant`, `conversationStateMode=manual`. Harness suite: **159 passed**. Contaminated: **0**.
+Same 3×3, model, `contextMode=variant`, `conversationStateMode=manual`. Harness suite at that run: **159 passed**. Contaminated: **0**.
 
 | Arm      | expected | first VERIFY | repairs | model/tools avg | tokens in/out avg | wall avg |
 | -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
@@ -91,7 +94,7 @@ Blocking review findings: 0. Intermediate unit VERIFY: 3/3 PASS. Empty unit diff
 | 2 | types+service+routes, 220 | routes+service, 270 | routes, 211 |
 | 3 | types+service+routes, 221 | routes+service, 266 | routes+service, 294 |
 
-Scope was respected in source: A added `dueAt` create/types only (no PATCH route, no overdue filter). B added PATCH. C added `due=overdue`. A’s `acceptanceRefs` still over-attached some overdue criteria (`complete` matching `completed`); execution followed `UnitExecutionScope`, not those extra refs.
+Scope was respected in source: A added `dueAt` create/types only (no PATCH route, no overdue filter). B added PATCH. C added `due=overdue`.
 
 Decision: **`candidate_pending_human_review`**. Default stays Spec → one Worker.
 
@@ -102,6 +105,31 @@ Human review reports:
 - `traces/P02-decomp-v2-variant-3-2026-08-31T12-22-03-621Z.review-units.md`
 
 Evidence: `traces/decomposition-m14-corrected-2026-08-31T12-13-58-044Z.txt`
+
+## Post-review ownership cleanup
+
+Topic Chat found one metadata bug after the corrected run: A's historical `acceptanceRefs` over-attached some overdue-only criteria because the matcher treated `complete` inside `completed` as lifecycle-preservation evidence.
+
+Current binding now requires all three signals before A owns lifecycle preservation:
+
+```text
+complete/completion + reopen
++ dueAt/due-date reference
++ preservation meaning (preserve / retain / unchanged / survive)
+```
+
+Therefore:
+
+- `completed tasks are excluded from overdue results` → C only;
+- `complete and reopen retain dueAt, and reopening overdue appears in results` → A + C;
+- PATCH remains B;
+- create/default/validation remains A.
+
+Focused regression tests cover the real resolved-P02 wording and the `completed` false-positive case.
+
+This cleanup changes ReviewPlan bookkeeping only. It does **not** change the already-recorded Worker source diffs, verification results, costs, or `candidate_pending_human_review` decision. Historical trace/review-report artifacts are intentionally preserved unchanged, so their old `acceptanceRefs` remain evidence of what the run actually emitted.
+
+No new P02 benchmark or fixed-suite rerun is claimed for this post-review bookkeeping cleanup.
 
 ## Fixed V3 regression
 

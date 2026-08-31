@@ -54,6 +54,8 @@ After each unit: scoped verification is a hard gate; a FAIL stops later units. F
 
 No stacked PRs, DAG scheduler, parallel workers, or LLM Review Planner in this probe. The ReviewPlan is bound manually to the resolved Spec. Shared Spec.acceptance ownership is valid; missing coverage is not.
 
+Acceptance ownership itself must be semantic. A criterion may legitimately belong to multiple units when it spans a dependency boundary, but incidental wording must not attach it to the wrong unit. Example: `completed tasks are excluded from overdue results` is C/query behavior, not A/lifecycle preservation merely because the word `completed` contains `complete`. Review metadata should describe the behavior actually owned by the unit.
+
 ## 4. When it can be useful
 
 Only if all of these hold:
@@ -74,11 +76,14 @@ Human reviewability is not an LLM score. Topic Chat supplies that signal. Defaul
 
 **Corrected experiment.** Same quality (3/3, first VERIFY PASS, 0 repairs). Variant still ~2× cost. With harness-owned `UnitExecutionScope`, units produced real `base..A`, `A..B`, `B..C` diffs (empty later units: 0). Intermediate VERIFY always PASS. Decision: `candidate_pending_human_review`. Not auto-adopted.
 
+**Post-review cleanup.** The corrected-run source decomposition was sound, but its historical review metadata over-attached some overdue-only acceptance criteria to A because of loose text matching. The current P02 binder narrows lifecycle ownership to actual complete/reopen + due-date preservation semantics while keeping genuinely cross-unit criteria shared A+C. Historical experiment artifacts remain unchanged.
+
 ## Takeaways (pre-review)
 
 - Decomposition is for human attention, not agent count.
 - Spec ≠ ReviewPlan ≠ UnitExecutionScope.
 - Real sequential diffs beat labeled regions of one diff.
+- Review-unit metadata must follow semantic ownership, not incidental words.
 - An advisory split does not force sequential implementation unless the harness owns episode scope.
 - Extra cost does not auto-reject when genuine review surfaces exist; Topic Chat still owns adoption.
 - `single_change` is a legitimate result.
