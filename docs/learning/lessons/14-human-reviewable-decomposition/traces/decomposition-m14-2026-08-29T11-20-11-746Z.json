@@ -1,0 +1,468 @@
+{
+  "experimentId": "m14-p02-review-decomposition",
+  "generatedAt": "2026-08-29T11:20:11.746Z",
+  "taskId": "P02",
+  "contextMode": "variant",
+  "conversationStateMode": "manual",
+  "hypothesis": "A manual advisory ReviewPlan that yields real sequential semantic unit diffs can improve human reviewability of a larger feature without becoming Spec, without parallel workers, and without becoming the default architecture.",
+  "decisionRule": "Predefined decision rule (encoded before the experiment):\n1. Decomposition is useful only if correctness is preserved.\n2. Actual units must be materially easier for a human to understand/review than the final unified diff. Topic Chat supplies that human-review signal; do not invent an LLM review score.\n3. Boundaries must be semantic rather than file-based.\n4. Dependencies must be explicit.\n5. Intermediate states must remain valid.\n6. No Spec acceptance criteria may be lost.\n7. Decomposition/integration overhead must not erase the human-review benefit.\n8. If Variant quality is worse than Baseline: reject.\n9. If intermediate unit verification fails or acceptance coverage is lost: reject.\n10. single_change remains a first-class valid outcome. P01 remains the negative example: a split can be imagined, but the workload is too small/cohesive for extra review boundaries.\n11. Do not auto-adopt. Default stays Spec → one Worker until Topic Chat accepts a human-review benefit that survives the overhead.",
+  "baseline": {
+    "id": "baseline",
+    "label": "BASELINE one Worker",
+    "decomposed": false,
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "expectedMet": 3,
+    "firstVerificationPass": 3,
+    "intermediateValid": 3,
+    "trials": [
+      {
+        "arm": "baseline",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P02-decomp-baseline-1-2026-08-29T11-20-11-747Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-baseline-1-2026-08-29T11-20-11-747Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "finalDiffLines": 277,
+          "modelCalls": 7,
+          "toolCalls": 22,
+          "inputTokens": 31328,
+          "outputTokens": 6253,
+          "wallTimeMs": 134277,
+          "reviewPlanDecision": null,
+          "unitCount": 0,
+          "units": [],
+          "intermediateValid": true,
+          "emptyUnitDiffs": 0,
+          "reviewabilityReportPath": null
+        }
+      },
+      {
+        "arm": "baseline",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P02-decomp-baseline-2-2026-08-29T11-22-26-835Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-baseline-2-2026-08-29T11-22-26-835Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "finalDiffLines": 318,
+          "modelCalls": 10,
+          "toolCalls": 25,
+          "inputTokens": 60168,
+          "outputTokens": 5226,
+          "wallTimeMs": 54629,
+          "reviewPlanDecision": null,
+          "unitCount": 0,
+          "units": [],
+          "intermediateValid": true,
+          "emptyUnitDiffs": 0,
+          "reviewabilityReportPath": null
+        }
+      },
+      {
+        "arm": "baseline",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P02-decomp-baseline-3-2026-08-29T11-23-22-207Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-baseline-3-2026-08-29T11-23-22-207Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "finalDiffLines": 310,
+          "modelCalls": 14,
+          "toolCalls": 30,
+          "inputTokens": 100174,
+          "outputTokens": 7061,
+          "wallTimeMs": 79316,
+          "reviewPlanDecision": null,
+          "unitCount": 0,
+          "units": [],
+          "intermediateValid": true,
+          "emptyUnitDiffs": 0,
+          "reviewabilityReportPath": null
+        }
+      }
+    ],
+    "contaminated": [],
+    "averages": {
+      "modelCalls": 10,
+      "toolCalls": 26,
+      "inputTokens": 63890,
+      "outputTokens": 6180,
+      "wallTimeMs": 89407,
+      "finalDiffLines": 302,
+      "verificationRepairAttempts": 0,
+      "reviewRepairAttempts": 0
+    }
+  },
+  "variant": {
+    "id": "variant",
+    "label": "VARIANT ReviewPlan units",
+    "decomposed": true,
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "expectedMet": 3,
+    "firstVerificationPass": 3,
+    "intermediateValid": 3,
+    "trials": [
+      {
+        "arm": "variant",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P02-decomp-variant-1-2026-08-29T11-24-42-308Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-variant-1-2026-08-29T11-24-42-308Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "finalDiffLines": 311,
+          "modelCalls": 22,
+          "toolCalls": 52,
+          "inputTokens": 141646,
+          "outputTokens": 8983,
+          "wallTimeMs": 101480,
+          "reviewPlanDecision": "decompose",
+          "unitCount": 3,
+          "units": [
+            {
+              "id": "A",
+              "intent": "Establish due-date capability: Task.dueAt, create/default/validation, and complete/reopen preserve dueAt.",
+              "acceptanceRefs": [
+                "A task created without dueAt is returned with dueAt null.",
+                "A task created with null or a valid date string is accepted and the exact string is returned.",
+                "Create requests with non-string non-null, empty, or unparseable dueAt values return 400 and do not create a valid task.",
+                "complete and reopen responses retain dueAt, and reopening an overdue task makes it appear in overdue results."
+              ],
+              "dependsOn": [],
+              "changedFiles": [
+                "tasks/task-routes.ts",
+                "tasks/task-service.ts",
+                "tasks/types.ts"
+              ],
+              "diffLines": 311,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 9,
+              "toolCalls": 14,
+              "deviation": null
+            },
+            {
+              "id": "B",
+              "intent": "Allow due-date mutation: PATCH set/clear, validation, and 404 for unknown tasks.",
+              "acceptanceRefs": [
+                "PATCH /tasks/:id/due-date can set a valid exact string and can clear it with null; missing/invalid payloads return 400 and unknown IDs return 404."
+              ],
+              "dependsOn": [
+                "A"
+              ],
+              "changedFiles": [],
+              "diffLines": 0,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 5,
+              "toolCalls": 12,
+              "deviation": "no source delta; work may have landed in an earlier unit or been skipped"
+            },
+            {
+              "id": "C",
+              "intent": "Add overdue querying: due=overdue, completed excluded, composition with status.",
+              "acceptanceRefs": [
+                "GET /tasks?due=overdue returns only pending tasks with parsed due times strictly earlier than now, excludes completed/no-date/future tasks, rejects invalid due values, and composes with status filtering.",
+                "Existing tests for task retrieval, status filtering, completion, reopening, and completedAt continue to pass."
+              ],
+              "dependsOn": [
+                "A"
+              ],
+              "changedFiles": [],
+              "diffLines": 0,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 4,
+              "toolCalls": 12,
+              "deviation": "no source delta; work may have landed in an earlier unit or been skipped"
+            }
+          ],
+          "intermediateValid": true,
+          "emptyUnitDiffs": 2,
+          "reviewabilityReportPath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-variant-1-2026-08-29T11-24-42-308Z.review-units.md"
+        }
+      },
+      {
+        "arm": "variant",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P02-decomp-variant-2-2026-08-29T11-26-24-552Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-variant-2-2026-08-29T11-26-24-552Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "finalDiffLines": 311,
+          "modelCalls": 21,
+          "toolCalls": 54,
+          "inputTokens": 145453,
+          "outputTokens": 10426,
+          "wallTimeMs": 111260,
+          "reviewPlanDecision": "decompose",
+          "unitCount": 3,
+          "units": [
+            {
+              "id": "A",
+              "intent": "Establish due-date capability: Task.dueAt, create/default/validation, and complete/reopen preserve dueAt.",
+              "acceptanceRefs": [
+                "A created task without dueAt returns dueAt: null.",
+                "A created task with null dueAt returns dueAt: null, and a valid date string is returned exactly as supplied.",
+                "Invalid create dueAt values (including non-null non-strings, empty strings, and Date.parse-rejected strings) return 400 and do not create a task.",
+                "Due dates survive complete and reopen, and reopening a past-due completed task causes it to appear in overdue results."
+              ],
+              "dependsOn": [],
+              "changedFiles": [
+                "tasks/task-routes.ts",
+                "tasks/task-service.ts",
+                "tasks/types.ts"
+              ],
+              "diffLines": 305,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 7,
+              "toolCalls": 16,
+              "deviation": null
+            },
+            {
+              "id": "B",
+              "intent": "Allow due-date mutation: PATCH set/clear, validation, and 404 for unknown tasks.",
+              "acceptanceRefs": [
+                "PATCH /tasks/:id/due-date sets a valid supplied string, clears with null, rejects missing/property-invalid/non-object bodies with 400, and returns 404 for unknown IDs.",
+                "All existing tests in tests/tasks.test.ts continue to pass, and due-date capability, mutation, and overdue tests pass."
+              ],
+              "dependsOn": [
+                "A"
+              ],
+              "changedFiles": [],
+              "diffLines": 0,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 4,
+              "toolCalls": 10,
+              "deviation": "no source delta; work may have landed in an earlier unit or been skipped"
+            },
+            {
+              "id": "C",
+              "intent": "Add overdue querying: due=overdue, completed excluded, composition with status.",
+              "acceptanceRefs": [
+                "GET /tasks?due=overdue returns only pending tasks with dueAt strictly earlier than the request-time current time; it excludes null-due, future, and completed tasks.",
+                "The due filter works together with status=pending and status=completed, invalid due values return 400, and omitted due returns the existing unfiltered/status-filtered result."
+              ],
+              "dependsOn": [
+                "A"
+              ],
+              "changedFiles": [
+                "tasks/task-service.ts"
+              ],
+              "diffLines": 133,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 6,
+              "toolCalls": 14,
+              "deviation": null
+            }
+          ],
+          "intermediateValid": true,
+          "emptyUnitDiffs": 1,
+          "reviewabilityReportPath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-variant-2-2026-08-29T11-26-24-552Z.review-units.md"
+        }
+      },
+      {
+        "arm": "variant",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P02-decomp-variant-3-2026-08-29T11-28-16-595Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-variant-3-2026-08-29T11-28-16-595Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "firstVerification": "PASS",
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "acceptedBlockingFindings": 0,
+          "changedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts",
+            "tasks/types.ts"
+          ],
+          "finalDiffLines": 307,
+          "modelCalls": 18,
+          "toolCalls": 38,
+          "inputTokens": 87781,
+          "outputTokens": 8021,
+          "wallTimeMs": 89871,
+          "reviewPlanDecision": "decompose",
+          "unitCount": 3,
+          "units": [
+            {
+              "id": "A",
+              "intent": "Establish due-date capability: Task.dueAt, create/default/validation, and complete/reopen preserve dueAt.",
+              "acceptanceRefs": [
+                "A task created without dueAt has dueAt equal to null.",
+                "A task created with dueAt null succeeds and returns null.",
+                "A valid non-empty parseable dueAt string succeeds and is returned byte-for-byte as supplied.",
+                "Invalid create dueAt values produce HTTP 400 and do not create a task.",
+                "Completing and reopening a dated task preserve its exact dueAt; reopening a previously completed overdue task makes it appear in overdue results again."
+              ],
+              "dependsOn": [],
+              "changedFiles": [
+                "tasks/task-routes.ts",
+                "tasks/task-service.ts",
+                "tasks/types.ts"
+              ],
+              "diffLines": 307,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 6,
+              "toolCalls": 9,
+              "deviation": null
+            },
+            {
+              "id": "B",
+              "intent": "Allow due-date mutation: PATCH set/clear, validation, and 404 for unknown tasks.",
+              "acceptanceRefs": [
+                "PATCH /tasks/:id/due-date can set a valid dueAt and can clear it with null.",
+                "PATCH requests missing dueAt, using a non-object body, or using invalid values produce HTTP 400; patching an unknown task produces HTTP 404."
+              ],
+              "dependsOn": [
+                "A"
+              ],
+              "changedFiles": [],
+              "diffLines": 0,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 5,
+              "toolCalls": 10,
+              "deviation": "no source delta; work may have landed in an earlier unit or been skipped"
+            },
+            {
+              "id": "C",
+              "intent": "Add overdue querying: due=overdue, completed excluded, composition with status.",
+              "acceptanceRefs": [
+                "GET /tasks?due=overdue returns only pending tasks with dueAt strictly earlier than now; no-due and future-due tasks are absent and completed overdue tasks are absent.",
+                "The due filter works together with status=pending and status=completed, and omitted due preserves the existing all/status-filtered results.",
+                "All existing tests for retrieval, status filtering, completion, reopening, completedAt, and title behavior continue to pass."
+              ],
+              "dependsOn": [
+                "A"
+              ],
+              "changedFiles": [],
+              "diffLines": 0,
+              "verificationPassed": true,
+              "repairAttempts": 0,
+              "modelCalls": 4,
+              "toolCalls": 8,
+              "deviation": "no source delta; work may have landed in an earlier unit or been skipped"
+            }
+          ],
+          "intermediateValid": true,
+          "emptyUnitDiffs": 2,
+          "reviewabilityReportPath": "/Users/i.kohanvs/Desktop/ai-native/traces/P02-decomp-variant-3-2026-08-29T11-28-16-595Z.review-units.md"
+        }
+      }
+    ],
+    "contaminated": [],
+    "averages": {
+      "modelCalls": 20,
+      "toolCalls": 48,
+      "inputTokens": 124960,
+      "outputTokens": 9143,
+      "wallTimeMs": 100870,
+      "finalDiffLines": 310,
+      "verificationRepairAttempts": 0,
+      "reviewRepairAttempts": 0
+    }
+  },
+  "decision": {
+    "quality": "equal",
+    "efficiency": "variant_worse",
+    "intermediateValid": true,
+    "conclusion": "reject",
+    "defaultUnchanged": true,
+    "notes": [
+      "Human reviewability is not auto-scored. Topic Chat owns that signal. Default remains single_change / one Worker."
+    ]
+  },
+  "report": "Experiment m14-p02-review-decomposition\ntask: P02\ngenerated: 2026-08-29T11:20:11.746Z\ncontextMode: variant\nconversationStateMode: manual\n\nA manual advisory ReviewPlan that yields real sequential semantic unit diffs can improve human reviewability of a larger feature without becoming Spec, without parallel workers, and without becoming the default architecture.\n\nPredefined decision rule (encoded before the experiment):\n1. Decomposition is useful only if correctness is preserved.\n2. Actual units must be materially easier for a human to understand/review than the final unified diff. Topic Chat supplies that human-review signal; do not invent an LLM review score.\n3. Boundaries must be semantic rather than file-based.\n4. Dependencies must be explicit.\n5. Intermediate states must remain valid.\n6. No Spec acceptance criteria may be lost.\n7. Decomposition/integration overhead must not erase the human-review benefit.\n8. If Variant quality is worse than Baseline: reject.\n9. If intermediate unit verification fails or acceptance coverage is lost: reject.\n10. single_change remains a first-class valid outcome. P01 remains the negative example: a split can be imagined, but the workload is too small/cohesive for extra review boundaries.\n11. Do not auto-adopt. Default stays Spec → one Worker until Topic Chat accepts a human-review benefit that survives the overhead.\n\n## BASELINE one Worker\nvalid: 3/3\nexpected: 3/3\nfirst VERIFY PASS: 3/3\nintermediate valid: 3/3\navg model/tools: 10 / 26\navg tokens in/out: 63890 / 6180\navg wall: 89407ms\navg final diff lines: 302\ntrial 1: expected=true verify=PASS calls=7 tools=22 units=0 emptyDiffs=0\ntrial 2: expected=true verify=PASS calls=10 tools=25 units=0 emptyDiffs=0\ntrial 3: expected=true verify=PASS calls=14 tools=30 units=0 emptyDiffs=0\n\n## VARIANT ReviewPlan units\nvalid: 3/3\nexpected: 3/3\nfirst VERIFY PASS: 3/3\nintermediate valid: 3/3\navg model/tools: 20 / 48\navg tokens in/out: 124960 / 9143\navg wall: 100870ms\navg final diff lines: 310\ntrial 1: expected=true verify=PASS calls=22 tools=52 units=3 emptyDiffs=2\n  A: files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts lines=311 verify=PASS dependsOn=- deviation=none\n  B: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped\n  C: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped\ntrial 2: expected=true verify=PASS calls=21 tools=54 units=3 emptyDiffs=1\n  A: files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts lines=305 verify=PASS dependsOn=- deviation=none\n  B: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped\n  C: files=tasks/task-service.ts lines=133 verify=PASS dependsOn=A deviation=none\ntrial 3: expected=true verify=PASS calls=18 tools=38 units=3 emptyDiffs=2\n  A: files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts lines=307 verify=PASS dependsOn=- deviation=none\n  B: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped\n  C: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped\n\ndecision.quality: equal\ndecision.efficiency: variant_worse\ndecision.intermediateValid: true\ndecision.conclusion: reject\ndecision.defaultUnchanged: true\n- Human reviewability is not auto-scored. Topic Chat owns that signal. Default remains single_change / one Worker."
+}

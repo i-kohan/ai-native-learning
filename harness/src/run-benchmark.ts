@@ -54,6 +54,15 @@ import {
   type SubagentsArmId,
   type SubagentsProbeAttempt,
 } from "./subagents-experiment.ts";
+import {
+  runDecompositionExperiment,
+  writeDecompositionExperimentArtifact,
+  isExpectedP02Outcome,
+  bindP02ReviewPlan,
+  P02_REVIEW_UNIT_TEMPLATES,
+  type DecompositionArmId,
+  type DecompositionProbeAttempt,
+} from "./decomposition-experiment.ts";
 import { runFinalVerification } from "./verify.ts";
 import {
   bindConfig,
@@ -76,6 +85,40 @@ export type BenchmarkRunLabel = {
   taskId: TaskId;
   contextMode: ContextMode;
 };
+
+export function prepareP02(config: HarnessConfig): {
+  task: string;
+  initialTestsPassed: boolean;
+  initialTestOutput: string;
+} {
+  restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
+  const hostP02 = path.join(REPO_ROOT, "benchmarks", "P02");
+  const taskPath = path.join(hostP02, "task.md");
+  const testFiles = [
+    "due-date-capability.test.ts",
+    "due-date-mutation.test.ts",
+    "due-overdue.test.ts",
+  ];
+  if (!fs.existsSync(taskPath)) {
+    throw new Error(`Missing P02 fixture files under ${hostP02}`);
+  }
+  const testsDir = path.join(config.targetAppRoot, "tests");
+  fs.mkdirSync(testsDir, { recursive: true });
+  for (const file of testFiles) {
+    const from = path.join(hostP02, file);
+    if (!fs.existsSync(from)) {
+      throw new Error(`Missing P02 test file: ${from}`);
+    }
+    fs.copyFileSync(from, path.join(testsDir, file));
+  }
+  const task = fs.readFileSync(taskPath, "utf8").trim();
+  const verification = runFinalVerification(config);
+  return {
+    task,
+    initialTestsPassed: verification.passed,
+    initialTestOutput: verification.output,
+  };
+}
 
 export function prepareP01(config: HarnessConfig): {
   task: string;
@@ -505,6 +548,64 @@ export async function runResearchSubagentExperiment() {
   });
 }
 
+export async function executeP02Trial(options: {
+  arm: DecompositionArmId;
+  runId: string;
+}): Promise<DecompositionProbeAttempt> {
+  return withIsolatedWorkspace(options.runId, async (config, workspace) => {
+    let fixtureApplied = false;
+    try {
+      const prep = prepareP02(config);
+      if (prep.initialTestsPassed) {
+        return {
+          fixtureApplied: false,
+          result: null,
+          error:
+            "P02: expected initial tests to FAIL after due-date tests were added, but they passed.",
+        };
+      }
+      fixtureApplied = true;
+      console.log(
+        `\n=== Preparing P02 (${options.arm}) workspace=${workspace.id} ===`,
+      );
+      console.log(
+        "initial_tests: FAIL (due-date tests added to green fixture)",
+      );
+      const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+      const result = await runV1Harness({
+        config,
+        task: prep.task,
+        runId: options.runId,
+        beforeSnapshot,
+        contextMode: "variant",
+        conversationStateMode: "manual",
+        workspace,
+        ...(options.arm === "variant"
+          ? {
+              bindReviewPlan: bindP02ReviewPlan,
+              reviewUnitTemplates: P02_REVIEW_UNIT_TEMPLATES,
+            }
+          : {}),
+      });
+      printHarnessResult(result);
+      return { fixtureApplied: true, result, error: null };
+    } catch (error) {
+      return {
+        fixtureApplied,
+        result: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+}
+
+export async function runP02DecompositionExperiment() {
+  return runDecompositionExperiment({
+    runTrial: (arm, runId) => executeP02Trial({ arm, runId }),
+    scoreExpected: isExpectedP02Outcome,
+  });
+}
+
 export async function runConversationStateExperiment() {
   return runOrchestrationExperiment({
     runTrial: async (arm: OrchestrationArmId, runId: string) =>
@@ -885,6 +986,7 @@ type CliOptions = {
   orchestrationExperiment?: boolean;
   planningExperiment?: boolean;
   subagentsExperiment?: boolean;
+  decompositionExperiment?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
@@ -925,6 +1027,21 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       subagentsExperiment: true,
+      contextMode: "variant",
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--decomposition") || argv.includes("decomposition")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      decompositionExperiment: true,
       contextMode: "variant",
       conversationStateMode,
     };
@@ -1102,6 +1219,7 @@ async function main(): Promise<void> {
     orchestrationExperiment,
     planningExperiment,
     subagentsExperiment,
+    decompositionExperiment,
     taskId,
     contextMode,
     conversationStateMode,
@@ -1147,6 +1265,20 @@ async function main(): Promise<void> {
     console.log(`\n${result.report}`);
     console.log(`\nsubagents_json: ${artifacts.jsonPath}`);
     console.log(`subagents_report: ${artifacts.reportPath}`);
+    process.exit(
+      result.baseline.validTrials === 3 && result.variant.validTrials === 3
+        ? 0
+        : 1,
+    );
+    return;
+  }
+
+  if (decompositionExperiment) {
+    const result = await runP02DecompositionExperiment();
+    const artifacts = writeDecompositionExperimentArtifact(result);
+    console.log(`\n${result.report}`);
+    console.log(`\ndecomposition_json: ${artifacts.jsonPath}`);
+    console.log(`decomposition_report: ${artifacts.reportPath}`);
     process.exit(
       result.baseline.validTrials === 3 && result.variant.validTrials === 3
         ? 0
@@ -1213,6 +1345,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark:routing");
     console.error("   or: npm run benchmark:planning");
     console.error("   or: npm run benchmark:subagents");
+    console.error("   or: npm run benchmark:decomposition");
     console.error("   or: npm run benchmark:orchestration");
     console.error("   or: npm run benchmark -- ISO01");
     console.error("   or: npm run benchmark -- SEC01");

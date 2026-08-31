@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import type { HarnessConfig } from "./config.ts";
 
@@ -12,17 +14,26 @@ export function runFinalVerification(
   config: HarnessConfig,
 ): VerificationResult {
   const started = Date.now();
-  const result = spawnNpmTest(config.targetAppRoot);
-  const stdout = result.stdout ?? "";
-  const stderr = result.stderr ?? "";
-  const output = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n");
+  return verificationFromSpawn(spawnNpmTest(config.targetAppRoot), started);
+}
 
-  return {
-    passed: result.status === 0,
-    exitCode: result.status ?? 1,
-    output,
-    durationMs: Date.now() - started,
-  };
+/**
+ * Bounded unit verification for sequential review units.
+ * Does not replace final `npm test`. Later unit test files may exist on disk
+ * and are intentionally omitted until their unit is complete.
+ */
+export function runScopedVerification(
+  config: HarnessConfig,
+  relativeTestFiles: string[],
+): VerificationResult {
+  if (relativeTestFiles.length === 0) {
+    return runFinalVerification(config);
+  }
+  const started = Date.now();
+  return verificationFromSpawn(
+    spawnTsxTest(config.targetAppRoot, relativeTestFiles),
+    started,
+  );
 }
 
 /**
@@ -35,6 +46,37 @@ export function spawnNpmTest(cwd: string): SpawnSyncReturns<string> {
     encoding: "utf8",
     env: verificationChildEnv(),
   });
+}
+
+export function spawnTsxTest(
+  cwd: string,
+  relativeTestFiles: string[],
+): SpawnSyncReturns<string> {
+  const local = path.join(cwd, "node_modules", ".bin", "tsx");
+  const command = fs.existsSync(local) ? local : "npx";
+  const args = fs.existsSync(local)
+    ? ["--test", ...relativeTestFiles]
+    : ["tsx", "--test", ...relativeTestFiles];
+  return spawnSync(command, args, {
+    cwd,
+    encoding: "utf8",
+    env: verificationChildEnv(),
+  });
+}
+
+function verificationFromSpawn(
+  result: SpawnSyncReturns<string>,
+  started: number,
+): VerificationResult {
+  const stdout = result.stdout ?? "";
+  const stderr = result.stderr ?? "";
+  const output = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n");
+  return {
+    passed: result.status === 0,
+    exitCode: result.status ?? 1,
+    output,
+    durationMs: Date.now() - started,
+  };
 }
 
 /**

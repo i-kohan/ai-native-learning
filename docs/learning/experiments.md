@@ -1610,4 +1610,80 @@ Mechanism supported: Worker can request one bounded read-only child; the harness
 
 On this P01 probe the predefined rule does **not** adopt Subagents: quality equal, child unused, e2e noisy, workload too small for an ROI claim.
 
-Module 13 experiment recorded; module is **not** complete. Topic Chat still owns formal closure.
+Module 13 experiment recorded. Formally closed by Master. Default remains `subagentsEnabled=false`.
+
+---
+
+## Module 14 — Human-reviewable decomposition (P02)
+
+### Hypothesis
+
+A manual advisory ReviewPlan that yields real sequential semantic unit diffs can improve human reviewability of a larger feature without becoming Spec, without parallel workers, and without becoming the default architecture.
+
+### Baseline
+
+```text
+Spec → one Worker → VERIFY / REVIEW → final unified diff
+```
+
+### Variant
+
+```text
+Spec → harness-bound advisory ReviewPlan (no LLM Review Planner)
+→ sequential Workers A → B → C
+→ scoped unit verification after each unit
+→ final VERIFY / independent REVIEW
+→ final unified diff plus per-unit diffs
+```
+
+Same model, `contextMode=variant`, `conversationStateMode=manual`, isolated worktrees, same VERIFY/REVIEW budgets.
+
+Task P02: optional due dates (create/default/validation, PATCH, overdue query, complete/reopen preserve). Larger than P01, still one feature.
+
+Contaminated: **0**. First Spec-only attempt (ambiguous date grammar / PATCH omitted body) was aborted and the task was tightened; the recorded experiment uses the tightened contract.
+
+### Results
+
+| Arm     | expected | first VERIFY | repairs | model/tools avg | tokens in/out avg | wall avg | unit empty diffs |
+| ------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- | ---------------- |
+| baseline | 3/3     | 3/3 PASS     | 0 / 0   | 10 / 26         | 63.9k / 6.2k      | ~89s     | n/a              |
+| variant  | 3/3     | 3/3 PASS     | 0 / 0   | 20 / 48         | 125.0k / 9.1k     | ~101s    | 2, 1, 2          |
+
+Quality equal. Intermediate unit verification always PASS. Variant ~2× model calls / tokens.
+
+Actual unit surfaces:
+
+- A always carried the full feature (`types` + `service` + `routes`, ~305–311 diff lines).
+- B was empty in 3/3.
+- C was empty in 2/3; trial 2 had a leftover `task-service.ts` slice (133 lines).
+
+So the proposed semantic split did not produce three reviewable sequential diffs. Unit A was essentially the baseline change; B/C were extra episodes over already-complete code.
+
+Predefined rule → **reject** for this workload. `single_change` / one Worker remains the default.
+
+Human reviewability is not auto-scored; Topic Chat can still inspect the unit artifacts. The mechanism evidence already shows the extra review boundary did not materialize.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
+
+### Failures / unexpected behavior
+
+None against quality. The important deviation is **front-loaded implementation**: given the full Spec, Worker A implemented later units. Scoped tests for A do not forbid that. That is a ReviewPlan/execution coupling finding, not a VERIFY miss.
+
+Module 14 experiment recorded; **not** accepted by Master.
+
+### Fixed V3 regression after the probe
+
+`docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-29T11-33-40-045Z.txt`  
+Suite label remains `fixed-v3-m09`. Review decomposition stayed off.
+
+```text
+T01–T04 expected outcomes   4 / 4
+Executable first-pass       3 / 3
+Correct escalation T04      1 / 1
+R01 verification repair     PASS
+REV01 independent review    PASS
+All fixed V3 contracts      6 / 6
+ISO01                       PASS
+SEC01                       PASS
+Hard regressions            none
+```

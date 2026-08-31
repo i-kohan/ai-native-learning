@@ -16,8 +16,9 @@ Completed modules:
 10. ✅ 10 — Model Routing
 11. ✅ 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
 12. ✅ 12 — Planner / Worker / Reviewer
+13. ✅ 13 — Subagents
 
-Current module: **13 — Subagents** (mechanism probe in progress; not adopted; default architecture unchanged).
+Current module: **14 — Human-Reviewable Decomposition** (mechanism probe in progress; not adopted; default architecture unchanged).
 
 ---
 
@@ -34,7 +35,8 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - deterministic harness-owned model routing through `resolveModel(episode, config)`; current normal policy keeps all episodes on `gpt-5.6-luna`;
 - optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`; default remains manual full-history replay because the Module 11 efficiency/adoption criterion was inconclusive;
 - optional explicit read-only Planner mechanism exists behind `planningEnabled`, but remains off by default because Module 12 P01 showed equal quality with worse end-to-end cost;
-- optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. This is a Module 13 mechanism probe, not a change to the normal lifecycle.
+- optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. Module 13 mechanism probe, not a change to the normal lifecycle;
+- optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Default remains one Worker.
 
 Conceptual default flow:
 
@@ -58,7 +60,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 13 — Subagents (bounded research child)
 
-**Status:** mechanism implemented and measured; **not complete**. Topic Chat still owns review, theory, and formal closure. Default architecture is unchanged.
+**Status:** ✅ COMPLETED — formally accepted by Master. Mechanism implemented and measured. Default architecture unchanged (`subagentsEnabled=false`). P01 ROI inconclusive; natural Workers did not delegate (0/3).
 
 Theory draft:
 
@@ -120,14 +122,85 @@ Suite: `fixed-v3-m09`. Subagents stayed off. 6/6 contracts; ISO01 PASS; SEC01 PA
 
 Evidence: `docs/learning/lessons/13-subagents/traces/2026-08-28T12-35-16-210Z.txt`
 
-Harness unit tests: 140 passed.
+Harness unit tests: 140 passed (at Module 13 closure).
 
-## Module decision (pending Topic Chat)
+## Module decision
 
 ```text
 research-child mechanism = implemented and understood
 natural P01 adoption     = not justified / ROI inconclusive
 normal default           = Spec → Worker, subagentsEnabled=false
+```
+
+Formally closed by Master. Do not reopen.
+
+---
+
+# Module 14 — Human-Reviewable Decomposition
+
+**Status:** mechanism implemented and measured; **not** accepted by Master. Topic Chat owns the human-review signal and acceptance.
+
+Theory draft:
+
+`docs/learning/lessons/14-human-reviewable-decomposition/theory.md`
+
+Practical notes/evidence:
+
+`docs/learning/lessons/14-human-reviewable-decomposition/notes.md`
+
+## Learning-critical model
+
+```text
+Spec
+→ [optional] advisory ReviewPlan (manual in this probe)
+→ sequential semantic units with real source diffs
+→ final VERIFY / independent REVIEW
+```
+
+Key boundaries:
+
+- task decomposition ≠ agent decomposition;
+- file decomposition ≠ semantic decomposition;
+- ReviewPlan ≠ Spec / permission / success;
+- `single_change` is first-class;
+- no stacked PRs, parallel workers, or LLM Review Planner in this probe.
+
+## Built
+
+- P02 due-date benchmark;
+- ReviewPlan / ChangeUnit schema + admission;
+- sequential unit snapshots and scoped verification;
+- `npm run benchmark:decomposition`.
+
+## Controlled experiment
+
+Task: P02  
+Context: `contextMode=variant`, `conversationStateMode=manual`  
+Trials: 3 valid per arm. Contaminated: none.
+
+| Arm      | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
+| BASELINE | 3/3      | 3/3 PASS     | 0 / 0   | 10 / 26         | 63,890 / 6,180    | ~89s     |
+| VARIANT  | 3/3      | 3/3 PASS     | 0 / 0   | 20 / 48         | 124,960 / 9,143   | ~101s    |
+
+Quality equal. Intermediate units always PASS. Variant ~2× calls/tokens. Actual diffs: A absorbed the full change; B empty 3/3; C empty 2/3. Predefined rule → **reject**. Default stays Spec → one Worker.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
+
+Harness unit tests: 152 passed.
+
+## Fixed V3 regression
+
+Suite: `fixed-v3-m09`. Review decomposition stayed off. 6/6 contracts; ISO01 PASS; SEC01 PASS; no hard regressions.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-29T11-33-40-045Z.txt`
+
+## Module decision (pending Topic Chat)
+
+```text
+review-decomposition mechanism = implemented
+P02 adoption                 = not justified / reject for this workload
+normal default               = Spec → one Worker, single_change first-class
 ```
 
 ---

@@ -2,7 +2,7 @@
 
 Практический журнал Module 13. `theory.md` — короткий черновик; финальные выводы остаются для Topic Chat.
 
-**Status:** mechanism + unit tests + P01 experiment + fixed regression done; module **not** complete until Topic Chat review.
+**Status:** ✅ completed — formally accepted by Master. Mechanism understood; P01 ROI inconclusive; default `subagentsEnabled=false`.
 
 ## Что построили
 

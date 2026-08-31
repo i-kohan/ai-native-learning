@@ -1,0 +1,62 @@
+Experiment m14-p02-review-decomposition
+task: P02
+generated: 2026-08-29T11:20:11.746Z
+contextMode: variant
+conversationStateMode: manual
+
+A manual advisory ReviewPlan that yields real sequential semantic unit diffs can improve human reviewability of a larger feature without becoming Spec, without parallel workers, and without becoming the default architecture.
+
+Predefined decision rule (encoded before the experiment):
+1. Decomposition is useful only if correctness is preserved.
+2. Actual units must be materially easier for a human to understand/review than the final unified diff. Topic Chat supplies that human-review signal; do not invent an LLM review score.
+3. Boundaries must be semantic rather than file-based.
+4. Dependencies must be explicit.
+5. Intermediate states must remain valid.
+6. No Spec acceptance criteria may be lost.
+7. Decomposition/integration overhead must not erase the human-review benefit.
+8. If Variant quality is worse than Baseline: reject.
+9. If intermediate unit verification fails or acceptance coverage is lost: reject.
+10. single_change remains a first-class valid outcome. P01 remains the negative example: a split can be imagined, but the workload is too small/cohesive for extra review boundaries.
+11. Do not auto-adopt. Default stays Spec → one Worker until Topic Chat accepts a human-review benefit that survives the overhead.
+
+## BASELINE one Worker
+valid: 3/3
+expected: 3/3
+first VERIFY PASS: 3/3
+intermediate valid: 3/3
+avg model/tools: 10 / 26
+avg tokens in/out: 63890 / 6180
+avg wall: 89407ms
+avg final diff lines: 302
+trial 1: expected=true verify=PASS calls=7 tools=22 units=0 emptyDiffs=0
+trial 2: expected=true verify=PASS calls=10 tools=25 units=0 emptyDiffs=0
+trial 3: expected=true verify=PASS calls=14 tools=30 units=0 emptyDiffs=0
+
+## VARIANT ReviewPlan units
+valid: 3/3
+expected: 3/3
+first VERIFY PASS: 3/3
+intermediate valid: 3/3
+avg model/tools: 20 / 48
+avg tokens in/out: 124960 / 9143
+avg wall: 100870ms
+avg final diff lines: 310
+trial 1: expected=true verify=PASS calls=22 tools=52 units=3 emptyDiffs=2
+  A: files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts lines=311 verify=PASS dependsOn=- deviation=none
+  B: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped
+  C: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped
+trial 2: expected=true verify=PASS calls=21 tools=54 units=3 emptyDiffs=1
+  A: files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts lines=305 verify=PASS dependsOn=- deviation=none
+  B: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped
+  C: files=tasks/task-service.ts lines=133 verify=PASS dependsOn=A deviation=none
+trial 3: expected=true verify=PASS calls=18 tools=38 units=3 emptyDiffs=2
+  A: files=tasks/task-routes.ts,tasks/task-service.ts,tasks/types.ts lines=307 verify=PASS dependsOn=- deviation=none
+  B: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped
+  C: files=(none) lines=0 verify=PASS dependsOn=A deviation=no source delta; work may have landed in an earlier unit or been skipped
+
+decision.quality: equal
+decision.efficiency: variant_worse
+decision.intermediateValid: true
+decision.conclusion: reject
+decision.defaultUnchanged: true
+- Human reviewability is not auto-scored. Topic Chat owns that signal. Default remains single_change / one Worker.

@@ -1,0 +1,59 @@
+{
+  "task": "# P02 — Task due dates\n\nAdd optional task due dates:\n\n- Task has optional `dueAt: string | null`.\n- `POST /tasks` accepts optional `dueAt`.\n- Missing `dueAt` defaults to `null`.\n- Explicit `dueAt: null` on create is accepted as `null`.\n- A valid `dueAt` is a non-empty string that `Date.parse` accepts. Store and return the supplied string. Do not canonicalize.\n- Invalid `dueAt` on create returns HTTP 400: non-string (other than null), empty string, or a string `Date.parse` rejects.\n\n- `PATCH /tasks/:id/due-date` updates `dueAt`.\n- The body must be an object that includes the `dueAt` property.\n- `{ dueAt: null }` clears it.\n- Omitting `dueAt`, a non-object body, or an invalid `dueAt` returns HTTP 400.\n- Unknown task returns HTTP 404.\n\n- `GET /tasks?due=overdue` returns only overdue pending tasks.\n- A task is overdue when `status` is `\"pending\"` and `Date.parse(dueAt)` is strictly before now.\n- Completed tasks are never overdue.\n- `due` filtering composes with the existing `status` filter.\n- Invalid `due` query (any value other than `overdue`) returns HTTP 400.\n- Omitting `due` preserves existing list behavior.\n\n- `complete` preserves `dueAt`.\n- `reopen` preserves `dueAt`.\n- Therefore reopening an overdue task makes it eligible for overdue querying again.\n\n- Existing title, status, complete/reopen/`completedAt` behavior must remain unchanged.\n\nImplement the missing behavior and verify with tests.\nDo not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Add optional due dates to tasks, including creation, mutation, overdue filtering, and preservation across completion/reopening, while retaining existing task behavior.",
+    "requirements": [
+      "Extend Task with `dueAt: string | null`. Every created task must include `dueAt`, defaulting to null when the POST field is omitted; explicit null is accepted.",
+      "POST /tasks accepts a dueAt value only when it is null or a non-empty string for which `Date.parse` accepts the supplied string. Store and return the exact supplied string without canonicalization. A non-string non-null value, empty string, or Date.parse-rejected string returns HTTP 400.",
+      "Add PATCH /tasks/:id/due-date. The request body must be an object containing the dueAt property; null clears the due date, and otherwise the value must satisfy the same non-empty-string/Date.parse validation. Missing dueAt, non-object bodies, and invalid values return HTTP 400. A valid update returns the updated task with HTTP 200; an unknown task returns HTTP 404.",
+      "Support GET /tasks?due=overdue. Any provided due value other than `overdue` returns HTTP 400. For `overdue`, return only tasks whose status is pending and whose non-null dueAt parses to a time strictly before the current time. Tasks without dueAt, future/non-overdue tasks, and completed tasks are excluded.",
+      "The due=overdue filter composes with the existing status filter; therefore a completed status filter combined with due=overdue produces no completed overdue tasks. When due is omitted, existing list behavior is preserved.",
+      "Completion and reopening must leave dueAt unchanged; reopening restores pending status so a previously overdue task is eligible for overdue results again.",
+      "Preserve existing title validation/trimming, task identifiers, status filtering, complete/reopen behavior, completedAt updates, and existing response/error behavior."
+    ],
+    "constraints": [
+      "Implement within the existing TypeScript task model, service, and route layers; do not change the public request/response style established by HttpRequest/HttpResponse.",
+      "Do not canonicalize valid dueAt strings; retain the caller-provided representation.",
+      "Do not modify tests."
+    ],
+    "nonGoals": [
+      "No persistence beyond the existing in-memory TaskService.",
+      "No new due-date formats or normalization rules beyond null, non-empty strings, and Date.parse acceptance.",
+      "No changes to title, status, completion, reopening, or completedAt semantics other than ensuring dueAt is preserved."
+    ],
+    "acceptance": [
+      "A task created without dueAt is returned with dueAt null.",
+      "A task created with null or a valid date string is accepted and the exact string is returned.",
+      "Create requests with non-string non-null, empty, or unparseable dueAt values return 400 and do not create a valid task.",
+      "PATCH /tasks/:id/due-date can set a valid exact string and can clear it with null; missing/invalid payloads return 400 and unknown IDs return 404.",
+      "GET /tasks?due=overdue returns only pending tasks with parsed due times strictly earlier than now, excludes completed/no-date/future tasks, rejects invalid due values, and composes with status filtering.",
+      "complete and reopen responses retain dueAt, and reopening an overdue task makes it appear in overdue results.",
+      "Existing tests for task retrieval, status filtering, completion, reopening, and completedAt continue to pass."
+    ],
+    "verification": [
+      "Run the repository test script (`npm test`), covering the existing tests and the supplied due-date capability, mutation, and overdue-query tests.",
+      "Review/type-check the changed TypeScript against the repository's strict tsconfig; ensure Task construction and list/filter signatures consistently include dueAt.",
+      "Exercise boundary behavior for omitted versus explicit null, invalid dueAt types/strings, missing PATCH property/non-object PATCH bodies, unknown IDs, omitted/invalid due query, and completed versus reopened overdue tasks."
+    ],
+    "ambiguities": [
+      {
+        "question": "What private helper names or exact internal placement should be used for dueAt validation and overdue filtering?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use local service/route helpers as appropriate while retaining the existing route/service separation.",
+        "basis": "This is an internal implementation detail with no externally observable product consequence."
+      },
+      {
+        "question": "What error-body error codes should be returned for invalid dueAt values and invalid due query values?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 400; exact new error codes may follow the existing convention (for example, dedicated invalid_due_at/invalid_due values), while preserving the explicitly tested status semantics.",
+        "basis": "The task specifies HTTP status but not error payloads; existing routes use simple `{ error: ... }` payloads and the supplied due-date tests assert status only."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

@@ -47,8 +47,23 @@ import { resolveModel, routingTraceFields } from "./model-routing.ts";
 import { formatWorkerTask, shouldRunPlanner, type Plan } from "./plan.ts";
 import { buildPlan, type PlannerPhaseResult } from "./planner-phase.ts";
 import { shouldEnableSubagents } from "./evidence.ts";
+import {
+  cumulativeTestFiles,
+  formatReviewabilityReport,
+  formatWorkerUnitTask,
+  orderedUnits,
+  writeReviewabilityReport,
+  type ChangeUnitTemplate,
+  type ParseReviewPlanResult,
+  type ReviewPlan,
+  type ReviewUnitReport,
+} from "./review-plan.ts";
 import { Tracer } from "./trace.ts";
-import { runFinalVerification, type VerificationResult } from "./verify.ts";
+import {
+  runFinalVerification,
+  runScopedVerification,
+  type VerificationResult,
+} from "./verify.ts";
 import type { Workspace } from "./workspace.ts";
 
 export type WorkflowStatus = "success" | "failure" | "needs_human_judgment";
@@ -57,6 +72,7 @@ export type WorkflowFailureReason =
   | AgentRunResult["failureReason"]
   | "spec_phase_failed"
   | "plan_phase_failed"
+  | "review_plan_invalid"
   | "final_verification_failed"
   | "review_parse_failed"
   | "review_unresolved_blocker";
@@ -106,6 +122,9 @@ export type HarnessRunResult = {
   plannerToolCalls: number;
   plannerDurationMs: number;
   subagentsEnabled: boolean;
+  reviewPlan: ReviewPlan | null;
+  reviewUnits: ReviewUnitReport[];
+  reviewabilityReportPath: string | null;
   turns: number;
   modelCalls: number;
   toolCalls: number;
@@ -155,6 +174,12 @@ export async function runV1Harness(options: {
   planningEnabled?: boolean;
   /** Experiment-only. Default architecture does not expose Worker subagents. */
   subagentsEnabled?: boolean;
+  /**
+   * Experiment-only advisory ReviewPlan. Default architecture remains one Worker.
+   * The binder is harness-owned and must not be an LLM Review Planner.
+   */
+  bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
+  reviewUnitTemplates?: ChangeUnitTemplate[];
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
@@ -379,26 +404,101 @@ export async function runV1Harness(options: {
     }
   }
 
+  let reviewPlan: ReviewPlan | null = null;
+  const reviewUnitTemplates = options.reviewUnitTemplates ?? [];
+  if (options.bindReviewPlan) {
+    const bound = options.bindReviewPlan(decision.spec);
+    if (!bound.ok) {
+      const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
+      const { changedFiles, unifiedDiff } = diffSnapshots(
+        beforeSnapshot,
+        afterSnapshot,
+      );
+      const result = baseResult({
+        task,
+        workflowStatus: "failure",
+        failureReason: "review_plan_invalid",
+        specDecision: decision,
+        unresolvedQuestions: [],
+        implementationStarted: false,
+        implementation: null,
+        specPhase,
+        plannerPhase,
+        planningEnabled,
+        subagentsEnabled,
+        contextMode,
+        conversationStateMode,
+        contextPreparation,
+        receivedTerminalResponse: false,
+        verificationAttempts: 0,
+        repairAttempts: 0,
+        repeatedFailure: false,
+        verifications: [],
+        repairs: [],
+        finalVerificationPassed: false,
+        finalVerification: null,
+        modelFinalResponse: bound.error,
+        changedFiles,
+        unifiedDiff,
+        tracePath: tracer.tracePath,
+        durationMs: Date.now() - startedAt,
+        skillLoads: [],
+        workspace: options.workspace,
+      });
+      tracer.record("harness_gate", {
+        action: "abort",
+        reason: "review_plan_invalid",
+        implementationStarted: false,
+        reviewPlanError: bound.error,
+      });
+      await finishRun(tracer, result);
+      return result;
+    }
+    reviewPlan = bound.value;
+  }
+
   tracer.record("harness_gate", {
     action: "execute",
     implementationStarted: true,
     planningEnabled,
     subagentsEnabled,
     planAccepted: Boolean(plannerPhase.plan),
+    reviewPlanDecision: reviewPlan?.decision ?? null,
+    reviewUnitCount: reviewPlan?.units.length ?? 0,
   });
 
-  const implementation = await runAgentLoop({
-    config,
-    task: formatWorkerTask(task, decision.spec, plannerPhase.plan),
-    runId,
-    beforeSnapshot,
-    spec: decision.spec,
-    tracer,
-    reusableContext,
-    phase: "implementation",
-    conversationStateMode,
-    subagentsEnabled,
-  });
+  let implementation: AgentRunResult;
+  let reviewUnits: ReviewUnitReport[] = [];
+  if (reviewPlan?.decision === "decompose") {
+    const decomposed = await runDecomposedImplementation({
+      config,
+      task,
+      spec: decision.spec,
+      plan: reviewPlan,
+      templates: reviewUnitTemplates,
+      tracer,
+      reusableContext,
+      runId,
+      conversationStateMode,
+      subagentsEnabled,
+      sourceBeforeSnapshot: beforeSnapshot,
+    });
+    implementation = decomposed.implementation;
+    reviewUnits = decomposed.units;
+  } else {
+    implementation = await runAgentLoop({
+      config,
+      task: formatWorkerTask(task, decision.spec, plannerPhase.plan),
+      runId,
+      beforeSnapshot,
+      spec: decision.spec,
+      tracer,
+      reusableContext,
+      phase: "implementation",
+      conversationStateMode,
+      subagentsEnabled,
+    });
+  }
 
   tracer.record("implementation_completed", {
     episodeStatus: implementation.status,
@@ -490,6 +590,19 @@ export async function runV1Harness(options: {
     afterSnapshot,
   );
 
+  let reviewabilityReportPath: string | null = null;
+  if (reviewPlan && reviewUnits.length > 0) {
+    reviewabilityReportPath = writeReviewabilityReport(
+      tracer.tracePath,
+      formatReviewabilityReport({
+        plan: reviewPlan,
+        units: reviewUnits,
+        finalChangedFiles: changedFiles,
+        finalUnifiedDiff: unifiedDiff,
+      }),
+    );
+  }
+
   const result = baseResult({
     task,
     workflowStatus,
@@ -502,6 +615,9 @@ export async function runV1Harness(options: {
     plannerPhase,
     planningEnabled,
     subagentsEnabled,
+    reviewPlan,
+    reviewUnits,
+    reviewabilityReportPath,
     contextMode,
     conversationStateMode,
     contextPreparation,
@@ -539,6 +655,22 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(`spec_decision: ${result.specDecision?.status ?? "(none)"}`);
   console.log(`planning_enabled: ${result.planningEnabled}`);
   console.log(`subagents_enabled: ${result.subagentsEnabled}`);
+  console.log(
+    `review_plan: ${result.reviewPlan ? result.reviewPlan.decision : "(none)"}`,
+  );
+  if (result.reviewUnits.length > 0) {
+    console.log(
+      `review_units: ${result.reviewUnits
+        .map(
+          (unit) =>
+            `${unit.id}:${unit.verificationPassed ? "PASS" : "FAIL"}:${unit.changedFiles.length} files`,
+        )
+        .join(" | ")}`,
+    );
+  }
+  if (result.reviewabilityReportPath) {
+    console.log(`reviewability_report: ${result.reviewabilityReportPath}`);
+  }
   console.log(
     `research_delegations: ${result.implementation?.researchDelegations.length ?? 0}`,
   );
@@ -691,6 +823,218 @@ function formatEscalationMessage(
   ].join("\n");
 }
 
+async function runDecomposedImplementation(options: {
+  config: HarnessConfig;
+  task: string;
+  spec: Spec;
+  plan: ReviewPlan;
+  templates: ChangeUnitTemplate[];
+  tracer: Tracer;
+  reusableContext: ReusableContext | undefined;
+  runId: string;
+  conversationStateMode: ConversationStateMode;
+  subagentsEnabled: boolean;
+  sourceBeforeSnapshot: FileSnapshot;
+}): Promise<{
+  implementation: AgentRunResult;
+  units: ReviewUnitReport[];
+}> {
+  const units: ReviewUnitReport[] = [];
+  const completedIds: string[] = [];
+  let merged: AgentRunResult | null = null;
+
+  for (const unit of orderedUnits(options.plan)) {
+    const unitBefore = snapshotDirectory(options.config.targetSrcRoot);
+    options.tracer.record("review_unit_started", {
+      unitId: unit.id,
+      intent: unit.intent,
+      dependsOn: unit.dependsOn,
+      acceptanceRefs: unit.acceptanceRefs,
+    });
+
+    const episode = await runAgentLoop({
+      config: options.config,
+      task: formatWorkerUnitTask(options.task, options.spec, unit),
+      runId: options.runId,
+      beforeSnapshot: unitBefore,
+      spec: options.spec,
+      tracer: options.tracer,
+      reusableContext: options.reusableContext,
+      phase: "implementation",
+      conversationStateMode: options.conversationStateMode,
+      subagentsEnabled: options.subagentsEnabled,
+    });
+    merged = merged ? mergeAgentRuns(merged, episode) : episode;
+
+    completedIds.push(unit.id);
+    const scopedFiles = cumulativeTestFiles(completedIds, options.templates);
+
+    const unitVerified = await runVerifyRepairLoop({
+      config: options.config,
+      task: formatWorkerUnitTask(options.task, options.spec, unit),
+      spec: options.spec,
+      tracer: options.tracer,
+      reusableContext: options.reusableContext,
+      runId: options.runId,
+      implementation: episode,
+      conversationStateMode: options.conversationStateMode,
+      emitSuccessOutcome: false,
+      verify: () => runScopedVerification(options.config, scopedFiles),
+    });
+
+    merged = foldRepairsIntoImplementation(merged, unitVerified.repairs);
+
+    const afterRepair = snapshotDirectory(options.config.targetSrcRoot);
+    const repairedDelta = diffSnapshots(unitBefore, afterRepair);
+    const deviation = unitDeviation({
+      emptyDiff: repairedDelta.changedFiles.length === 0,
+      verificationPassed: unitVerified.finalVerificationPassed,
+    });
+
+    const report: ReviewUnitReport = {
+      id: unit.id,
+      intent: unit.intent,
+      acceptanceRefs: unit.acceptanceRefs,
+      dependsOn: unit.dependsOn,
+      changedFiles: repairedDelta.changedFiles,
+      unifiedDiff: repairedDelta.unifiedDiff,
+      verificationPassed: unitVerified.finalVerificationPassed,
+      verificationOutput: unitVerified.finalVerification?.output ?? "",
+      repairAttempts: unitVerified.repairAttempts,
+      modelCalls:
+        episode.modelCalls +
+        unitVerified.repairs.reduce((sum, item) => sum + item.modelCalls, 0),
+      toolCalls:
+        episode.toolCalls +
+        unitVerified.repairs.reduce((sum, item) => sum + item.toolCalls, 0),
+      durationMs:
+        episode.durationMs +
+        unitVerified.repairs.reduce((sum, item) => sum + item.durationMs, 0),
+      deviation,
+    };
+    units.push(report);
+    options.tracer.record("review_unit_completed", {
+      unitId: unit.id,
+      verificationPassed: report.verificationPassed,
+      changedFiles: report.changedFiles,
+      repairAttempts: report.repairAttempts,
+      deviation: report.deviation,
+    });
+  }
+
+  if (!merged) {
+    throw new Error("decompose ReviewPlan produced no implementation episode.");
+  }
+
+  const finalSource = snapshotDirectory(options.config.targetSrcRoot);
+  const full = diffSnapshots(options.sourceBeforeSnapshot, finalSource);
+  merged.changedFiles = full.changedFiles;
+  merged.unifiedDiff = full.unifiedDiff;
+  return { implementation: merged, units };
+}
+
+function unitDeviation(options: {
+  emptyDiff: boolean;
+  verificationPassed: boolean;
+}): string | null {
+  const parts: string[] = [];
+  if (options.emptyDiff) {
+    parts.push(
+      "no source delta; work may have landed in an earlier unit or been skipped",
+    );
+  }
+  if (!options.verificationPassed) {
+    parts.push("unit verification failed after bounded repair");
+  }
+  return parts.length > 0 ? parts.join("; ") : null;
+}
+
+function mergeAgentRuns(
+  left: AgentRunResult,
+  right: AgentRunResult,
+): AgentRunResult {
+  return {
+    ...right,
+    turns: left.turns + right.turns,
+    modelCalls: left.modelCalls + right.modelCalls,
+    toolCalls: left.toolCalls + right.toolCalls,
+    receivedTerminalResponse: right.receivedTerminalResponse,
+    durationMs: left.durationMs + right.durationMs,
+    discovery: {
+      listFilesCalls:
+        left.discovery.listFilesCalls + right.discovery.listFilesCalls,
+      readFileCalls:
+        left.discovery.readFileCalls + right.discovery.readFileCalls,
+      readFilePaths: uniquePaths(
+        left.discovery.readFilePaths,
+        right.discovery.readFilePaths,
+      ),
+      listedPaths: uniquePaths(
+        left.discovery.listedPaths,
+        right.discovery.listedPaths,
+      ),
+    },
+    implNavCallsBeforeFirstWrite:
+      left.implNavCallsBeforeFirstWrite ?? right.implNavCallsBeforeFirstWrite,
+    tokenUsage: combineTokenUsage(left.tokenUsage, right.tokenUsage),
+    clientInputItemsSent:
+      left.clientInputItemsSent + right.clientInputItemsSent,
+    clientInputBytesSent:
+      left.clientInputBytesSent + right.clientInputBytesSent,
+    researchDelegations: [
+      ...left.researchDelegations,
+      ...right.researchDelegations,
+    ],
+  };
+}
+
+function foldRepairsIntoImplementation(
+  implementation: AgentRunResult,
+  repairs: RepairAttemptSummary[],
+): AgentRunResult {
+  if (repairs.length === 0) {
+    return implementation;
+  }
+  return {
+    ...implementation,
+    turns:
+      implementation.turns + repairs.reduce((sum, item) => sum + item.turns, 0),
+    modelCalls:
+      implementation.modelCalls +
+      repairs.reduce((sum, item) => sum + item.modelCalls, 0),
+    toolCalls:
+      implementation.toolCalls +
+      repairs.reduce((sum, item) => sum + item.toolCalls, 0),
+    durationMs:
+      implementation.durationMs +
+      repairs.reduce((sum, item) => sum + item.durationMs, 0),
+    tokenUsage: combineTokenUsage(
+      implementation.tokenUsage,
+      ...repairs.map((item) => item.tokenUsage),
+    ),
+    clientInputItemsSent:
+      implementation.clientInputItemsSent +
+      repairs.reduce((sum, item) => sum + (item.clientInputItemsSent ?? 0), 0),
+    clientInputBytesSent:
+      implementation.clientInputBytesSent +
+      repairs.reduce((sum, item) => sum + (item.clientInputBytesSent ?? 0), 0),
+  };
+}
+
+function uniquePaths(...groups: string[][]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const group of groups) {
+    for (const item of group) {
+      if (!seen.has(item)) {
+        seen.add(item);
+        result.push(item);
+      }
+    }
+  }
+  return result;
+}
+
 async function runVerifyRepairLoop(options: {
   config: HarnessConfig;
   task: string;
@@ -701,6 +1045,7 @@ async function runVerifyRepairLoop(options: {
   implementation: AgentRunResult;
   conversationStateMode: ConversationStateMode;
   emitSuccessOutcome?: boolean;
+  verify?: () => VerificationResult;
 }): Promise<{
   workflowStatus: WorkflowStatus;
   failureReason?: WorkflowFailureReason;
@@ -753,7 +1098,9 @@ async function runVerifyRepairLoop(options: {
   }
 
   while (true) {
-    const verification = runFinalVerification(config);
+    const verification = options.verify
+      ? options.verify()
+      : runFinalVerification(config);
     lastVerification = verification;
     const attempt = verifications.length + 1;
     const normalized = verification.passed
@@ -1294,6 +1641,9 @@ function baseResult(fields: {
   };
   planningEnabled: boolean;
   subagentsEnabled: boolean;
+  reviewPlan?: ReviewPlan | null;
+  reviewUnits?: ReviewUnitReport[];
+  reviewabilityReportPath?: string | null;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
   contextPreparation: ContextPreparation | null;
@@ -1436,6 +1786,9 @@ function baseResult(fields: {
     plannerToolCalls: fields.plannerPhase.toolCalls,
     plannerDurationMs: fields.plannerPhase.durationMs,
     subagentsEnabled: fields.subagentsEnabled,
+    reviewPlan: fields.reviewPlan ?? null,
+    reviewUnits: fields.reviewUnits ?? [],
+    reviewabilityReportPath: fields.reviewabilityReportPath ?? null,
     turns:
       fields.specPhase.turns +
       fields.plannerPhase.turns +
@@ -1536,6 +1889,22 @@ async function finishRun(
     plannerToolCalls: result.plannerToolCalls,
     plannerDurationMs: result.plannerDurationMs,
     subagentsEnabled: result.subagentsEnabled,
+    reviewPlan: result.reviewPlan,
+    reviewUnits: result.reviewUnits.map((unit) => ({
+      id: unit.id,
+      intent: unit.intent,
+      acceptanceRefs: unit.acceptanceRefs,
+      dependsOn: unit.dependsOn,
+      changedFiles: unit.changedFiles,
+      verificationPassed: unit.verificationPassed,
+      repairAttempts: unit.repairAttempts,
+      modelCalls: unit.modelCalls,
+      toolCalls: unit.toolCalls,
+      durationMs: unit.durationMs,
+      diffLines: unit.unifiedDiff.split("\n").length,
+      deviation: unit.deviation,
+    })),
+    reviewabilityReportPath: result.reviewabilityReportPath,
     researchDelegations: result.implementation?.researchDelegations ?? [],
     receivedTerminalResponse: result.receivedTerminalResponse,
     verificationAttempts: result.verificationAttempts,
