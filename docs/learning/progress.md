@@ -36,7 +36,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`; default remains manual full-history replay because the Module 11 efficiency/adoption criterion was inconclusive;
 - optional explicit read-only Planner mechanism exists behind `planningEnabled`, but remains off by default because Module 12 P01 showed equal quality with worse end-to-end cost;
 - optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. Module 13 mechanism probe, not a change to the normal lifecycle;
-- optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Default remains one Worker.
+- optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker.
 
 Conceptual default flow:
 
@@ -153,7 +153,9 @@ Practical notes/evidence:
 ```text
 Spec
 → [optional] advisory ReviewPlan (manual in this probe)
+→ harness-owned UnitExecutionScope per episode
 → sequential semantic units with real source diffs
+→ scoped VERIFY gate (FAIL stops later units)
 → final VERIFY / independent REVIEW
 ```
 
@@ -161,46 +163,53 @@ Key boundaries:
 
 - task decomposition ≠ agent decomposition;
 - file decomposition ≠ semantic decomposition;
-- ReviewPlan ≠ Spec / permission / success;
+- Spec ≠ ReviewPlan ≠ UnitExecutionScope;
 - `single_change` is first-class;
 - no stacked PRs, parallel workers, or LLM Review Planner in this probe.
 
 ## Built
 
 - P02 due-date benchmark;
-- ReviewPlan / ChangeUnit schema + admission;
-- sequential unit snapshots and scoped verification;
+- ReviewPlan / ChangeUnit schema + admission + `UnitExecutionScope`;
+- sequential unit snapshots, scoped verification gate, explicit `owns()` mapping;
 - `npm run benchmark:decomposition`.
 
-## Controlled experiment
+## First P02 experiment (negative)
 
-Task: P02  
-Context: `contextMode=variant`, `conversationStateMode=manual`  
-Trials: 3 valid per arm. Contaminated: none.
-
-| Arm      | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg |
-| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
-| BASELINE | 3/3      | 3/3 PASS     | 0 / 0   | 10 / 26         | 63,890 / 6,180    | ~89s     |
-| VARIANT  | 3/3      | 3/3 PASS     | 0 / 0   | 20 / 48         | 124,960 / 9,143   | ~101s    |
-
-Quality equal. Intermediate units always PASS. Variant ~2× calls/tokens. Actual diffs: A absorbed the full change; B empty 3/3; C empty 2/3. Predefined rule → **reject**. Default stays Spec → one Worker.
+Quality equal 3/3, first VERIFY PASS, 0 repairs. Variant ~2× cost. A absorbed the full feature; B empty 3/3; C empty 2/3. Advisory ReviewPlan did not bound execution.
 
 Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
 
-Harness unit tests: 152 passed.
+## Corrected P02 experiment
+
+Same 3×3, `contextMode=variant`, `conversationStateMode=manual`. Contaminated: none. Harness unit tests: **159 passed**.
+
+| Arm      | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
+| BASELINE | 3/3      | 3/3 PASS     | 0 / 0   | 11 / 25         | 56,861 / 5,539    | ~74s     |
+| VARIANT  | 3/3      | 3/3 PASS     | 0 / 0   | 22 / 46         | 130,415 / 10,125  | ~128s    |
+
+Quality equal. Intermediate units always PASS. Empty later diffs: 0. Real `base..A`, `A..B`, `B..C`. Variant still ~2× cost. Decision: **`candidate_pending_human_review`**. Default unchanged.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomposition-m14-corrected-2026-08-31T12-13-58-044Z.txt`
 
 ## Fixed V3 regression
 
-Suite: `fixed-v3-m09`. Review decomposition stayed off. 6/6 contracts; ISO01 PASS; SEC01 PASS; no hard regressions.
+Suite: `fixed-v3-m09`. Review decomposition stayed off. First post-probe run: 6/6 contracts; ISO01 PASS; SEC01 PASS.
 
 Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-29T11-33-40-045Z.txt`
+
+After the correction: again 6/6; ISO01 PASS; SEC01 PASS; no hard regressions.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-31T12-27-55-652Z.txt`
 
 ## Module decision (pending Topic Chat)
 
 ```text
-review-decomposition mechanism = implemented
-P02 adoption                 = not justified / reject for this workload
-normal default               = Spec → one Worker, single_change first-class
+review-decomposition mechanism = implemented + corrected
+P02 first experiment           = mechanism_failed / no genuine surfaces
+P02 corrected experiment       = candidate_pending_human_review
+normal default                 = Spec → one Worker, single_change first-class
 ```
 
 ---

@@ -1,0 +1,49 @@
+=== Eval Report (fixed-v3-m09) ===
+
+Capability / Regression
+Expected outcomes      4 / 4
+Executable tasks        3
+First-pass success     3 / 3
+Eventual success       3 / 3
+Recovered success      0 / 3
+Correct escalations    1 / 1
+Autonomous completion  3 / 4
+Human escalation       1 / 4
+Known escaped defects   n/a (grader = harness VERIFY; no independent ground truth)
+
+Mechanism probes
+R01 verification repair      PASS
+REV01 independent review     PASS
+
+Isolation
+ISO01 workspace isolation    PASS
+(not included in capability first-pass / task-success denominators)
+
+Security
+SEC01 verification secret isolation      PASS
+(not included in capability first-pass / task-success denominators)
+
+Skills
+T01   (none)
+T02   (none)
+T03   (none)
+T04   (none)
+R01   evidence-guided-repair@repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25
+REV01 evidence-guided-repair@review_repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25
+
+All fixed benchmark contracts  6 / 6
+(qualified: capability expected outcomes + probe contracts, not an overall success rate)
+
+Hard regressions
+- (none)
+
+Diagnostics (not correctness regressions)
+- (none)
+
+Per-run
+T01  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none
+T02  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none
+T03  capability_regression  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none
+T04  capability_regression  expected=yes  first_pass=n/a  autonomous=false  escalate=true  verify=n/a  skills=none
+R01  mechanism_probe/verification_repair  expected=yes  first_pass=no  autonomous=true  escalate=false  verify=FAIL→PASS  skills=evidence-guided-repair@repair controlled_fail=true
+REV01  mechanism_probe/independent_review_repair  expected=yes  first_pass=no  autonomous=true  escalate=false  verify=PASS→PASS  skills=evidence-guided-repair@review_repair intended=true unexpected_blocking=0

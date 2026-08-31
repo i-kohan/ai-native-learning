@@ -3,8 +3,8 @@ node_modules/
 dist/
 .env
 traces/*.jsonl
-traces/*.spec.json
 traces/*.json
+traces/*.md
 evals/*.json
 evals/*.txt
 *.log
@@ -12,3 +12,4 @@ evals/*.txt
 target-app/coverage/
 harness/coverage/
 *.tsbuildinfo
+

@@ -95,6 +95,8 @@ function harnessResult(
     reviewPlan: null,
     reviewUnits: [],
     reviewabilityReportPath: null,
+    reviewUnitGateFailed: false,
+    stoppedReviewUnitId: null,
     plan: null,
     plannerTurns: 0,
     plannerModelCalls: 0,

@@ -11,7 +11,8 @@ import {
 import type { HarnessRunResult } from "./run.ts";
 import type { Spec } from "./spec.ts";
 
-export const DECOMPOSITION_EXPERIMENT_ID = "m14-p02-review-decomposition";
+export const DECOMPOSITION_EXPERIMENT_ID =
+  "m14-p02-review-decomposition-corrected";
 export const DECOMPOSITION_TASK_ID = "P02";
 export const DECOMPOSITION_CONTEXT_MODE = "variant" as const;
 export const DECOMPOSITION_CONVERSATION_STATE_MODE = "manual" as const;
@@ -20,18 +21,19 @@ export const DECOMPOSITION_TRIALS_PER_ARM = 3;
 export type DecompositionArmId = "baseline" | "variant";
 
 export const PREDEFINED_DECISION_RULE = [
-  "Predefined decision rule (encoded before the experiment):",
+  "Predefined decision rule (encoded before the corrected experiment):",
   "1. Decomposition is useful only if correctness is preserved.",
   "2. Actual units must be materially easier for a human to understand/review than the final unified diff. Topic Chat supplies that human-review signal; do not invent an LLM review score.",
   "3. Boundaries must be semantic rather than file-based.",
   "4. Dependencies must be explicit.",
   "5. Intermediate states must remain valid.",
-  "6. No Spec acceptance criteria may be lost.",
-  "7. Decomposition/integration overhead must not erase the human-review benefit.",
-  "8. If Variant quality is worse than Baseline: reject.",
-  "9. If intermediate unit verification fails or acceptance coverage is lost: reject.",
-  "10. single_change remains a first-class valid outcome. P01 remains the negative example: a split can be imagined, but the workload is too small/cohesive for extra review boundaries.",
-  "11. Do not auto-adopt. Default stays Spec → one Worker until Topic Chat accepts a human-review benefit that survives the overhead.",
+  "6. No Spec acceptance criteria may be lost. Duplicate ownership is valid.",
+  "7. Efficiency is recorded. Extra cost does not auto-reject when genuine review surfaces exist.",
+  "8. If Variant quality is worse than Baseline, coverage is lost, or an intermediate unit fails: reject.",
+  "9. If later units have empty diffs (no genuine review surfaces): mechanism_failed.",
+  "10. If quality is preserved and A/B/C have real diffs: candidate_pending_human_review. Do not auto-adopt.",
+  "11. single_change remains a first-class valid outcome. P01 remains the negative example: a split can be imagined, but the workload is too small/cohesive for extra review boundaries.",
+  "12. Default stays Spec → one Worker until Topic Chat accepts a human-review benefit.",
 ].join("\n");
 
 const P02_RATIONALE =
@@ -48,17 +50,7 @@ export const P02_REVIEW_UNIT_TEMPLATES: ChangeUnitTemplate[] = [
       "Create/default/invalid dueAt and complete/reopen preservation pass",
     ],
     testFiles: ["tests/due-date-capability.test.ts"],
-    score: (acceptance) =>
-      keywordScore(acceptance, [
-        "dueat",
-        "post /tasks",
-        "creat",
-        "default",
-        "missing",
-        "preserve",
-        "complete",
-        "reopen",
-      ]),
+    owns: ownsP02Capability,
   },
   {
     id: "B",
@@ -70,16 +62,7 @@ export const P02_REVIEW_UNIT_TEMPLATES: ChangeUnitTemplate[] = [
       "PATCH set/clear/invalid/404 pass",
     ],
     testFiles: ["tests/due-date-mutation.test.ts"],
-    score: (acceptance) =>
-      keywordScore(acceptance, [
-        "patch",
-        "due-date",
-        "clear",
-        "404",
-        "unknown",
-        "update",
-        "mutat",
-      ]),
+    owns: ownsP02Mutation,
   },
   {
     id: "C",
@@ -91,16 +74,7 @@ export const P02_REVIEW_UNIT_TEMPLATES: ChangeUnitTemplate[] = [
       "Overdue filtering, completed exclusion, and status composition pass",
     ],
     testFiles: ["tests/due-overdue.test.ts"],
-    score: (acceptance) =>
-      keywordScore(acceptance, [
-        "overdue",
-        "due=",
-        "due query",
-        "compos",
-        "status",
-        "completed",
-        "filter",
-      ]),
+    owns: ownsP02Overdue,
   },
 ];
 
@@ -207,12 +181,17 @@ export type DecompositionEfficiencyComparison =
   | "equal"
   | "noisy";
 
-export type DecompositionConclusion = "reject" | "candidate" | "inconclusive";
+export type DecompositionConclusion =
+  | "reject"
+  | "inconclusive"
+  | "mechanism_failed"
+  | "candidate_pending_human_review";
 
 export type DecompositionDecision = {
   quality: DecompositionQualityComparison;
   efficiency: DecompositionEfficiencyComparison;
   intermediateValid: boolean;
+  genuineReviewSurfaces: boolean;
   conclusion: DecompositionConclusion;
   defaultUnchanged: true;
   notes: string[];
@@ -315,8 +294,8 @@ export function writeDecompositionExperimentArtifact(
   fs.mkdirSync(evalsDir, { recursive: true });
   fs.mkdirSync(lessonDir, { recursive: true });
 
-  const jsonName = `decomposition-m14-${stamp}.json`;
-  const reportName = `decomposition-m14-${stamp}.txt`;
+  const jsonName = `decomposition-m14-corrected-${stamp}.json`;
+  const reportName = `decomposition-m14-corrected-${stamp}.txt`;
   const payload = `${JSON.stringify(result, null, 2)}\n`;
   const report = `${result.report}\n`;
 
@@ -352,9 +331,15 @@ export function evaluateDecompositionDecision(
     variant.validTrials === 0
       ? false
       : variant.intermediateValid === variant.validTrials;
+  const genuineReviewSurfaces = hasGenuineReviewSurfaces(variant);
 
   if (!intermediateValid) {
     notes.push("variant intermediate unit verification was not always valid");
+  }
+  if (!genuineReviewSurfaces) {
+    notes.push(
+      "variant did not produce genuine review surfaces (empty later unit diffs or fewer than 3 units)",
+    );
   }
 
   let conclusion: DecompositionConclusion = "inconclusive";
@@ -362,17 +347,28 @@ export function evaluateDecompositionDecision(
     conclusion = "reject";
   } else if (quality === "noisy") {
     conclusion = "inconclusive";
+  } else if (!genuineReviewSurfaces) {
+    conclusion = "mechanism_failed";
+    notes.push(
+      "Quality may be preserved, but empty unit diffs mean the ReviewPlan did not materialize review boundaries.",
+    );
   } else {
     notes.push(
-      "Human reviewability is not auto-scored. Topic Chat owns that signal. Default remains single_change / one Worker.",
+      "Quality preserved with real unit diffs. Human reviewability is not auto-scored. Topic Chat owns that signal. Default remains Spec → one Worker.",
     );
-    conclusion = efficiency === "variant_worse" ? "reject" : "inconclusive";
+    if (efficiency === "variant_worse") {
+      notes.push(
+        "Variant cost more; extra cost is recorded and does not auto-reject.",
+      );
+    }
+    conclusion = "candidate_pending_human_review";
   }
 
   return {
     quality,
     efficiency,
     intermediateValid,
+    genuineReviewSurfaces,
     conclusion,
     defaultUnchanged: true,
     notes,
@@ -392,11 +388,7 @@ export function metricsFromP02Run(
         ? "PASS"
         : "FAIL"
       : "skipped",
-    firstVerification: first
-      ? first.passed
-        ? "PASS"
-        : "FAIL"
-      : "missing",
+    firstVerification: first ? (first.passed ? "PASS" : "FAIL") : "missing",
     verificationRepairAttempts: result.repairAttempts,
     reviewRepairAttempts: result.reviewRepairAttempts,
     acceptedBlockingFindings: result.acceptedBlockingFindings.length,
@@ -433,15 +425,12 @@ async function collectArm(
     attempt < DECOMPOSITION_TRIALS_PER_ARM + 2
   ) {
     attempt += 1;
-    const runId = `P02-decomp-${arm}-${attempt}-${timestamp()}`;
+    const runId = `P02-decomp-v2-${arm}-${attempt}-${timestamp()}`;
     const probe = await deps.runTrial(arm, runId);
     const validity = assessDecompositionTrialValidity(probe);
     const metrics =
       probe.result && validity.valid
-        ? metricsFromP02Run(
-            probe.result,
-            deps.scoreExpected(probe.result),
-          )
+        ? metricsFromP02Run(probe.result, deps.scoreExpected(probe.result))
         : null;
     const record: DecompositionTrialRecord = {
       arm,
@@ -465,7 +454,8 @@ async function collectArm(
 
   return {
     id: arm,
-    label: arm === "baseline" ? "BASELINE one Worker" : "VARIANT ReviewPlan units",
+    label:
+      arm === "baseline" ? "BASELINE one Worker" : "VARIANT ReviewPlan units",
     decomposed: arm === "variant",
     attemptedTrials: attempt,
     validTrials: trials.length,
@@ -550,7 +540,9 @@ function compareEfficiency(
   return "equal";
 }
 
-function formatDecompositionReport(result: DecompositionExperimentResult): string {
+function formatDecompositionReport(
+  result: DecompositionExperimentResult,
+): string {
   const lines = [
     `Experiment ${result.experimentId}`,
     `task: ${result.taskId}`,
@@ -569,6 +561,7 @@ function formatDecompositionReport(result: DecompositionExperimentResult): strin
     `decision.quality: ${result.decision.quality}`,
     `decision.efficiency: ${result.decision.efficiency}`,
     `decision.intermediateValid: ${result.decision.intermediateValid}`,
+    `decision.genuineReviewSurfaces: ${result.decision.genuineReviewSurfaces}`,
     `decision.conclusion: ${result.decision.conclusion}`,
     "decision.defaultUnchanged: true",
     ...result.decision.notes.map((note) => `- ${note}`),
@@ -650,11 +643,81 @@ function copyTrialTraces(
   }
 }
 
-function keywordScore(text: string, keywords: string[]): number {
-  const lower = text.toLowerCase();
-  return keywords.reduce(
-    (sum, keyword) => sum + (lower.includes(keyword) ? 1 : 0),
-    0,
+function hasGenuineReviewSurfaces(variant: DecompositionArmReport): boolean {
+  const metrics = variant.trials
+    .filter((trial) => trial.valid)
+    .map((trial) => trial.metrics)
+    .filter((item): item is DecompositionTrialMetrics => item !== null);
+  if (metrics.length === 0) {
+    return false;
+  }
+  return metrics.every(
+    (item) => item.unitCount >= 3 && item.emptyUnitDiffs === 0,
+  );
+}
+
+function ownsP02Capability(acceptance: string): boolean {
+  const text = acceptance.toLowerCase();
+  if (isExistingBehaviorCriterion(text)) {
+    return true;
+  }
+  if (
+    text.includes("patch") &&
+    !mentionsCreate(text) &&
+    !mentionsPreserve(text)
+  ) {
+    return false;
+  }
+  return mentionsCreate(text) || mentionsPreserve(text);
+}
+
+function ownsP02Mutation(acceptance: string): boolean {
+  const text = acceptance.toLowerCase();
+  return isExistingBehaviorCriterion(text) || text.includes("patch");
+}
+
+function ownsP02Overdue(acceptance: string): boolean {
+  const text = acceptance.toLowerCase();
+  if (isExistingBehaviorCriterion(text)) {
+    return true;
+  }
+  return (
+    text.includes("overdue") ||
+    text.includes("due=") ||
+    text.includes("due filter") ||
+    text.includes("due query") ||
+    text.includes("due filtering") ||
+    (text.includes("compos") && text.includes("status"))
+  );
+}
+
+function mentionsCreate(text: string): boolean {
+  return (
+    (text.includes("creat") ||
+      text.includes("post /tasks") ||
+      text.includes("without dueat") ||
+      text.includes("missing dueat") ||
+      text.includes("defaults")) &&
+    !text.includes("patch")
+  );
+}
+
+function mentionsPreserve(text: string): boolean {
+  return (
+    text.includes("complete") ||
+    text.includes("reopen") ||
+    text.includes("preserve") ||
+    text.includes("retain dueat") ||
+    text.includes("survive complete") ||
+    text.includes("due dates survive")
+  );
+}
+
+function isExistingBehaviorCriterion(text: string): boolean {
+  return (
+    text.includes("existing tests") ||
+    text.includes("tests/tasks.test.ts") ||
+    (text.includes("continue to pass") && text.includes("existing"))
   );
 }
 

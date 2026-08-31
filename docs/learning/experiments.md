@@ -1669,7 +1669,40 @@ Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomp
 
 None against quality. The important deviation is **front-loaded implementation**: given the full Spec, Worker A implemented later units. Scoped tests for A do not forbid that. That is a ReviewPlan/execution coupling finding, not a VERIFY miss.
 
-Module 14 experiment recorded; **not** accepted by Master.
+Module 14 first experiment recorded as useful negative evidence; **not** accepted by Master.
+
+### Correction (same module, not a redesign)
+
+Split ReviewPlan (advisory) from harness-owned `UnitExecutionScope`. Failed scoped VERIFY stops later units. `owns()` mapping allows shared Spec.acceptance. Extra cost no longer auto-rejects when genuine A/B/C diffs exist.
+
+### Corrected P02 experiment
+
+Same 3×3, model, `contextMode=variant`, `conversationStateMode=manual`. Contaminated: **0**. Harness unit tests: **159 passed**.
+
+| Arm      | expected | first VERIFY | repairs | model/tools avg | tokens in/out avg | wall avg | empty unit diffs |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- | ---------------- |
+| baseline | 3/3      | 3/3 PASS     | 0 / 0   | 11 / 25         | 56.9k / 5.5k      | ~74s     | n/a              |
+| variant  | 3/3      | 3/3 PASS     | 0 / 0   | 22 / 46         | 130.4k / 10.1k    | ~128s    | 0, 0, 0          |
+
+Quality equal. Intermediate unit verification always PASS. Real sequential surfaces:
+
+- A: `dueAt` on types/create (no PATCH, no overdue) ~220–224 lines
+- B: PATCH due-date ~265–270 lines
+- C: `due=overdue` ~211–312 lines
+
+Scope was respected in source diffs. Variant still ~2× calls/tokens. Predefined corrected rule → **`candidate_pending_human_review`**. Do not auto-adopt.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomposition-m14-corrected-2026-08-31T12-13-58-044Z.txt`
+
+Human review reports:
+
+- `docs/learning/lessons/14-human-reviewable-decomposition/traces/P02-decomp-v2-variant-1-2026-08-31T12-17-43-955Z.review-units.md`
+- `docs/learning/lessons/14-human-reviewable-decomposition/traces/P02-decomp-v2-variant-2-2026-08-31T12-20-05-589Z.review-units.md`
+- `docs/learning/lessons/14-human-reviewable-decomposition/traces/P02-decomp-v2-variant-3-2026-08-31T12-22-03-621Z.review-units.md`
+
+### Failures / unexpected behavior (corrected run)
+
+None against quality or empty later units. Mapping still over-attaches some overdue criteria to unit A because `complete` matches `completed`; execution followed `UnitExecutionScope` anyway.
 
 ### Fixed V3 regression after the probe
 
@@ -1687,3 +1720,5 @@ ISO01                       PASS
 SEC01                       PASS
 Hard regressions            none
 ```
+
+After the correction, same suite again: `docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-31T12-27-55-652Z.txt` — 6/6 contracts, ISO01 PASS, SEC01 PASS, no hard regressions, decomposition still off.

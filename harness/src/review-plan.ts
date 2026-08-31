@@ -2,7 +2,10 @@ import fs from "node:fs";
 import { formatSpecContract, type Spec } from "./spec.ts";
 
 export const REVIEW_PLAN_AUTHORITY_RULE =
-  "Resolved Spec is authoritative. The ReviewPlan is advisory review decomposition, not Spec, permission, success criteria, or an implementation constraint. Follow it where grounded, adapt to repository reality when needed, and never use it to expand or change the resolved Spec.";
+  "Resolved Spec is authoritative. The ReviewPlan is advisory review decomposition for human review. It is not Spec, permission, or success criteria, and it does not change product semantics.";
+
+export const UNIT_EXECUTION_SCOPE_RULE =
+  "UnitExecutionScope is harness-owned process control for this episode only. Implement only the current unit now. Do not implement later units in this episode. Later units remain required by the final Spec and will run in later episodes. This scope does not add, remove, or rewrite product requirements.";
 
 export type ReviewPlanDecision = "single_change" | "decompose";
 
@@ -46,8 +49,39 @@ export type ChangeUnitTemplate = {
   dependsOn: string[];
   verificationIntent: string[];
   testFiles: string[];
-  score: (acceptance: string) => number;
+  owns: (acceptance: string) => boolean;
 };
+
+export type UnitExecutionScope = {
+  currentUnitId: string;
+  currentIntent: string;
+  acceptanceRefs: string[];
+  deferredUnits: Array<{ id: string; intent: string }>;
+};
+
+export function unitExecutionScope(
+  plan: ReviewPlan,
+  current: ChangeUnit,
+): UnitExecutionScope {
+  const ordered = orderedUnits(plan);
+  const index = ordered.findIndex((unit) => unit.id === current.id);
+  const deferred = index === -1 ? [] : ordered.slice(index + 1);
+  return {
+    currentUnitId: current.id,
+    currentIntent: current.intent,
+    acceptanceRefs: [...current.acceptanceRefs],
+    deferredUnits: deferred.map((unit) => ({
+      id: unit.id,
+      intent: unit.intent,
+    })),
+  };
+}
+
+export function shouldContinueDecomposedUnits(
+  unitVerificationPassed: boolean,
+): boolean {
+  return unitVerificationPassed === true;
+}
 
 export function admitReviewPlan(
   plan: ReviewPlan,
@@ -92,25 +126,29 @@ export function bindReviewPlanFromTemplates(
   templates: ChangeUnitTemplate[],
   rationale: string,
 ): ParseReviewPlanResult {
+  if (templates.length === 0) {
+    return { ok: false, error: "ReviewPlan templates must not be empty." };
+  }
   const assignments = new Map<string, string[]>();
   for (const template of templates) {
     assignments.set(template.id, []);
   }
 
   for (const criterion of spec.acceptance) {
-    let bestId = templates[0]?.id;
-    let bestScore = -1;
+    let matched = false;
     for (const template of templates) {
-      const score = template.score(criterion);
-      if (score > bestScore) {
-        bestScore = score;
-        bestId = template.id;
+      if (!template.owns(criterion)) {
+        continue;
       }
+      assignments.get(template.id)?.push(criterion);
+      matched = true;
     }
-    if (!bestId) {
-      return { ok: false, error: "ReviewPlan templates must not be empty." };
+    if (!matched) {
+      return {
+        ok: false,
+        error: `unmapped Spec.acceptance criterion: ${criterion}`,
+      };
     }
-    assignments.get(bestId)?.push(criterion);
   }
 
   const units: ChangeUnit[] = templates.map((template) => ({
@@ -152,20 +190,27 @@ export function orderedUnits(plan: ReviewPlan): ChangeUnit[] {
 export function formatWorkerUnitTask(
   originalTask: string,
   spec: Spec,
+  plan: ReviewPlan,
   unit: ChangeUnit,
 ): string {
+  const scope = unitExecutionScope(plan, unit);
   return [
     "## Authoritative specification",
-    "Implement this contract. Do not invent product behavior beyond it.",
+    "This is the final product contract. Do not invent behavior beyond it.",
+    "Later units remain required by this Spec even if they are out of scope for this episode.",
     "",
     JSON.stringify(spec, null, 2),
     "",
-    "## Current review unit (advisory, not authority)",
+    "## Advisory ReviewPlan (not execution authority)",
     REVIEW_PLAN_AUTHORITY_RULE,
-    "Implement only this unit. Do not implement later units.",
-    "Previous units are already in the repository; inspect them if needed.",
-    "Do not use this unit to expand product semantics, permissions, tools, or success criteria.",
+    `decision: ${plan.decision}`,
+    `rationale: ${plan.rationale}`,
     "",
+    "## UnitExecutionScope (harness-owned, this episode only)",
+    UNIT_EXECUTION_SCOPE_RULE,
+    JSON.stringify(scope, null, 2),
+    "",
+    "## Current unit",
     JSON.stringify(unit, null, 2),
     "",
     "## Original task (provenance only)",

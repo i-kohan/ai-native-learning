@@ -51,6 +51,7 @@ import {
   cumulativeTestFiles,
   formatReviewabilityReport,
   formatWorkerUnitTask,
+  shouldContinueDecomposedUnits,
   orderedUnits,
   writeReviewabilityReport,
   type ChangeUnitTemplate,
@@ -75,7 +76,8 @@ export type WorkflowFailureReason =
   | "review_plan_invalid"
   | "final_verification_failed"
   | "review_parse_failed"
-  | "review_unresolved_blocker";
+  | "review_unresolved_blocker"
+  | "unit_verification_failed";
 
 export function shouldVerifyAfterReviewRepair(
   failureReason: AgentRunResult["failureReason"],
@@ -125,6 +127,8 @@ export type HarnessRunResult = {
   reviewPlan: ReviewPlan | null;
   reviewUnits: ReviewUnitReport[];
   reviewabilityReportPath: string | null;
+  reviewUnitGateFailed: boolean;
+  stoppedReviewUnitId: string | null;
   turns: number;
   modelCalls: number;
   toolCalls: number;
@@ -469,6 +473,8 @@ export async function runV1Harness(options: {
 
   let implementation: AgentRunResult;
   let reviewUnits: ReviewUnitReport[] = [];
+  let reviewUnitGateFailed = false;
+  let stoppedReviewUnitId: string | null = null;
   if (reviewPlan?.decision === "decompose") {
     const decomposed = await runDecomposedImplementation({
       config,
@@ -485,6 +491,8 @@ export async function runV1Harness(options: {
     });
     implementation = decomposed.implementation;
     reviewUnits = decomposed.units;
+    reviewUnitGateFailed = decomposed.unitGateFailed;
+    stoppedReviewUnitId = decomposed.stoppedReviewUnitId;
   } else {
     implementation = await runAgentLoop({
       config,
@@ -584,6 +592,15 @@ export async function runV1Harness(options: {
     });
   }
 
+  if (reviewUnitGateFailed) {
+    workflowStatus = "failure";
+    failureReason = "unit_verification_failed";
+    tracer.record("review_unit_gate_failed", {
+      stoppedReviewUnitId,
+      finalVerificationPassed,
+    });
+  }
+
   const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
   const { changedFiles, unifiedDiff } = diffSnapshots(
     beforeSnapshot,
@@ -618,6 +635,8 @@ export async function runV1Harness(options: {
     reviewPlan,
     reviewUnits,
     reviewabilityReportPath,
+    reviewUnitGateFailed,
+    stoppedReviewUnitId,
     contextMode,
     conversationStateMode,
     contextPreparation,
@@ -670,6 +689,11 @@ export function printHarnessResult(result: HarnessRunResult): void {
   }
   if (result.reviewabilityReportPath) {
     console.log(`reviewability_report: ${result.reviewabilityReportPath}`);
+  }
+  if (result.reviewUnitGateFailed) {
+    console.log(
+      `review_unit_gate: failed at ${result.stoppedReviewUnitId ?? "(unknown)"}`,
+    );
   }
   console.log(
     `research_delegations: ${result.implementation?.researchDelegations.length ?? 0}`,
@@ -838,10 +862,14 @@ async function runDecomposedImplementation(options: {
 }): Promise<{
   implementation: AgentRunResult;
   units: ReviewUnitReport[];
+  unitGateFailed: boolean;
+  stoppedReviewUnitId: string | null;
 }> {
   const units: ReviewUnitReport[] = [];
   const completedIds: string[] = [];
   let merged: AgentRunResult | null = null;
+  let unitGateFailed = false;
+  let stoppedReviewUnitId: string | null = null;
 
   for (const unit of orderedUnits(options.plan)) {
     const unitBefore = snapshotDirectory(options.config.targetSrcRoot);
@@ -852,9 +880,15 @@ async function runDecomposedImplementation(options: {
       acceptanceRefs: unit.acceptanceRefs,
     });
 
+    const unitTask = formatWorkerUnitTask(
+      options.task,
+      options.spec,
+      options.plan,
+      unit,
+    );
     const episode = await runAgentLoop({
       config: options.config,
-      task: formatWorkerUnitTask(options.task, options.spec, unit),
+      task: unitTask,
       runId: options.runId,
       beforeSnapshot: unitBefore,
       spec: options.spec,
@@ -871,7 +905,7 @@ async function runDecomposedImplementation(options: {
 
     const unitVerified = await runVerifyRepairLoop({
       config: options.config,
-      task: formatWorkerUnitTask(options.task, options.spec, unit),
+      task: unitTask,
       spec: options.spec,
       tracer: options.tracer,
       reusableContext: options.reusableContext,
@@ -920,6 +954,18 @@ async function runDecomposedImplementation(options: {
       repairAttempts: report.repairAttempts,
       deviation: report.deviation,
     });
+
+    if (!shouldContinueDecomposedUnits(report.verificationPassed)) {
+      unitGateFailed = true;
+      stoppedReviewUnitId = unit.id;
+      options.tracer.record("review_unit_gate_stopped", {
+        unitId: unit.id,
+        remainingUnits: orderedUnits(options.plan)
+          .map((item) => item.id)
+          .filter((id) => !completedIds.includes(id)),
+      });
+      break;
+    }
   }
 
   if (!merged) {
@@ -930,7 +976,12 @@ async function runDecomposedImplementation(options: {
   const full = diffSnapshots(options.sourceBeforeSnapshot, finalSource);
   merged.changedFiles = full.changedFiles;
   merged.unifiedDiff = full.unifiedDiff;
-  return { implementation: merged, units };
+  return {
+    implementation: merged,
+    units,
+    unitGateFailed,
+    stoppedReviewUnitId,
+  };
 }
 
 function unitDeviation(options: {
@@ -1644,6 +1695,8 @@ function baseResult(fields: {
   reviewPlan?: ReviewPlan | null;
   reviewUnits?: ReviewUnitReport[];
   reviewabilityReportPath?: string | null;
+  reviewUnitGateFailed?: boolean;
+  stoppedReviewUnitId?: string | null;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
   contextPreparation: ContextPreparation | null;
@@ -1789,6 +1842,8 @@ function baseResult(fields: {
     reviewPlan: fields.reviewPlan ?? null,
     reviewUnits: fields.reviewUnits ?? [],
     reviewabilityReportPath: fields.reviewabilityReportPath ?? null,
+    reviewUnitGateFailed: fields.reviewUnitGateFailed ?? false,
+    stoppedReviewUnitId: fields.stoppedReviewUnitId ?? null,
     turns:
       fields.specPhase.turns +
       fields.plannerPhase.turns +
@@ -1905,6 +1960,8 @@ async function finishRun(
       deviation: unit.deviation,
     })),
     reviewabilityReportPath: result.reviewabilityReportPath,
+    reviewUnitGateFailed: result.reviewUnitGateFailed,
+    stoppedReviewUnitId: result.stoppedReviewUnitId,
     researchDelegations: result.implementation?.researchDelegations ?? [],
     receivedTerminalResponse: result.receivedTerminalResponse,
     verificationAttempts: result.verificationAttempts,

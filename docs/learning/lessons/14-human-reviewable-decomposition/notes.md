@@ -2,69 +2,60 @@
 
 Практический журнал Module 14. Conceptual material: [`theory.md`](./theory.md). Принятие — Topic Chat / Master.
 
-**Status:** mechanism + unit tests + P02 experiment + fixed regression done; **not** accepted by Master.
+**Status:** mechanism + correction + two P02 experiments + first fixed regression done; **not** accepted by Master.
 
 ## Что построили
 
 ```text
 BASELINE: Spec → one Worker → VERIFY / REVIEW → final diff
-VARIANT:  Spec → manual advisory ReviewPlan → sequential units A→B→C
-          (source snapshot + scoped verify after each)
+VARIANT:  Spec → manual advisory ReviewPlan → UnitExecutionScope per episode
+          → sequential units A→B→C (snapshot + scoped verify gate)
           → final VERIFY / REVIEW → final diff + per-unit diffs
 ```
 
 - `benchmarks/P02/` — due dates
-- `harness/src/review-plan.ts` — schema, admission, coverage, handoff
-- `harness/src/run.ts` — sequential unit Workers when `bindReviewPlan` is supplied
-- `harness/src/decomposition-experiment.ts` — P02 templates + decision rule
+- `harness/src/review-plan.ts` — schema, admission, `UnitExecutionScope`, handoff
+- `harness/src/run.ts` — sequential unit Workers; failed scoped verify stops later units
+- `harness/src/decomposition-experiment.ts` — P02 `owns()` bind + decision rule
 - `npm run benchmark:decomposition`
 - Default unchanged: Spec → one Worker. No LLM Review Planner.
 
 ## Learning-critical files
 
-1. `harness/src/review-plan.ts` — ReviewPlan ≠ Spec; coverage/cycles.
-2. `harness/src/run.ts` — real unit diffs, not labels on one final diff.
-3. `harness/src/decomposition-experiment.ts` — P02 bind + reject-on-overhead rule.
+1. `harness/src/review-plan.ts` — Spec / ReviewPlan / UnitExecutionScope; coverage; shared ownership.
+2. `harness/src/run.ts` — real unit diffs; intermediate VERIFY is a hard gate.
+3. `harness/src/decomposition-experiment.ts` — explicit `owns()` mapping; cost does not auto-reject.
 4. `benchmarks/P02/` — task + three unit test files.
-5. `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
+5. First experiment: `traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
+6. Corrected experiment: `traces/decomposition-m14-corrected-2026-08-31T12-13-58-044Z.txt`
 
 ## ReviewPlan schema
 
 ```text
 ReviewPlan { decision: single_change | decompose, rationale, units[] }
 ChangeUnit { id, intent, acceptanceRefs, dependsOn[], verificationIntent[] }
+UnitExecutionScope { currentUnitId, currentIntent, acceptanceRefs, deferredUnits[] }
 ```
 
-Admission: unique ids; dependsOn exist and are acyclic; refs ∈ Spec.acceptance; decompose covers every acceptance item; plan does not mutate Spec.
+Admission: unique ids; dependsOn exist and are acyclic; refs ∈ Spec.acceptance; decompose covers every acceptance item; duplicate ownership is valid; plan does not mutate Spec.
 
 No `likelyFiles`.
 
-## P02 acceptance (task)
+## P02 mapping
 
-- optional `dueAt: string | null`
-- POST default / explicit null / `Date.parse` validity / 400
-- PATCH set/clear; omitted/`dueAt` missing/non-object → 400; unknown → 404
-- GET `due=overdue`: pending and `Date.parse(dueAt) < now`; composes with status; other `due` → 400
-- complete/reopen preserve `dueAt`
+- A: create/default/invalid `dueAt`, complete/reopen preserve `dueAt`
+- B: PATCH set/clear / 400 / 404
+- C: `due=overdue` + status composition
+- Shared: complete/reopen + reopened overdue appears in overdue; existing tests may attach to all units
 
-Proposed units: A capability (no deps) → B mutation (depends A) → C overdue (depends A).
+## First P02 experiment (keep)
 
-## Controlled P02 experiment
-
-Constants: exact SHA, `contextMode=variant`, `conversationStateMode=manual`, same VERIFY/REVIEW. Variant has **no** extra Planner model.
-
-Harness unit suite at implementation: **152 passed**.
-
-Contaminated: **0**.
+Constants: `contextMode=variant`, `conversationStateMode=manual`. Harness suite then: **152 passed**. Contaminated: **0**.
 
 | Arm      | expected | first VERIFY | repairs | model/tools avg | tokens in/out avg | wall avg |
 | -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
 | baseline | 3/3      | 3/3 PASS     | 0 / 0   | 10 / 26         | 63.9k / 6.2k      | ~89s     |
 | variant  | 3/3      | 3/3 PASS     | 0 / 0   | 20 / 48         | 125.0k / 9.1k     | ~101s    |
-
-Review findings: 0 blocking on both arms. Intermediate unit VERIFY: 3/3 PASS.
-
-### Actual unit diffs
 
 | Trial | A | B | C |
 | ----- | - | - | - |
@@ -72,22 +63,51 @@ Review findings: 0 blocking on both arms. Intermediate unit VERIFY: 3/3 PASS.
 | 2 | 3 files, 305 lines | empty | `task-service.ts`, 133 lines |
 | 3 | 3 files, 307 lines | empty | empty |
 
-A always implemented the whole feature (types + service + routes). B never had a source delta. Scoped A tests do not prohibit PATCH/overdue, so later units were already satisfied.
-
-Predefined rule → **reject**. Overhead without extra reviewable surfaces.
-
-Default:
-
-```text
-Spec → one Worker
-single_change is first-class
-```
+Advisory ReviewPlan alone failed to materialize review boundaries: Worker still had the full Spec and no harness-owned execution-scope boundary. Old cost-based reject was the wrong auto-rule for this module.
 
 Evidence: `traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
 
+## Correction
+
+1. Split ReviewPlan (advisory) from `UnitExecutionScope` (harness-owned episode control).
+2. Failed intermediate scoped VERIFY stops later units (`unit_verification_failed`); final full VERIFY still runs.
+3. Explicit `owns()` mapping; shared AC is valid; unmapped coverage fails bind.
+4. Decision: worse quality / invalid intermediate → reject; empty later diffs → `mechanism_failed`; equal quality + real A/B/C diffs → `candidate_pending_human_review` even if more expensive. No auto-adopt.
+
+## Corrected P02 experiment
+
+Same 3×3, model, `contextMode=variant`, `conversationStateMode=manual`. Harness suite: **159 passed**. Contaminated: **0**.
+
+| Arm      | expected | first VERIFY | repairs | model/tools avg | tokens in/out avg | wall avg |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
+| baseline | 3/3      | 3/3 PASS     | 0 / 0   | 11 / 25         | 56.9k / 5.5k      | ~74s     |
+| variant  | 3/3      | 3/3 PASS     | 0 / 0   | 22 / 46         | 130.4k / 10.1k    | ~128s    |
+
+Blocking review findings: 0. Intermediate unit VERIFY: 3/3 PASS. Empty unit diffs: **0**.
+
+| Trial | A | B | C |
+| ----- | - | - | - |
+| 1 | types+service+routes, 224 | routes+service, 265 | routes+service, 312 |
+| 2 | types+service+routes, 220 | routes+service, 270 | routes, 211 |
+| 3 | types+service+routes, 221 | routes+service, 266 | routes+service, 294 |
+
+Scope was respected in source: A added `dueAt` create/types only (no PATCH route, no overdue filter). B added PATCH. C added `due=overdue`. A’s `acceptanceRefs` still over-attached some overdue criteria (`complete` matching `completed`); execution followed `UnitExecutionScope`, not those extra refs.
+
+Decision: **`candidate_pending_human_review`**. Default stays Spec → one Worker.
+
+Human review reports:
+
+- `traces/P02-decomp-v2-variant-1-2026-08-31T12-17-43-955Z.review-units.md`
+- `traces/P02-decomp-v2-variant-2-2026-08-31T12-20-05-589Z.review-units.md`
+- `traces/P02-decomp-v2-variant-3-2026-08-31T12-22-03-621Z.review-units.md`
+
+Evidence: `traces/decomposition-m14-corrected-2026-08-31T12-13-58-044Z.txt`
+
 ## Fixed V3 regression
 
-Evidence: `traces/2026-08-29T11-33-40-045Z.txt`
+First run after the initial probe: `traces/2026-08-29T11-33-40-045Z.txt` — 6/6 contracts, ISO01 PASS, SEC01 PASS, decomposition off.
+
+Corrected-run regression: `traces/2026-08-31T12-27-55-652Z.txt`
 
 ```text
 T01–T04 expected outcomes   4 / 4
@@ -102,11 +122,5 @@ Hard regressions            none
 ```
 
 Decomposition stayed off on the fixed suite (`bindReviewPlan` not supplied).
-
-## Observation
-
-Giving the Worker the full Spec plus “implement only this unit” did not enforce the review boundary. The harness recorded empty later diffs instead of violating the Spec. That is the correct failure mode for this probe.
-
-P01 remains the smaller negative example. P02 shows the same cohesion at a slightly larger size: a semantic split can be written down, but one Worker still delivers one change.
 
 Не считать модуль принятым до Topic Chat.

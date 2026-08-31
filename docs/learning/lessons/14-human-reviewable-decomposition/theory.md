@@ -23,16 +23,19 @@ Small               ≠ good
 
 A file slice can be small and still unreviewable. A semantic unit can touch several files and still be easier for a human than one mixed final diff.
 
-## 2. ReviewPlan is advisory
+## 2. Three authorities
 
 ```text
-Spec        = WHAT must be true
-ReviewPlan  = how we currently propose to review the change
-Worker      = HOW to implement against the Spec
-Harness     = whether the next phase may run
+Spec                 = WHAT must be true (product contract; still includes later units)
+ReviewPlan           = advisory how a human might review the change
+UnitExecutionScope   = harness-owned: implement only this unit in this episode
+Worker               = HOW to implement against the Spec, inside that episode scope
+Harness              = whether the next unit / phase may run
 ```
 
-ReviewPlan must not add product semantics, permissions, success criteria, or implementation constraints.
+ReviewPlan must not add product semantics, permissions, or success criteria.
+
+`UnitExecutionScope` is process control, not a mini-Spec. Later units stay required by the final Spec; they must not be implemented in the current episode.
 
 `single_change` is a first-class valid outcome. P01 is the negative example: a split can be imagined, but the workload is too small/cohesive for an extra review boundary.
 
@@ -47,9 +50,9 @@ base → A → B → C
 unit diffs: base..A, A..B, B..C
 ```
 
-After each unit: repository remains valid for completed behavior; bounded unit verification runs; the delta is recorded. Final full VERIFY and independent REVIEW still run.
+After each unit: scoped verification is a hard gate; a FAIL stops later units. Final full VERIFY and independent REVIEW still run.
 
-No stacked PRs, DAG scheduler, parallel workers, or LLM Review Planner in this probe. The ReviewPlan is bound manually to the resolved Spec.
+No stacked PRs, DAG scheduler, parallel workers, or LLM Review Planner in this probe. The ReviewPlan is bound manually to the resolved Spec. Shared Spec.acceptance ownership is valid; missing coverage is not.
 
 ## 4. When it can be useful
 
@@ -61,25 +64,22 @@ Only if all of these hold:
 4. dependencies are explicit;
 5. intermediate states remain valid;
 6. no acceptance criteria are lost;
-7. overhead does not erase the human-review benefit.
+7. extra cost is recorded, but does not auto-reject when genuine review surfaces exist.
 
-Human reviewability is not an LLM score. Topic Chat supplies that signal.
+Human reviewability is not an LLM score. Topic Chat supplies that signal. Default stays Spec → one Worker until that review happens.
 
-## 5. P02 observation
+## 5. P02 observations
 
-On P02, quality was equal (3/3, first VERIFY PASS, no repairs). Variant cost about 2× model calls and tokens.
+**First experiment.** Quality equal (3/3, first VERIFY PASS, no repairs). Variant ~2× calls/tokens. Advisory ReviewPlan plus “implement only this unit” did **not** materialize review boundaries: Worker A, given the full Spec, implemented the whole feature. B empty 3/3; C empty 2/3.
 
-The proposed units A (capability) → B (PATCH) → C (overdue) were **not** the actual review surfaces. Worker A, given the full Spec, implemented the whole feature. B was empty 3/3. C was empty 2/3.
-
-So the extra episodes did not create three human-reviewable diffs. They mostly replayed an already-complete repository. The harness recorded that deviation instead of shrinking the Spec.
-
-`single_change` remains the right default for this workload.
+**Corrected experiment.** Same quality (3/3, first VERIFY PASS, 0 repairs). Variant still ~2× cost. With harness-owned `UnitExecutionScope`, units produced real `base..A`, `A..B`, `B..C` diffs (empty later units: 0). Intermediate VERIFY always PASS. Decision: `candidate_pending_human_review`. Not auto-adopted.
 
 ## Takeaways (pre-review)
 
 - Decomposition is for human attention, not agent count.
-- ReviewPlan ≠ Spec.
+- Spec ≠ ReviewPlan ≠ UnitExecutionScope.
 - Real sequential diffs beat labeled regions of one diff.
-- A written semantic split does not force sequential implementation if the Worker still sees the full Spec.
+- An advisory split does not force sequential implementation unless the harness owns episode scope.
+- Extra cost does not auto-reject when genuine review surfaces exist; Topic Chat still owns adoption.
 - `single_change` is a legitimate result.
 - Mechanism correctness ≠ adoption.
