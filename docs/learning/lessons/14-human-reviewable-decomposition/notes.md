@@ -2,7 +2,7 @@
 
 Практический журнал Module 14. Conceptual material: [`theory.md`](./theory.md). Принятие — Topic Chat / Master.
 
-**Status:** mechanism + correction + two P02 experiments + post-review ownership cleanup done; **not** accepted by Master.
+**Status:** ✅ COMPLETED — mechanism + correction + two P02 experiments + ownership cleanup + human review + understanding check done. Closed by Topic Chat on 2026-09-01; return to Master/Roadmap for the next module.
 
 ## Что построили
 
@@ -96,7 +96,7 @@ Blocking review findings: 0. Intermediate unit VERIFY: 3/3 PASS. Empty unit diff
 
 Scope was respected in source: A added `dueAt` create/types only (no PATCH route, no overdue filter). B added PATCH. C added `due=overdue`.
 
-Decision: **`candidate_pending_human_review`**. Default stays Spec → one Worker.
+Decision before human review: **`candidate_pending_human_review`**. Default stayed Spec → one Worker.
 
 Human review reports:
 
@@ -127,9 +127,49 @@ Therefore:
 
 Focused regression tests cover the real resolved-P02 wording and the `completed` false-positive case.
 
-This cleanup changes ReviewPlan bookkeeping only. It does **not** change the already-recorded Worker source diffs, verification results, costs, or `candidate_pending_human_review` decision. Historical trace/review-report artifacts are intentionally preserved unchanged, so their old `acceptanceRefs` remain evidence of what the run actually emitted.
+This cleanup changes ReviewPlan bookkeeping only. It does **not** change the already-recorded Worker source diffs, verification results, costs, or experiment decision. Historical trace/review-report artifacts are intentionally preserved unchanged, so their old `acceptanceRefs` remain evidence of what the run actually emitted.
 
 No new P02 benchmark or fixed-suite rerun is claimed for this post-review bookkeeping cleanup.
+
+## Human review signal
+
+Topic Chat compared the same P02 result in two review surfaces:
+
+```text
+one final unified change
+vs
+A → B → C semantic units
+```
+
+Observed human signal:
+
+- the full P02 change was still small/cohesive enough to fit in one mental model;
+- reviewing A, then B, then C was nevertheless clearly easier and more understandable;
+- each unit felt locally complete and reviewable;
+- no unit required the reviewer to reconstruct the whole future feature to understand its purpose;
+- the benefit was real but not dramatic because P02 itself is near the lower size/complexity boundary where decomposition may pay off.
+
+Therefore P02 supports **human-reviewability benefit**, but does **not** justify making decomposition the default. The variant cost roughly ~2× model calls/tokens and materially more wall time.
+
+## Final policy
+
+```text
+single_change = default
+
+decompose when:
+- the change contains multiple genuine semantic concerns;
+- each unit has one understandable goal;
+- each unit is locally reviewable and verifiable;
+- intermediate states remain valid;
+- dependencies are explicit;
+- the reduction in human cognitive load is worth the extra orchestration / verification cost.
+```
+
+Do **not** decompose merely because a change can technically be split or because smaller diffs look nicer. Small/file-based/micro-change slicing can make review worse by increasing context switching and dependency overhead.
+
+P02 conclusion:
+
+> Human reviewability improved, but P02 is near the lower boundary where the additional orchestration cost becomes questionable.
 
 ## Fixed V3 regression
 
@@ -151,4 +191,28 @@ Hard regressions            none
 
 Decomposition stayed off on the fixed suite (`bindReviewPlan` not supplied).
 
-Не считать модуль принятым до Topic Chat.
+## Understanding check
+
+Final Topic Chat check passed after one correction.
+
+Correctly understood:
+
+- ReviewPlan is advisory and cannot redefine product truth;
+- UnitExecutionScope is harness process authority for the current episode, subordinate to the final Spec;
+- a smaller diff is not automatically a better review unit;
+- `single_change` is preferable when the whole change is already easy to understand and the split would not repay its cost.
+
+Correction made during the check: the reason “smaller diffs are not automatically better” is not only cost; semantic cohesion and context-switch/dependency overhead matter too.
+
+## Module decision
+
+```text
+review-decomposition mechanism = implemented + corrected + understood
+P02 first experiment           = mechanism_failed / no genuine surfaces
+P02 corrected experiment       = quality preserved + genuine A/B/C surfaces
+human review signal            = positive, but modest on this P02-sized feature
+adoption                       = conditional, not default
+normal default                 = Spec → one Worker, single_change first-class
+```
+
+✅ Module 14 closed by Topic Chat on 2026-09-01. Return to Master/Roadmap; do not auto-open the next module here.
