@@ -56,9 +56,9 @@ No stacked PRs, DAG scheduler, parallel workers, or LLM Review Planner in this p
 
 Acceptance ownership itself must be semantic. A criterion may legitimately belong to multiple units when it spans a dependency boundary, but incidental wording must not attach it to the wrong unit. Example: `completed tasks are excluded from overdue results` is C/query behavior, not A/lifecycle preservation merely because the word `completed` contains `complete`. Review metadata should describe the behavior actually owned by the unit.
 
-## 4. When it can be useful
+## 4. When decomposition is useful
 
-Only if all of these hold:
+Use it only when all of these hold:
 
 1. correctness is preserved;
 2. actual units are materially easier for a human to review;
@@ -66,25 +66,62 @@ Only if all of these hold:
 4. dependencies are explicit;
 5. intermediate states remain valid;
 6. no acceptance criteria are lost;
-7. extra cost is recorded, but does not auto-reject when genuine review surfaces exist.
+7. the human-review benefit is worth the extra orchestration / verification cost.
 
-Human reviewability is not an LLM score. Topic Chat supplies that signal. Default stays Spec → one Worker until that review happens.
+Human reviewability is not an LLM score. The human reviewer is the relevant signal.
 
 ## 5. P02 observations
 
 **First experiment.** Quality equal (3/3, first VERIFY PASS, no repairs). Variant ~2× calls/tokens. Advisory ReviewPlan plus “implement only this unit” did **not** materialize review boundaries: Worker A, given the full Spec, implemented the whole feature. B empty 3/3; C empty 2/3.
 
-**Corrected experiment.** Same quality (3/3, first VERIFY PASS, 0 repairs). Variant still ~2× cost. With harness-owned `UnitExecutionScope`, units produced real `base..A`, `A..B`, `B..C` diffs (empty later units: 0). Intermediate VERIFY always PASS. Decision: `candidate_pending_human_review`. Not auto-adopted.
+**Corrected experiment.** Same quality (3/3, first VERIFY PASS, 0 repairs). Variant still ~2× cost. With harness-owned `UnitExecutionScope`, units produced real `base..A`, `A..B`, `B..C` diffs (empty later units: 0). Intermediate VERIFY always PASS.
 
 **Post-review cleanup.** The corrected-run source decomposition was sound, but its historical review metadata over-attached some overdue-only acceptance criteria to A because of loose text matching. The current P02 binder narrows lifecycle ownership to actual complete/reopen + due-date preservation semantics while keeping genuinely cross-unit criteria shared A+C. Historical experiment artifacts remain unchanged.
 
-## Takeaways (pre-review)
+**Human review.** The full P02 change was small enough to fit in one mental model, but reviewing the same feature as A → B → C was clearly easier. Each unit had one local purpose and could be accepted before moving on. The improvement was real, but modest because P02 itself is still a relatively small feature.
+
+This gives the final interpretation:
+
+```text
+mechanism works
+human-review benefit exists
+P02 is near the lower ROI boundary
+therefore decomposition is conditional, not default
+```
+
+## 6. Final policy
+
+```text
+single_change = default
+
+decompose when:
+- there are multiple genuine semantic concerns;
+- each unit has one understandable goal;
+- each unit is locally reviewable and verifiable;
+- intermediate states remain valid;
+- dependencies are explicit;
+- reduced cognitive load repays extra orchestration cost.
+```
+
+Do not decompose simply because:
+
+- a change can technically be split;
+- files can be separated;
+- smaller diffs look nicer;
+- more agents could work on the pieces.
+
+A badly chosen split can increase context switching, dependency tracking, integration work, and reviewer confusion.
+
+## 7. Final takeaways
 
 - Decomposition is for human attention, not agent count.
 - Spec ≠ ReviewPlan ≠ UnitExecutionScope.
-- Real sequential diffs beat labeled regions of one diff.
+- Real sequential diffs beat labels placed on one final diff.
 - Review-unit metadata must follow semantic ownership, not incidental words.
 - An advisory split does not force sequential implementation unless the harness owns episode scope.
-- Extra cost does not auto-reject when genuine review surfaces exist; Topic Chat still owns adoption.
-- `single_change` is a legitimate result.
-- Mechanism correctness ≠ adoption.
+- Smaller is not automatically better; semantic cohesion matters more than LOC.
+- `single_change` is a legitimate and still-default result.
+- Mechanism correctness ≠ automatic adoption.
+- P02 supports conditional use of decomposition for larger multi-concern changes.
+
+✅ Module 14 understanding check passed and the module was closed by Topic Chat on 2026-09-01.
