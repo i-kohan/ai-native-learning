@@ -609,6 +609,7 @@ describe("qualification protocol wiring", () => {
   it("runs capability once and holdout as independent trials from mocked runners", async () => {
     const result = await runQualificationProtocol({
       configuredModel: "gpt-5.6-luna",
+      baseRevision: "abc123def",
       runCapability: async (taskId) =>
         harnessResult({
           tracePath: `/tmp/${taskId}.jsonl`,
