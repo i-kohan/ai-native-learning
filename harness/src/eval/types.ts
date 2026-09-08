@@ -225,7 +225,6 @@ export type HoldoutTaskEval = {
   evaluationRole: "holdout";
   contaminationStatus: ContaminationStatus;
   trials: number;
-  expectedOutcomesMet: Ratio;
   independentGraderPass: Ratio;
   escapedDefects: Ratio;
   efficiency: {
@@ -240,7 +239,6 @@ export type HoldoutTaskEval = {
 
 export type HoldoutEval = {
   tasks: HoldoutTaskEval[];
-  expectedOutcomesMet: Ratio;
   independentGraderPass: Ratio;
   escapedDefects: Ratio;
 };
