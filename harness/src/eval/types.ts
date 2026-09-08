@@ -225,6 +225,7 @@ export type HoldoutTaskEval = {
   evaluationRole: "holdout";
   contaminationStatus: ContaminationStatus;
   trials: number;
+  expectedOutcomesMet: Ratio;
   independentGraderPass: Ratio;
   escapedDefects: Ratio;
   efficiency: {
@@ -239,6 +240,7 @@ export type HoldoutTaskEval = {
 
 export type HoldoutEval = {
   tasks: HoldoutTaskEval[];
+  expectedOutcomesMet: Ratio;
   independentGraderPass: Ratio;
   escapedDefects: Ratio;
 };
@@ -288,13 +290,14 @@ export const QUALIFICATION_DECISION_RULE = [
   `Claim: ${QUALIFICATION_CLAIM}`,
   "The claim is SUPPORTED only if all of the following hold:",
   "1. T01–T04 have no regression (each expected capability contract met).",
-  "2. H01 independent grader = 3/3 PASS.",
-  "3. H02 independent grader = 3/3 PASS.",
+  "2. H01 full expected outcome = 3/3 and independent grader = 3/3 PASS.",
+  "3. H02 full expected outcome = 3/3 and independent grader = 3/3 PASS.",
   "4. escaped defects = 0 across holdout trials with independent ground truth.",
   "5. grader calibration is valid.",
+  "6. every qualification run has the same frozen baseRevision and configured model identity.",
   "A holdout result such as 2/3 does NOT satisfy the rule and is unsupported, not inconclusive.",
   "Do not call a failed predefined criterion inconclusive merely because the sample size is small.",
-  "Use inconclusive only when the evidence itself cannot support a clean decision: invalid trials, flaky grader, contamination, uncontrolled environment/model change, or an uncovered trade-off.",
+  "Use inconclusive only when the evidence itself cannot support a clean decision: invalid trials, flaky grader, contamination, mixed/uncontrolled provenance, or an uncovered trade-off.",
   "Any conclusion remains workload-bounded. Never report 3/3 as 100% reliability.",
   "Holdout lifecycle: fresh holdout → evaluate → if its result is used to change/tune the evaluated harness/mechanism → it becomes DEV/known for future qualification.",
 ].join("\n");
