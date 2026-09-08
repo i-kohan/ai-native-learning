@@ -18,9 +18,8 @@ Completed modules:
 12. ✅ 12 — Planner / Worker / Reviewer
 13. ✅ 13 — Subagents
 14. ✅ 14 — Human-Reviewable Decomposition
-15. ✅ 15 — Stronger Eval Methodology
 
-Current module: **15 — Stronger Eval Methodology completed in Topic Chat on 2026-09-08.** Do not start Module 16 from this Topic Chat; Master owns the next step and the planned Phase-3 consolidation. Default architecture unchanged.
+Current module: **15 — Stronger Eval Methodology** (implemented and measured; pending Topic Chat review). Default architecture unchanged.
 
 ---
 
@@ -39,7 +38,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional explicit read-only Planner mechanism exists behind `planningEnabled`, but remains off by default because Module 12 P01 showed equal quality with worse end-to-end cost;
 - optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. Module 13 mechanism probe, not a change to the normal lifecycle;
 - optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker;
-- eval catalog distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY.
+- eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY.
 
 Conceptual default flow:
 
@@ -63,9 +62,9 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 15 — Stronger Eval Methodology
 
-**Status:** ✅ COMPLETED — Topic Chat review passed on 2026-09-08. Qualification claim **supported** on the frozen Module 15 workload / configured model. Default architecture unchanged.
+**Status:** implemented and measured. Qualification claim **supported** on this frozen workload/model snapshot. Topic Chat owns formal closure. Default architecture unchanged.
 
-Theory:
+Theory draft:
 
 `docs/learning/lessons/15-stronger-eval-methodology/theory.md`
 
@@ -90,7 +89,7 @@ fresh holdout → evaluate
 → becomes DEV/known for future qualification
 ```
 
-H01/H02 remain `fresh_holdout` for the recorded qualification evidence because that result was not used to tune the harness.
+H01/H02 remain `fresh_holdout`. This run did not tune the harness against them.
 
 ## Qualification protocol (frozen before outcomes)
 
@@ -110,7 +109,7 @@ Claim supported only if:
 
 ## Result (2026-09-07)
 
-Suite: `qualification-m15`. Configured model: `gpt-5.6-luna`. Base: `a6b8e5001298`. Invalid trials: none. Contaminated: none.
+Suite: `qualification-m15`. Model: `gpt-5.6-luna`. Base: `a6b8e5001298`. Invalid trials: none. Contaminated: none.
 
 | Split | Result |
 | --- | --- |
@@ -126,32 +125,15 @@ H02 efficiency: wall median 38464ms (30034–41537); model calls median 8 (7–9
 
 Evidence: `docs/learning/lessons/15-stronger-eval-methodology/traces/2026-09-07T17-26-05-593Z.txt`
 
-Harness unit tests at implementation time: **174 passed**.
+Harness unit tests: **174 passed**.
 
-## Topic Chat review
-
-No blocking correctness issue was found in the qualification evidence or independent-grader boundary.
-
-Confirmed:
-
-- grader tests are host-owned and absent from normal Worker/VERIFY;
-- Worker tools are rooted inside `target-app/`, with writes restricted to `target-app/src/`;
-- grader runs after terminal harness outcome and before workspace cleanup;
-- grading happens against a temporary staging copy of the final workspace;
-- H01/H02 hidden tests check stated requirements, not hidden product requirements;
-- DEV/HOLDOUT/probe denominators remain separate;
-- all six recorded holdout runs had `expected=yes`, `VERIFY PASS`, independent grader PASS, and `escaped=false`.
-
-Known limitations are intentionally documented rather than expanded into a production eval platform: only two same-domain holdouts, configured model identity is not a cryptographically pinned provider snapshot, grader stdout is not first-class normalized evidence, and a future qualification suite should explicitly gate on full holdout workflow success as well as grader results before looking at new outcomes.
-
-## Module decision
+## Module decision (pending Topic Chat)
 
 ```text
-eval methodology     = implemented and understood
-qualification claim  = supported on frozen Module 15 workload
-H01/H02              = fresh holdout for recorded evidence
+eval methodology     = implemented
+qualification claim  = supported on this frozen workload / gpt-5.6-luna
+H01/H02              = still fresh holdout (not used to tune)
 normal default       = unchanged
-next step            = Master / Phase-3 consolidation, not Module 16 here
 ```
 
 ---
@@ -275,3 +257,388 @@ Key boundaries:
 ## First P02 experiment (negative)
 
 Quality equal 3/3, first VERIFY PASS, 0 repairs. Variant ~2× cost. A absorbed the full feature; B empty 3/3; C empty 2/3. Advisory ReviewPlan did not bound execution.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomposition-m14-2026-08-29T11-20-11-746Z.txt`
+
+## Corrected P02 experiment
+
+Same 3×3, `contextMode=variant`, `conversationStateMode=manual`. Contaminated: none. Harness unit tests: **159 passed**.
+
+| Arm      | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
+| BASELINE | 3/3      | 3/3 PASS     | 0 / 0   | 11 / 25         | 56,861 / 5,539    | ~74s     |
+| VARIANT  | 3/3      | 3/3 PASS     | 0 / 0   | 22 / 46         | 130,415 / 10,125  | ~128s    |
+
+Quality equal. Intermediate units always PASS. Empty later diffs: 0. Real `base..A`, `A..B`, `B..C`. Variant still ~2× cost. Decision: **`candidate_pending_human_review`**. Default unchanged.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/decomposition-m14-corrected-2026-08-31T12-13-58-044Z.txt`
+
+## Fixed V3 regression
+
+Suite: `fixed-v3-m09`. Review decomposition stayed off. First post-probe run: 6/6 contracts; ISO01 PASS; SEC01 PASS.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-29T11-33-40-045Z.txt`
+
+After the correction: again 6/6; ISO01 PASS; SEC01 PASS; no hard regressions.
+
+Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-31T12-27-55-652Z.txt`
+
+## Module decision
+
+```text
+review-decomposition mechanism = implemented + corrected + understood
+P02 first experiment           = mechanism_failed / no genuine surfaces
+P02 corrected experiment       = candidate_pending_human_review
+adoption                       = conditional, not default
+normal default                 = Spec → one Worker, single_change first-class
+```
+
+Closed by Topic Chat on 2026-09-01. See `docs/learning/lessons/14-human-reviewable-decomposition/closure.md`.
+
+---
+
+# Module 12 — Planner / Worker / Reviewer
+
+**Status:** ✅ COMPLETED — formally closed by Topic Chat on 2026-08-27 after implementation review, controlled experiment, gap fixes, fresh fixed regression, theory rewrite, and understanding check.
+
+Theory:
+
+`docs/learning/lessons/12-planner-worker-reviewer/theory.md`
+
+Practical notes/evidence:
+
+`docs/learning/lessons/12-planner-worker-reviewer/notes.md`
+
+## Learning-critical model
+
+```text
+Spec
+WHAT must be true
+(authority)
+
+Planner
+HOW we currently think we should get there
+(advisory hypothesis)
+
+Worker
+HOW to actually get there given repository reality
+(execution + local adaptation)
+
+Reviewer
+WHAT is wrong with what was actually produced
+(independent judgment)
+
+Orchestrator / harness
+WHETHER each phase may run and WHAT happens next
+(authority / lifecycle)
+```
+
+Key boundaries:
+
+- `Spec > Plan`;
+- Planner proposes; harness authorizes;
+- role ≠ agent instance ≠ parallelism;
+- Worker may locally adapt away from Plan based on repository truth;
+- Reviewer does not receive Plan / Planner rationale / Worker reasoning by default;
+- deterministic Plan admission checks structure, not semantic truth;
+- explicit planning is an optimization candidate, not a mandatory layer.
+
+## Built
+
+- optional read-only Planner episode (`planningEnabled`, default `false`);
+- structured advisory `Plan` via `submit_plan` + deterministic admission;
+- Worker handoff: resolved Spec separately, Plan is hypothesis not authority;
+- Reviewer contract unchanged (no Plan / Planner rationale / Worker conversation);
+- P01 priority fixture + `npm run benchmark:planning`.
+
+## Controlled experiment
+
+Task: P01  
+Context: `contextMode=variant`, `conversationStateMode=manual`  
+Trials: 3 valid per arm, isolated worktree per trial. Contaminated: none.
+
+| Arm      | expected | first VERIFY | repairs | calls/tools avg | tokens in/out avg | wall avg |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- |
+| BASELINE | 3/3      | 3/3 PASS     | 0 / 0   | 8 / 23          | 36,589 / 3,700    | ~51s     |
+| VARIANT  | 3/3      | 3/3 PASS     | 0 / 0   | 12 / 31         | 56,633 / 5,309    | ~64s     |
+
+Predefined rule: quality equal and Variant costs more end-to-end → **reject Planner**. Default unchanged.
+
+Evidence: `docs/learning/lessons/12-planner-worker-reviewer/traces/planning-m12-2026-08-27T12-46-15-463Z.txt`
+
+Important interpretation:
+
+```text
+Worker-local savings ≠ system savings.
+```
+
+On P01 there were not even Worker-local savings: Worker model calls increased on Variant. The result only supports a workload-bounded conclusion: explicit Planner is not justified for this feature-sized task. It does not prove that explicit planning cannot help larger long-running work.
+
+## Review gap fixes
+
+- Plan admission now rejects general `dependsOn` cycles (not only self-deps / invalid indexes). Schema/admission only — no DAG executor.
+- Equal-quality decision: no numeric “meaningful” e2e threshold was predefined, so directional efficiency improvement is **inconclusive**, not `candidate`. Clear e2e regression → reject. Conflicting e2e signals → inconclusive. Compared signals: model calls, tool calls, input tokens, output tokens, wall time.
+- Historical P01 artifact is unchanged. Re-applying the operationalization still **rejects**: quality equal, all five e2e signals worse on Variant.
+
+P01 was not rerun (admission/decision-report changes do not affect recorded Planner execution).
+
+## Fixed V3 regression after gap fixes
+
+Suite: `fixed-v3-m09`. Planner stayed off. 6/6 contracts; ISO01 PASS; SEC01 PASS; no hard regressions.
+
+Evidence: `docs/learning/lessons/12-planner-worker-reviewer/traces/2026-08-27T13-21-46-170Z.txt`
+
+Harness unit tests: 125 passed.
+
+## Understanding check
+
+Final Topic Chat check passed after one terminology correction.
+
+The learner correctly identified that:
+
+- Worker can deviate from Plan because Plan is advisory and repository truth may invalidate implementation details;
+- Planner overhead must be counted end-to-end, not hidden by Worker-local metrics;
+- an explicit Planner becomes more plausible on large/complex work where upfront decomposition may reduce backtracking and wasted execution;
+- Reviewer should not receive Plan because anchoring can correlate Planner/Worker/Reviewer errors.
+
+Correction:
+
+```text
+Spec    = WHAT must be true
+Planner = HOW we currently intend to get there
+Worker  = HOW to actually get there given repository reality
+```
+
+## Module decision
+
+```text
+explicit Planner mechanism = implemented and understood
+explicit Planner default   = rejected for current feature-sized workload
+normal default              = Spec → Worker
+```
+
+Revisit explicit planning only when a larger planning-sensitive workload provides evidence that decomposition/reliability gains can repay coordination overhead.
+
+---
+
+# Module 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
+
+**Status:** ✅ COMPLETED — formally closed by Topic Chat on 2026-08-26 after implementation, evidence review, decision correction, theory, and understanding check.
+
+## Goal
+
+Understand **where orchestration responsibility should live** as provider/model runtimes become more capable.
+
+Core distinction:
+
+```text
+OUTER HARNESS
+→ whether an action/episode should happen
+→ policy / permissions / verification / transitions / workflow truth
+
+INNER EPISODE
+→ how to execute the currently allowed bounded objective
+```
+
+Theory:
+
+`docs/learning/lessons/11-modern-model-native-orchestration/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/11-modern-model-native-orchestration/notes.md`
+
+## Built
+
+- `conversationStateMode = "manual" | "previous_response_id"`;
+- default remains `manual`;
+- `previous_response_id` is fully implemented and selectable with `--previous-response-id`;
+- each `runAgentLoop` invocation starts a fresh response chain;
+- implementation / repair / review_repair do not share one provider response chain across outer checkpoints;
+- custom tools remain client-executed via `executeTool()`;
+- traces record `conversationStateMode`, `responseId`, `previousResponseId`, `clientInputItemCount`, `clientInputBytes`;
+- separate `npm run benchmark:orchestration` experiment; orchestration trials are not folded into the fixed 6/6 denominator.
+
+## Controlled experiment
+
+Task: T02  
+Context: `contextMode=variant`  
+Trials: 3 per arm, isolated exact-base worktree per trial.
+
+| Arm | mode                 | expected | client items/bytes avg | tokens in/out avg | wall avg |
+| --- | -------------------- | -------- | ---------------------- | ----------------- | -------- |
+| A   | manual               | 3/3      | 43 / 53,349            | 17,178 / 1,570    | ~23.6s   |
+| B   | previous_response_id | 3/3      | 7 / 14,315             | 19,831 / 1,888    | ~32.3s   |
+
+Supported:
+
+```text
+correctness on T02                    3/3 both arms
+previous_response_id chaining         yes
+client full-history replay removed    yes in variant
+custom tool authority preserved       yes
+outer workflow authority preserved    yes
+client payload materially reduced     yes
+```
+
+Not established:
+
+```text
+token improvement      no
+latency improvement    no
+stable regression      not proven with n=3
+```
+
+## Decision correction
+
+The original generated report used post-hoc token/latency thresholds and therefore incorrectly emitted:
+
+```text
+candidate_to_adopt: yes
+```
+
+That historical artifact is intentionally preserved unchanged.
+
+Authoritative correction:
+
+`docs/learning/lessons/11-modern-model-native-orchestration/traces/decision-correction-2026-08-26.md`
+
+Current decision:
+
+```text
+criterion 1–5      supported
+criterion 6        inconclusive
+candidate_to_adopt no
+normal default     manual
+variant            previous_response_id remains available
+```
+
+This is an eval-discipline result as well as an orchestration result: thresholds must not be invented after observing the data.
+
+## Fresh variant regression evidence
+
+The fixed suite below was run with `conversationStateMode = previous_response_id` to prove that the variant preserves current contracts when explicitly selected. It is **not** evidence that the variant became the default.
+
+Evidence:
+
+`docs/learning/lessons/11-modern-model-native-orchestration/traces/2026-08-26T11-39-08-076Z.txt`
+
+```text
+T01–T04 expected outcomes             4 / 4
+Executable first-pass                 3 / 3
+Correct escalation T04                1 / 1
+R01 verification repair               PASS
+REV01 independent review              PASS
+ISO01 workspace isolation             PASS
+SEC01 verification secret isolation   PASS
+All fixed V3 contracts                6 / 6
+Hard regressions                      none
+```
+
+Harness unit tests at experiment time: 104 passed.
+
+## Understanding check
+
+Final Topic Chat check passed. The learner correctly identified that:
+
+- `baseRevision` / workspace provenance belongs to the outer harness because the harness controls the authoritative workspace;
+- retry limits belong to the outer harness because the harness controls whether another semantic attempt is permitted;
+- model/tool sequencing and temporary continuation may live inward, but policy, permissions, checkpoints and workflow truth stay outer.
+
+## Learning-critical result
+
+The provider can own more **temporary episode continuation** without owning:
+
+- workspace/base provenance;
+- tool permissions;
+- VERIFY;
+- repair/review counters;
+- routing policy;
+- human escalation;
+- workflow success;
+- eval truth.
+
+The current engineering choice is therefore intentionally conservative:
+
+```text
+manual continuation = default
+previous_response_id = proven mechanism / selectable variant
+```
+
+No additional provider-native orchestration infrastructure is required before moving on.
+
+---
+
+# Module 10 — Model Routing
+
+**Status:** ✅ COMPLETED — formally closed by Master on 2026-08-25.
+
+Theory:
+
+`docs/learning/lessons/10-model-routing/theory.md`
+
+Practical notes/evidence:
+
+`docs/learning/lessons/10-model-routing/`
+
+## Built
+
+- `resolveModel(episode, config)` as one harness-owned model-selection boundary;
+- routing episodes: `spec | implementation | repair | review | review_repair`;
+- optional `OPENAI_REPAIR_MODEL` override only for verification `repair`;
+- routing provenance: `episode`, selected `model`, `routingReason`;
+- controlled R01 routing experiment separate from fixed-suite denominators.
+
+## Routing experiment result
+
+Baseline:
+
+```text
+all semantic episodes → gpt-5.6-luna
+```
+
+Variant:
+
+```text
+spec / implementation / review / review_repair → gpt-5.6-luna
+repair → gpt-5.6-terra
+```
+
+Both candidates met the predefined R01 SLO 3/3. Quality did not separate them, while Terra did not show enough end-to-end benefit to justify the higher token economics.
+
+Current normal policy remains:
+
+```text
+spec            → Luna
+implementation  → Luna
+repair          → Luna
+review          → Luna
+review_repair   → Luna
+```
+
+The routing boundary remains available for future requalification.
+
+Fresh Module 10 regression evidence:
+
+`docs/learning/lessons/10-model-routing/traces/2026-08-25T11-00-45-136Z.txt`
+
+```text
+T01–T04 expected outcomes    4 / 4
+Executable first-pass        3 / 3
+Correct escalation T04       1 / 1
+R01 verification repair      PASS
+REV01 independent review     PASS
+ISO01 workspace isolation    PASS
+SEC01 secret isolation       PASS
+All fixed V3 contracts       6 / 6
+Hard regressions             none
+```
+
+Known non-blocking limits:
+
+1. Routing evidence covers one controlled R01 workload, not broad natural repair diversity.
+2. Three trials per arm are learning evidence, not statistical qualification.
+3. No task-class/risk/health-aware/model-selected routing yet.
+4. No fallback/escalation graph yet.
+5. Provider model capabilities/pricing can drift and require requalification.
+6. Spec/reviewer quality remains harder to route safely because important misses may be invisible to deterministic graders.
