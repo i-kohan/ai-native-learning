@@ -7,6 +7,8 @@ import { DEFAULT_MAX_REVIEW_REPAIR_ATTEMPTS } from "./review.ts";
 const harnessDir = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(harnessDir, "../..");
 
+let scopedModel: string | null = null;
+
 dotenv.config({ path: path.join(REPO_ROOT, ".env") });
 
 export type HarnessConfig = {
@@ -23,9 +25,27 @@ export type HarnessConfig = {
   tracesDir: string;
 };
 
+/** Pin the configured model for one sequential qualification protocol. */
+export async function withPinnedModel<T>(
+  model: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  if (scopedModel !== null) {
+    throw new Error(
+      `Configured model is already pinned to ${scopedModel}; nested model pins are not allowed.`,
+    );
+  }
+  scopedModel = model;
+  try {
+    return await fn();
+  } finally {
+    scopedModel = null;
+  }
+}
+
 export function loadConfig(): HarnessConfig {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  const model = process.env.OPENAI_MODEL?.trim();
+  const model = scopedModel ?? process.env.OPENAI_MODEL?.trim();
   const repairModel = process.env.OPENAI_REPAIR_MODEL?.trim();
 
   if (!apiKey) {
