@@ -1,17 +1,26 @@
 import { formatCount, formatMedianRange } from "./trials.ts";
-import type {
-  EvalResult,
-  HoldoutTaskEval,
-  IsolationEval,
-  ProbeEval,
-  QualificationVerdict,
-  Ratio,
-  SecurityEval,
+import {
+  QUALIFICATION_SUITE_VERSION,
+  type EvalResult,
+  type HoldoutTaskEval,
+  type IsolationEval,
+  type ProbeEval,
+  type QualificationVerdict,
+  type Ratio,
+  type SecurityEval,
 } from "./types.ts";
 import type { QualificationDecision } from "./qualify.ts";
 
 export function formatEvalReport(result: EvalResult): string {
   const cap = result.capability;
+  const qualification = result.suiteVersion === QUALIFICATION_SUITE_VERSION;
+  const fixedContractsLabel = qualification
+    ? "DEV capability contracts"
+    : "All fixed benchmark contracts";
+  const fixedContractsNote = qualification
+    ? "(qualification denominator: T01–T04 DEV capability contracts only; R01/REV01 are not run here)"
+    : "(qualified: capability expected outcomes + probe contracts, not an overall success rate)";
+
   const lines = [
     `=== Eval Report (${result.suiteVersion}) ===`,
     "",
@@ -47,8 +56,8 @@ export function formatEvalReport(result: EvalResult): string {
     "Skills",
     ...result.runs.map(formatSkillLine),
     "",
-    `All fixed benchmark contracts  ${formatRatio(result.allFixedContracts)}`,
-    "(qualified: capability expected outcomes + probe contracts, not an overall success rate)",
+    `${fixedContractsLabel}  ${formatRatio(result.allFixedContracts)}`,
+    fixedContractsNote,
     "",
     "Methodology",
     `suite=${result.methodology.suiteVersion} qualification=${result.methodology.qualificationSuiteVersion}`,
@@ -96,7 +105,9 @@ export function formatQualificationReport(
     `verdict: ${formatVerdict(decision.verdict)}`,
     `claimSupported: ${decision.claimSupported ? "yes" : "no"}`,
     `T01–T04 regression-free: ${decision.t01t04RegressionFree ? "yes" : "no"}`,
+    `H01 full expected outcome: ${formatCount(decision.h01ExpectedOutcome)}`,
     `H01 independent grader: ${formatCount(decision.h01IndependentGrader)}`,
+    `H02 full expected outcome: ${formatCount(decision.h02ExpectedOutcome)}`,
     `H02 independent grader: ${formatCount(decision.h02IndependentGrader)}`,
     `escaped defects: ${decision.escapedDefects}`,
     `calibration: ${decision.calibrationValid ? "valid" : "invalid"}`,
