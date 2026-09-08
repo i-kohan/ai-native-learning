@@ -10,6 +10,8 @@ export type Workspace = {
   ref: string;
 };
 
+let scopedWorkspaceRef: string | null = null;
+
 export function resolveBaseRevision(
   hostRepoRoot: string,
   ref = "HEAD",
@@ -17,12 +19,34 @@ export function resolveBaseRevision(
   return git(hostRepoRoot, ["rev-parse", "--verify", `${ref}^{commit}`]).trim();
 }
 
+/**
+ * Pin every createWorkspace() call inside one sequential protocol to the same ref.
+ * The harness CLI runs benchmark trials sequentially; nested/concurrent pins are rejected
+ * so provenance cannot silently become ambiguous.
+ */
+export async function withPinnedWorkspaceRef<T>(
+  ref: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  if (scopedWorkspaceRef !== null) {
+    throw new Error(
+      `Workspace ref is already pinned to ${scopedWorkspaceRef}; nested qualification pins are not allowed.`,
+    );
+  }
+  scopedWorkspaceRef = ref;
+  try {
+    return await fn();
+  } finally {
+    scopedWorkspaceRef = null;
+  }
+}
+
 export function createWorkspace(options: {
   hostRepoRoot: string;
   id: string;
   ref?: string;
 }): Workspace {
-  const ref = options.ref ?? "HEAD";
+  const ref = options.ref ?? scopedWorkspaceRef ?? "HEAD";
   const baseRevision = resolveBaseRevision(options.hostRepoRoot, ref);
   const root = workspacePath(options.hostRepoRoot, options.id);
 
