@@ -1,7 +1,11 @@
 import path from "node:path";
 import type { HarnessConfig } from "../config.ts";
-import { REPO_ROOT } from "../config.ts";
+import { REPO_ROOT, withPinnedModel } from "../config.ts";
 import type { HarnessRunResult } from "../run.ts";
+import {
+  resolveBaseRevision,
+  withPinnedWorkspaceRef,
+} from "../workspace.ts";
 import { aggregateRuns } from "./aggregate.ts";
 import {
   calibrateHoldoutGraders,
@@ -28,8 +32,8 @@ export const QUALIFICATION_PROTOCOL = [
   "T01–T04: one regression run each.",
   "H01: 3 independent trials from the same frozen base fixture/revision.",
   "H02: 3 independent trials from the same frozen base fixture/revision.",
-  "Each qualification workspace is created from one baseRevision resolved before the protocol starts.",
-  "Every normalized run must preserve that baseRevision and the same configured model identity.",
+  "The qualification baseRevision and configured model are resolved once before any trial and pinned for the whole protocol.",
+  "Every normalized run must preserve that same provenance.",
   "Independent grader runs after the harness terminal outcome and before workspace cleanup.",
 ].join("\n");
 
@@ -53,7 +57,8 @@ export type QualificationDeps = {
     result: HarnessRunResult,
   ) => boolean;
   configuredModel: string;
-  baseRevision: string;
+  /** Optional explicit base for tests/callers; normal CLI resolves HEAD once here. */
+  baseRevision?: string;
 };
 
 export type QualificationResult = {
@@ -104,6 +109,22 @@ export function gradeHoldoutWorkspace(options: {
 export async function runQualificationProtocol(
   deps: QualificationDeps,
 ): Promise<QualificationResult> {
+  const frozenBaseRevision =
+    deps.baseRevision ?? resolveBaseRevision(REPO_ROOT, "HEAD");
+  const frozenModel = deps.configuredModel;
+
+  return withPinnedWorkspaceRef(frozenBaseRevision, () =>
+    withPinnedModel(frozenModel, () =>
+      executeQualificationProtocol(deps, frozenBaseRevision, frozenModel),
+    ),
+  );
+}
+
+async function executeQualificationProtocol(
+  deps: QualificationDeps,
+  frozenBaseRevision: string,
+  frozenModel: string,
+): Promise<QualificationResult> {
   const calibration = calibrateHoldoutGraders();
   const metrics: RunMetrics[] = [];
   const invalidTrials: string[] = [];
@@ -119,7 +140,7 @@ export async function runQualificationProtocol(
         trialIndex: 1,
         trialCount: 1,
         suiteVersion: QUALIFICATION_SUITE_VERSION,
-        configuredModel: deps.configuredModel,
+        configuredModel: frozenModel,
       }),
     );
   }
@@ -150,7 +171,7 @@ export async function runQualificationProtocol(
           trialIndex,
           trialCount: 3,
           suiteVersion: QUALIFICATION_SUITE_VERSION,
-          configuredModel: deps.configuredModel,
+          configuredModel: frozenModel,
           independentGrader: {
             name: HOLDOUT_GRADER_CONTRACTS[taskId].name,
             passed: attempt.graderPassed,
@@ -172,9 +193,9 @@ export async function runQualificationProtocol(
   const decision = decideQualification({
     evalResult,
     calibration: calibrationValidity(calibration),
-    configuredModel: deps.configuredModel,
-    expectedModel: deps.configuredModel,
-    expectedBaseRevision: deps.baseRevision,
+    configuredModel: frozenModel,
+    expectedModel: frozenModel,
+    expectedBaseRevision: frozenBaseRevision,
     invalidTrials,
   });
   const report = formatQualificationReport(evalResult, decision);
