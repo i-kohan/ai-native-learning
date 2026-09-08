@@ -28,7 +28,8 @@ export const QUALIFICATION_PROTOCOL = [
   "T01–T04: one regression run each.",
   "H01: 3 independent trials from the same frozen base fixture/revision.",
   "H02: 3 independent trials from the same frozen base fixture/revision.",
-  "Each holdout trial starts from the frozen base, not from the previous trial's output.",
+  "Each qualification workspace is created from one baseRevision resolved before the protocol starts.",
+  "Every normalized run must preserve that baseRevision and the same configured model identity.",
   "Independent grader runs after the harness terminal outcome and before workspace cleanup.",
 ].join("\n");
 
@@ -52,6 +53,7 @@ export type QualificationDeps = {
     result: HarnessRunResult,
   ) => boolean;
   configuredModel: string;
+  baseRevision: string;
 };
 
 export type QualificationResult = {
@@ -172,6 +174,7 @@ export async function runQualificationProtocol(
     calibration: calibrationValidity(calibration),
     configuredModel: deps.configuredModel,
     expectedModel: deps.configuredModel,
+    expectedBaseRevision: deps.baseRevision,
     invalidTrials,
   });
   const report = formatQualificationReport(evalResult, decision);
