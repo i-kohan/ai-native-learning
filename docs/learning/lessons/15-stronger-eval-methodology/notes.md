@@ -1,10 +1,10 @@
 # 15 — Stronger Eval Methodology
 
-Практический журнал. Инфраструктура собрана на DEV/synthetic fixtures, H01/H02 заморожены, калибровка детерминированная, qualification protocol прогнан один раз. Topic Chat review completed; qualification verdict preserved with explicit limitations.
+Практический журнал. Инфраструктура собрана на DEV/synthetic fixtures, H01/H02 заморожены, калибровка детерминированная, qualification protocol прогнан один раз. Topic Chat review completed; после Master review evaluator дополнительно hardened по full-outcome и frozen-provenance gaps.
 
 ## Что это за урок одной фразой
 
-Не строить новый benchmark platform: отделить DEV от HOLDOUT, дать holdout независимый grader после VERIFY, считать 3/3 как observed count и применять заранее замороженное правило.
+Не строить новый benchmark platform: отделить DEV от HOLDOUT, дать holdout независимый grader после VERIFY, считать 3/3 как observed count и применять заранее замороженное, executable правило к воспроизводимому evidence.
 
 ## Команды
 
@@ -24,18 +24,22 @@ cd harness && npm run benchmark:qualify
 
 1. `harness/src/eval/catalog.ts` — `dev` / `holdout` / `probe`, contamination lifecycle
 2. `harness/src/eval/grader.ts` — host-owned grader after terminal outcome
-3. `harness/src/eval/qualify.ts` — frozen qualification decision rule
-4. `harness/src/eval/qualification-run.ts` — protocol: T01–T04 + H01/H02 ×3
-5. `harness/src/run-benchmark.ts` — `prepareHoldout` / `executeHoldoutTrial` (grader before cleanup)
+3. `harness/src/eval/qualify.ts` — executable qualification decision rule
+4. `harness/src/eval/qualification-run.ts` — protocol, frozen base/model provenance
+5. `harness/src/workspace.ts` / `harness/src/config.ts` — protocol-scoped pinning
+6. `harness/src/run-benchmark.ts` — `prepareHoldout` / `executeHoldoutTrial` (grader before cleanup)
 
 Поток:
 
 ```text
-createWorkspace
+resolve baseRevision + configured model once
+→ pin qualification provenance
+→ createWorkspace
 → restore fixture (no grader in target-app)
 → Spec / Worker / VERIFY / REVIEW
 → runIndependentGrader(host grader, final workspace)
-→ normalize escapedDefect
+→ normalize expectedOutcomeMet + escapedDefect + provenance
+→ decision layer re-validates full outcome and provenance
 → cleanup
 ```
 
@@ -65,9 +69,9 @@ createWorkspace
 
 Calibration valid. Это не LLM-прогон и не tuning harness.
 
-## Qualification (one run, 2026-09-07)
+## Qualification (recorded run, 2026-09-07)
 
-Model: `gpt-5.6-luna`. Base revision: `a6b8e50012980cb79df820c1555c1211a1d76c94`. Suite: `qualification-m15`. Invalid trials: 0. Contamination: none. H01/H02 still `fresh_holdout`.
+Model: `gpt-5.6-luna`. Base revision: `a6b8e50012980cb79df820c1555c1211a1d76c94`. Suite: `qualification-m15`. Invalid trials: 0. Contamination: none. H01/H02 still `fresh_holdout` for this evidence.
 
 ### T01–T04
 
@@ -86,7 +90,7 @@ Model: `gpt-5.6-luna`. Base revision: `a6b8e50012980cb79df820c1555c1211a1d76c94`
 | 2 | PASS | PASS | yes | false | 37431 | 8 | 18 | 26678 / 3075 |
 | 3 | PASS | PASS | yes | false | 74635 | 11 | 21 | 44651 / 4799 |
 
-Independent grader **3/3**. Median wall 41556 (37431–74635). Median model calls 8 (8–11). Median tool calls 18 (16–21).
+Full expected outcome **3/3**. Independent grader **3/3**. Median wall 41556 (37431–74635). Median model calls 8 (8–11). Median tool calls 18 (16–21).
 
 ### H02 trials
 
@@ -96,13 +100,17 @@ Independent grader **3/3**. Median wall 41556 (37431–74635). Median model call
 | 2 | PASS | PASS | yes | false | 41537 | 9 | 16 | 33871 / 3008 |
 | 3 | PASS | PASS | yes | false | 38464 | 7 | 17 | 23493 / 2870 |
 
-Independent grader **3/3**. Median wall 38464 (30034–41537). Median model calls 8 (7–9). Median tool calls 16 (16–17).
+Full expected outcome **3/3**. Independent grader **3/3**. Median wall 38464 (30034–41537). Median model calls 8 (7–9). Median tool calls 16 (16–17).
 
-### Verdict
+### Recorded verdict
 
 ```text
 claimSupported = yes
 verdict        = supported
+H01 expected   = 3/3
+H01 grader     = 3/3
+H02 expected   = 3/3
+H02 grader     = 3/3
 escaped        = 0/6
 calibration    = valid
 ```
@@ -113,25 +121,91 @@ Evidence: `traces/2026-09-07T17-26-05-593Z.txt`
 
 ## Topic Chat implementation review (2026-09-08)
 
-Verdict: **no blocking correctness issue found for the recorded qualification evidence**. Keep the existing `supported` verdict workload-bounded.
+No blocking correctness issue was found for the recorded qualification evidence.
 
-What was confirmed:
+Confirmed:
 
 1. H01/H02 grader files are host-owned and absent from normal Worker/VERIFY tests.
-2. Worker filesystem tools are rooted under `target-app/`; write access is further restricted to `target-app/src/`.
+2. Worker filesystem tools are rooted under `target-app/`; write access is restricted to `target-app/src/`.
 3. The grader runs only after `runV1Harness(...)` returns and before worktree cleanup.
-4. The grader copies the final target app into a temporary staging directory and injects benchmark-owned tests there, so the normal workspace is not modified by grading.
-5. H01/H02 task text explicitly contains the requirements checked by their hidden tests; no hidden product requirements were found.
+4. The grader copies the final target app into a temporary staging directory and injects benchmark-owned tests there.
+5. H01/H02 task text explicitly contains the requirements checked by hidden tests.
 6. DEV/HOLDOUT/probe denominators remain separate.
 7. Actual six holdout traces all recorded `expected=yes`, `VERIFY PASS`, grader PASS, escaped=false.
 
-Non-blocking methodology limitations to keep explicit:
+## Master review gaps and hardening (2026-09-08)
+
+Master correctly found two methodology gaps plus one reporting issue. Historical 2026-09-07 evidence is preserved unchanged because it already satisfies the stronger interpretation.
+
+### Gap 1 — claim stronger than decision code
+
+Before hardening:
+
+```text
+scoreHoldoutOutcome = workflow success + final VERIFY + grader PASS
+but final decision  = mainly grader 3/3 + escaped=0 + regression/calibration
+```
+
+So a synthetic case could theoretically have grader PASS while workflow itself failed and still satisfy the top-level claim.
+
+Fixed:
+
+- `decideQualification()` now independently requires H01 full `expectedOutcomeMet = 3/3`;
+- H02 full `expectedOutcomeMet = 3/3`;
+- independent grader 3/3 remains a separate criterion;
+- regression test: grader 3/3 + one workflow failure => `unsupported`.
+
+### Gap 2 — “same frozen base” was stated but not enforced
+
+Before hardening, each worktree independently resolved `HEAD`.
+
+Fixed:
+
+- qualification resolves exact `baseRevision` once before any run;
+- qualification configured model is also frozen once;
+- protocol-scoped pinning makes every `createWorkspace()` use the frozen revision and every `loadConfig()` use the frozen model;
+- every normalized run still records its actual workspace `baseRevision`;
+- decision layer rejects missing/mixed base revisions or model identities as `inconclusive`;
+- regression tests cover mixed SHA and mixed model evidence.
+
+This gives defense in depth:
+
+```text
+execution layer tries to keep provenance identical
++
+decision layer refuses evidence if provenance is not identical
+```
+
+### Reporting cleanup
+
+Qualification report now uses:
+
+```text
+DEV capability contracts 4/4
+```
+
+rather than misleading `All fixed benchmark contracts 4/4`, because R01/REV01 are not part of `--qualify`.
+
+The frozen qualification section also reports both:
+
+```text
+H01 full expected outcome
+H01 independent grader
+H02 full expected outcome
+H02 independent grader
+```
+
+### Rerun decision
+
+No H01/H02 rerun was performed solely for these fixes. The changes harden evaluator/provenance semantics; they do not change the recorded execution. The 2026-09-07 artifact already has one base SHA, one configured model, expected=yes on all six holdout trials, and grader 6/6.
+
+## Remaining non-blocking limitations
 
 - only two holdout tasks, both from the same small CRUD/task-app family;
-- same configured model name is recorded, but this is not a cryptographically pinned provider snapshot;
+- configured model identity is pinned within the protocol, but this is not a cryptographically pinned provider backend snapshot;
 - grader PASS/FAIL provenance is normalized, but full grader stdout is not retained as first-class per-trial evidence;
-- the current top-level frozen decision code gates on T01–T04 regression + H01/H02 grader 3/3 + escaped defects + calibration. All observed holdout runs also had full `expectedOutcomeMet=yes`, so the verdict is unaffected, but a future qualification suite should make full holdout workflow success an explicit release criterion before seeing outcomes;
-- independent grader boundary is credible evaluation isolation, not hostile security isolation.
+- independent grader boundary is credible evaluation isolation, not hostile security isolation;
+- grader coverage still requires human review/calibration.
 
 ## Production-scale picture
 
@@ -151,12 +225,6 @@ versioned regression suite
 
 For coding agents, SWE-bench-style grading is a useful concrete pattern: the agent gets issue + repo, while evaluation tests remain outside its working loop; fail-to-pass tests verify the requested change and pass-to-pass tests protect existing behavior. Production teams then complement offline evals with real-world monitoring and continuously turn observed failures into DEV/regression cases.
 
-Useful external examples:
-
-- Anthropic, *Demystifying evals for AI agents* — capability vs regression suites, grader types, transcript review, production monitoring/A-B testing; examples from Descript and Bolt.
-- SWE-bench Verified — issue/repo tasks with independent test-based evaluation in reproducible environments.
-- OpenAI, *Introducing SWE-bench Verified* — human-validated benchmark subset and evaluation harness context.
-
 ## Caveats / lifecycle
 
 1. H01/H02 were frozen before the recorded qualification run and were not used to tune the harness afterwards. They therefore remain fresh holdout for that recorded evidence.
@@ -169,6 +237,8 @@ Useful external examples:
 
 - VERIFY PASS on a green fixture does not prove the new requested behavior unless an independent outcome check exists.
 - `escapedDefect=null` on T01–T04 is correct because no independent second truth exists there.
+- A claim and its executable decision rule must mean the same thing.
+- Reproducibility includes base/model provenance, not only frozen task text.
 - Rules must be frozen before seeing numbers.
 - Passing a grader means “passed what this grader checks,” not “software is universally correct.”
 - Good production eval is a maintained feedback system, not a one-time score.
