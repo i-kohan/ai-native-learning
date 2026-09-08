@@ -101,48 +101,120 @@ A metric is not itself `supported` or `inconclusive`. Those words describe the *
 | `inconclusive` | the evidence itself cannot support a clean decision |
 | `candidate` | promising enough for further evaluation, not adopted/default yet |
 
-Typical `inconclusive` causes: invalid trials, flaky grader, contamination, uncontrolled environment/model change, or an uncovered trade-off.
+Typical `inconclusive` causes: invalid trials, flaky grader, contamination, mixed/uncontrolled base/model provenance, or an uncovered trade-off.
 
 Post-hoc thresholds are invalid methodology. If latency/cost criteria were not defined before seeing the results, do not invent a threshold afterwards to declare a winner.
 
 ---
 
-## Module 15 frozen qualification
+## Module 15 qualification rule
 
 Claim:
 
 > Current default harness preserves known regression contracts and correctly completes the two frozen holdout workloads under the Module 15 qualification protocol.
 
-Supported only if:
+Executable qualification now requires all of the following:
 
 - T01–T04 have no regression;
+- H01 **full expected outcome** = 3/3;
 - H01 independent grader = 3/3 PASS;
+- H02 **full expected outcome** = 3/3;
 - H02 independent grader = 3/3 PASS;
 - escaped defects = 0;
-- grader calibration is valid.
+- grader calibration is valid;
+- every qualification run has the same frozen `baseRevision` and configured model identity.
 
-Observed 2026-09-07 result:
+“Full expected outcome” means the workflow itself completed correctly, not merely that an external grader happened to pass. For H01/H02 it includes executable spec, implementation, successful workflow/final VERIFY, and independent grader PASS.
+
+This closes an important evaluator gap:
+
+```text
+grader PASS
++ workflow failure
+≠ supported qualification
+```
+
+Likewise, provenance is part of evidence validity:
+
+```text
+trial 1 @ SHA A
+trial 2 @ SHA A
+trial 3 @ SHA B
+→ inconclusive / invalid qualification evidence
+```
+
+The qualification runner resolves the exact base revision and configured model once before the protocol, pins them for all workspaces/runs, and the decision layer independently rejects mixed/missing provenance.
+
+### Recorded 2026-09-07 qualification
+
+The historical artifact is intentionally unchanged:
 
 ```text
 T01–T04   4/4 expected
-H01       3/3 independent grader PASS
-H02       3/3 independent grader PASS
+H01       3/3 full expected outcome + 3/3 independent grader PASS
+H02       3/3 full expected outcome + 3/3 independent grader PASS
 escaped   0/6
 calibration valid
+base      a6b8e50012980cb79df820c1555c1211a1d76c94 for every recorded run
+model     gpt-5.6-luna for every recorded run
 verdict   supported
 ```
 
-This remains a workload-bounded result, not a general reliability percentage.
+The post-qualification hardening does not change that historical verdict because the recorded evidence already satisfies the stronger rule. No H01/H02 rerun is needed merely to harden the evaluator.
 
 ---
 
 ## Drift
 
-**Model drift:** record the configured model identity for every qualification. A different model/configuration requires requalification rather than reusing old evidence.
+**Model drift:** record the configured model identity for every qualification. A different configured model makes qualification evidence invalid/inconclusive rather than silently mixing runs.
 
-For the current harness this is configuration provenance, not a cryptographically pinned provider snapshot. Backend changes hidden behind the same provider/model alias may not be detectable.
+For the current harness this is configuration provenance, not a cryptographically pinned provider snapshot. Backend changes hidden behind the same provider/model alias may still be undetectable.
 
 **Task-distribution drift:** as failures become known and are used for fixes, those tasks move toward DEV/regression. A healthy eval program must replenish fresh capability/holdout work instead of endlessly tuning on the same suite.
+
+---
+
+## Capability suite vs regression suite
+
+A **capability suite** asks:
+
+> What kinds of work can the system currently do, and how strong is it on representative harder work?
+
+Examples: multi-file feature work, cross-layer changes, migration-like tasks, interacting requirements, or tasks designed to measure progress.
+
+A **regression suite** asks:
+
+> Did something we already knew how to do stop working after a change?
+
+The same task can move from capability exploration into DEV/regression after it becomes known and repeatedly used for tuning.
+
+---
+
+## Static analysis
+
+**Static analysis** checks code without executing the target behavior.
+
+Examples:
+
+```text
+TypeScript typecheck
+lint rules
+forbidden imports / architecture boundaries
+security scanners
+AST-based policy checks
+dependency rules
+```
+
+It complements runtime tests rather than replacing them. A production grader stack can therefore combine:
+
+```text
+unit/integration/e2e tests
++ static analysis
++ security/policy checks
++ calibrated model/human grading for subjective qualities
+```
+
+Each catches a different class of defect.
 
 ---
 
@@ -189,7 +261,7 @@ Module 15 intentionally stops well before a production eval platform.
 1. H01/H02 are only two tasks and both are from the same small task-app / CRUD family; they do not represent broad software engineering.
 2. The independent grader boundary is credible, not a security fortress.
 3. The normalized result preserves grader provenance and PASS/FAIL, but not the full independent-grader stdout as first-class trial evidence; that would be useful when diagnosing a future grader failure.
-4. The qualification code records full holdout `expectedOutcomeMet`, but the frozen top-level decision rule is primarily expressed through independent-grader 3/3 plus regression/calibration checks. In the observed qualification all six holdout runs also had `expected=yes`, so this does not change the recorded verdict. A future suite version should make full holdout workflow success explicit in the release rule before running new outcomes.
+4. Configured model identity is pinned and checked within a qualification, but provider-side backend drift behind the same alias is not fully detectable.
 5. Graders are tests, not formal specifications; coverage itself needs review and calibration.
 
 ---
@@ -201,5 +273,7 @@ Module 15 intentionally stops well before a production eval platform.
 3. `escapedDefect` is only meaningful when a second, independent truth exists.
 4. `3/3` is observed evidence, not 100% reliability.
 5. Freeze decision rules before looking at results.
-6. Keep DEV, HOLDOUT, probes, and production signals in separate denominators.
-7. Every conclusion must stay bounded to the tested tasks, harness, model/configuration, and grader quality.
+6. A qualification claim must gate on the **full workflow outcome**, not only one grader metric.
+7. Reproducible evidence requires frozen base/model provenance as well as frozen tasks/graders.
+8. Keep DEV, HOLDOUT, probes, and production signals in separate denominators.
+9. Every conclusion must stay bounded to the tested tasks, harness, model/configuration, and grader quality.
