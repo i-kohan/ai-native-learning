@@ -17,6 +17,7 @@ export type QualificationInput = {
   calibration: CalibrationValidity;
   configuredModel?: string | null;
   expectedModel?: string | null;
+  expectedBaseRevision?: string | null;
   invalidTrials?: string[];
   environmentUncontrolled?: boolean;
 };
@@ -29,6 +30,8 @@ export type QualificationDecision = {
   claimSupported: boolean;
   reasons: string[];
   t01t04RegressionFree: boolean;
+  h01ExpectedOutcome: { met: number; total: number };
+  h02ExpectedOutcome: { met: number; total: number };
   h01IndependentGrader: { met: number; total: number };
   h02IndependentGrader: { met: number; total: number };
   escapedDefects: number;
@@ -41,10 +44,12 @@ export function decideQualification(
   const holdout = input.evalResult.holdout;
   const h01 = holdoutTask(holdout, "H01");
   const h02 = holdoutTask(holdout, "H02");
+  const h01Expected = holdoutExpectedOutcome(input.evalResult, "H01");
+  const h02Expected = holdoutExpectedOutcome(input.evalResult, "H02");
   const escapedDefects = holdout.escapedDefects.met;
   const t01t04RegressionFree = capabilityRegressionFree(input.evalResult);
   const contamination = holdoutContamination(input.evalResult);
-  const modelDrift = modelSnapshotDrift(input);
+  const provenanceIssues = qualificationProvenanceIssues(input);
   const invalidTrials = input.invalidTrials ?? [];
 
   const reasons: string[] = [];
@@ -68,8 +73,8 @@ export function decideQualification(
     reasons.push("uncontrolled environment or model change");
     verdict = "inconclusive";
   }
-  if (modelDrift) {
-    reasons.push(modelDrift);
+  if (provenanceIssues.length > 0) {
+    reasons.push(...provenanceIssues);
     verdict = "inconclusive";
   }
 
@@ -79,6 +84,8 @@ export function decideQualification(
       claimSupported: false,
       reasons,
       t01t04RegressionFree,
+      h01Expected,
+      h02Expected,
       h01,
       h02,
       escapedDefects,
@@ -94,6 +101,22 @@ export function decideQualification(
       `escaped defects: ${escapedDefects} (VERIFY PASS + independent grader FAIL)`,
     );
     verdict = "regression";
+  }
+  if (h01Expected.met !== 3 || h01Expected.total !== 3) {
+    reasons.push(
+      `H01 full expected outcome ${h01Expected.met}/${h01Expected.total} does not satisfy 3/3`,
+    );
+    if (verdict === "supported") {
+      verdict = "unsupported";
+    }
+  }
+  if (h02Expected.met !== 3 || h02Expected.total !== 3) {
+    reasons.push(
+      `H02 full expected outcome ${h02Expected.met}/${h02Expected.total} does not satisfy 3/3`,
+    );
+    if (verdict === "supported") {
+      verdict = "unsupported";
+    }
   }
   if (h01.met !== 3 || h01.total !== 3) {
     reasons.push(
@@ -115,7 +138,7 @@ export function decideQualification(
   const claimSupported = verdict === "supported";
   if (claimSupported) {
     reasons.push(
-      "T01–T04 contracts held; H01 3/3; H02 3/3; escaped defects 0; calibration valid",
+      "T01–T04 contracts held; H01 full outcome 3/3 + grader 3/3; H02 full outcome 3/3 + grader 3/3; escaped defects 0; calibration valid; provenance frozen",
     );
     reasons.push(
       "Workload-bounded: 3/3 is an observed count, not 100% reliability",
@@ -127,6 +150,8 @@ export function decideQualification(
     claimSupported,
     reasons,
     t01t04RegressionFree,
+    h01Expected,
+    h02Expected,
     h01,
     h02,
     escapedDefects,
@@ -140,6 +165,8 @@ function decision(
     claimSupported: boolean;
     reasons: string[];
     t01t04RegressionFree: boolean;
+    h01Expected: { met: number; total: number };
+    h02Expected: { met: number; total: number };
     h01: { met: number; total: number };
     h02: { met: number; total: number };
     escapedDefects: number;
@@ -153,6 +180,8 @@ function decision(
     claimSupported: fields.claimSupported,
     reasons: fields.reasons,
     t01t04RegressionFree: fields.t01t04RegressionFree,
+    h01ExpectedOutcome: fields.h01Expected,
+    h02ExpectedOutcome: fields.h02Expected,
     h01IndependentGrader: fields.h01,
     h02IndependentGrader: fields.h02,
     escapedDefects: fields.escapedDefects,
@@ -166,6 +195,21 @@ function holdoutTask(
 ): { met: number; total: number } {
   const found = holdout.tasks.find((task) => task.taskId === taskId);
   return found?.independentGraderPass ?? { met: 0, total: 0 };
+}
+
+function holdoutExpectedOutcome(
+  result: EvalResult,
+  taskId: string,
+): { met: number; total: number } {
+  const runs = result.runs.filter(
+    (run) =>
+      run.identity.evaluationRole === "holdout" &&
+      run.identity.taskId === taskId,
+  );
+  return {
+    met: runs.filter((run) => run.outcome.expectedOutcomeMet).length,
+    total: runs.length,
+  };
 }
 
 function capabilityRegressionFree(result: EvalResult): boolean {
@@ -189,14 +233,68 @@ function holdoutContamination(result: EvalResult): string[] {
     );
 }
 
-function modelSnapshotDrift(input: QualificationInput): string | null {
-  const expected = input.expectedModel?.trim();
-  const actual = input.configuredModel?.trim();
-  if (!expected || !actual) {
-    return null;
+function qualificationProvenanceIssues(input: QualificationInput): string[] {
+  const issues: string[] = [];
+  const runs = input.evalResult.runs;
+  const revisions = unique(
+    runs
+      .map((run) => run.identity.baseRevision)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const models = unique(
+    runs
+      .map((run) => run.identity.configuredModel)
+      .filter((value): value is string => Boolean(value)),
+  );
+
+  if (runs.some((run) => !run.identity.baseRevision)) {
+    issues.push("qualification provenance invalid: missing baseRevision on one or more runs");
+  } else if (revisions.length !== 1) {
+    issues.push(
+      `qualification provenance invalid: mixed baseRevision values (${revisions.join(", ") || "none"})`,
+    );
   }
-  if (expected !== actual) {
-    return `model snapshot drift: expected ${expected}, configured ${actual}`;
+
+  const expectedBase = input.expectedBaseRevision?.trim();
+  if (
+    expectedBase &&
+    revisions.length === 1 &&
+    revisions[0] !== expectedBase
+  ) {
+    issues.push(
+      `qualification baseRevision drift: expected ${expectedBase}, observed ${revisions[0]}`,
+    );
   }
-  return null;
+
+  if (runs.some((run) => !run.identity.configuredModel)) {
+    issues.push("qualification provenance invalid: missing configured model on one or more runs");
+  } else if (models.length !== 1) {
+    issues.push(
+      `qualification provenance invalid: mixed configured model values (${models.join(", ") || "none"})`,
+    );
+  }
+
+  const expectedModel = input.expectedModel?.trim();
+  if (expectedModel && models.length === 1 && models[0] !== expectedModel) {
+    issues.push(
+      `model snapshot drift: expected ${expectedModel}, observed ${models[0]}`,
+    );
+  }
+
+  const configuredModel = input.configuredModel?.trim();
+  if (
+    configuredModel &&
+    models.length === 1 &&
+    models[0] !== configuredModel
+  ) {
+    issues.push(
+      `configured model provenance mismatch: runner ${configuredModel}, runs ${models[0]}`,
+    );
+  }
+
+  return issues;
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
 }
