@@ -1,10 +1,14 @@
+import { formatCount, formatMedianRange } from "./trials.ts";
 import type {
   EvalResult,
+  HoldoutTaskEval,
   IsolationEval,
   ProbeEval,
+  QualificationVerdict,
   Ratio,
   SecurityEval,
 } from "./types.ts";
+import type { QualificationDecision } from "./qualify.ts";
 
 export function formatEvalReport(result: EvalResult): string {
   const cap = result.capability;
@@ -21,6 +25,9 @@ export function formatEvalReport(result: EvalResult): string {
     formatRow("Autonomous completion", cap.autonomousCompletion),
     formatRow("Human escalation", cap.humanEscalation),
     `Known escaped defects   ${formatEscapedDefects(cap.knownEscapedDefects)}`,
+    "",
+    "Holdout",
+    ...formatHoldoutSection(result),
     "",
     "Mechanism probes",
     formatProbe("R01 verification repair", result.probes.R01),
@@ -42,6 +49,11 @@ export function formatEvalReport(result: EvalResult): string {
     "",
     `All fixed benchmark contracts  ${formatRatio(result.allFixedContracts)}`,
     "(qualified: capability expected outcomes + probe contracts, not an overall success rate)",
+    "",
+    "Methodology",
+    `suite=${result.methodology.suiteVersion} qualification=${result.methodology.qualificationSuiteVersion}`,
+    `baseRevision=${result.methodology.baseRevision ?? "n/a"}`,
+    `configuredModel=${result.methodology.configuredModel ?? "n/a"}`,
     "",
     "Hard regressions",
     ...(result.regressions.length
@@ -70,6 +82,75 @@ export function formatEvalReport(result: EvalResult): string {
   }
 
   return lines.join("\n");
+}
+
+export function formatQualificationReport(
+  result: EvalResult,
+  decision: QualificationDecision,
+): string {
+  const lines = [
+    result.report,
+    "",
+    "=== Qualification ===",
+    `claim: ${decision.claim}`,
+    `verdict: ${formatVerdict(decision.verdict)}`,
+    `claimSupported: ${decision.claimSupported ? "yes" : "no"}`,
+    `T01–T04 regression-free: ${decision.t01t04RegressionFree ? "yes" : "no"}`,
+    `H01 independent grader: ${formatCount(decision.h01IndependentGrader)}`,
+    `H02 independent grader: ${formatCount(decision.h02IndependentGrader)}`,
+    `escaped defects: ${decision.escapedDefects}`,
+    `calibration: ${decision.calibrationValid ? "valid" : "invalid"}`,
+    "",
+    "Decision rule",
+    decision.decisionRule,
+    "",
+    "Reasons",
+    ...decision.reasons.map((item) => `- ${item}`),
+    "",
+    "Do not read 3/3 as 100% reliability. Counts are observed on this frozen workload and model snapshot.",
+  ];
+  return lines.join("\n");
+}
+
+function formatHoldoutSection(result: EvalResult): string[] {
+  if (result.holdout.tasks.length === 0) {
+    return [
+      "(not in this eval)",
+      "(DEV / HOLDOUT / probe denominators are not mixed)",
+    ];
+  }
+
+  const lines = [
+    `Independent grader pass  ${formatRatio(result.holdout.independentGraderPass)}`,
+    `Escaped defects          ${formatEscapedDefects({
+      count: result.holdout.escapedDefects.met,
+      independentGroundTruthRuns: result.holdout.escapedDefects.total,
+    })}`,
+    "(observed counts only; not a reliability percentage)",
+  ];
+  for (const task of result.holdout.tasks) {
+    lines.push(...formatHoldoutTask(task));
+  }
+  return lines;
+}
+
+function formatHoldoutTask(task: HoldoutTaskEval): string[] {
+  return [
+    "",
+    `${task.taskId}  role=${task.evaluationRole}  contamination=${task.contaminationStatus}  trials=${task.trials}`,
+    `  independent grader     ${formatCount(task.independentGraderPass)}`,
+    `  escaped defects        ${formatCount(task.escapedDefects)}`,
+    `  wallTimeMs             ${formatMedianRange(task.efficiency.wallTimeMs)}`,
+    `  modelCalls             ${formatMedianRange(task.efficiency.modelCalls)}`,
+    `  toolCalls              ${formatMedianRange(task.efficiency.toolCalls)}`,
+    `  inputTokens            ${formatMedianRange(task.efficiency.inputTokens)}`,
+    `  outputTokens           ${formatMedianRange(task.efficiency.outputTokens)}`,
+    `  raw trials             ${task.trialRunIds.join(", ") || "(none)"}`,
+  ];
+}
+
+function formatVerdict(verdict: QualificationVerdict): string {
+  return verdict;
 }
 
 function formatRow(label: string, value: Ratio): string {
@@ -136,7 +217,10 @@ function formatRunLine(run: EvalResult["runs"][number]): string {
       : `skills=${run.skills.loads
           .map((item) => `${item.skillId}@${item.phase}`)
           .join(",")}`;
-  return `${run.identity.taskId}  ${run.identity.taskKind}${run.identity.mechanism ? `/${run.identity.mechanism}` : ""}  expected=${run.outcome.expectedOutcomeMet ? "yes" : "no"}  first_pass=${firstPass}  autonomous=${run.outcome.autonomousCompletion}  escalate=${run.outcome.humanEscalation}  verify=${run.recovery.verificationSequence.join("→") || "n/a"}  ${skills}${probe}`;
+  const grader = run.outcome.grader.independentOfHarnessVerify
+    ? ` independent_grader=${run.outcome.grader.passed ? "PASS" : "FAIL"} escaped=${run.outcome.escapedDefect}`
+    : "";
+  return `${run.identity.taskId}  ${run.identity.evaluationRole}/${run.identity.taskKind}${run.identity.mechanism ? `/${run.identity.mechanism}` : ""}  trial=${run.identity.trialIndex}/${run.identity.trialCount}  expected=${run.outcome.expectedOutcomeMet ? "yes" : "no"}  first_pass=${firstPass}  autonomous=${run.outcome.autonomousCompletion}  escalate=${run.outcome.humanEscalation}  verify=${run.recovery.verificationSequence.join("→") || "n/a"}  ${skills}${probe}${grader}`;
 }
 
 function formatSkillLine(run: EvalResult["runs"][number]): string {

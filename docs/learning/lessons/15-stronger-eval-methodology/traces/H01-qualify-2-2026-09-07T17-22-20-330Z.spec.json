@@ -1,0 +1,61 @@
+{
+  "task": "# H01 — Rename an existing task\n\nAdd `PATCH /tasks/:id` so a client can change the title of an existing task.\n\nUser-visible contract:\n\n- The request body must be an object that includes `title`.\n- `title` must be a string that is non-empty after trimming whitespace.\n- Store and return the trimmed title.\n- Missing body, a non-object body, omitted `title`, a non-string `title`, or a whitespace-only `title` returns HTTP 400 with `{ \"error\": \"title_required\" }`.\n- An unknown task id returns HTTP 404 with `{ \"error\": \"task_not_found\" }`.\n- A successful rename returns HTTP 200 and the updated task.\n- `PATCH` must not change `status` or `completedAt`.\n- Renaming a completed task keeps `status` as `\"completed\"` and keeps the same `completedAt` value.\n- After a successful rename, `GET /tasks/:id` returns the new title.\n- After a successful rename, `GET /tasks` includes the task with the new title.\n- Existing `POST /tasks`, `GET /tasks/:id`, complete, reopen, `completedAt`, and `GET /tasks?status=` behavior must remain unchanged.\n\nImplement the missing behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Add support for renaming an existing task via PATCH /tasks/:id while preserving all existing task lifecycle and listing behavior.",
+    "requirements": [
+      "Register PATCH /tasks/:id routing without changing the existing GET, POST, complete, reopen, or list routes.",
+      "Validate the PATCH body as an object containing a title value; reject a missing body, non-object body, omitted title, non-string title, or a title that is empty after trimming with HTTP 400 and body { error: \"title_required\" }.",
+      "Trim a valid title before storing it and return the updated task with HTTP 200.",
+      "Return HTTP 404 with body { error: \"task_not_found\" } when the requested task id does not exist.",
+      "Update only the existing task's title; do not change status or completedAt.",
+      "For a completed task, preserve status \"completed\" and preserve the exact existing completedAt value when renaming.",
+      "Ensure the updated task is observable through GET /tasks/:id and GET /tasks, including status-filtered listings as applicable.",
+      "Preserve existing POST /tasks validation/creation behavior, GET /tasks/:id behavior, complete/reopen behavior, completedAt behavior, and GET /tasks?status= behavior."
+    ],
+    "constraints": [
+      "Do not modify tests.",
+      "Use the existing TaskService and task-route architecture; add the smallest service and routing changes needed.",
+      "Represent the successful response as the same Task shape already used by the application.",
+      "Treat a JSON object body as the valid object form for validation (null and array/non-object bodies are invalid), consistent with the stated object contract and existing request model."
+    ],
+    "nonGoals": [
+      "No changes to task status transitions or completedAt generation/clearing.",
+      "No new task fields, persistence mechanism, authentication, or unrelated endpoints.",
+      "No changes to existing endpoint status codes or response formats."
+    ],
+    "acceptance": [
+      "PATCH /tasks/:id with { title: \"  Renamed task  \" } returns 200 and a task whose title is \"Renamed task\".",
+      "PATCH with missing, null, primitive, array/non-object, missing-title, non-string-title, or whitespace-only title returns exactly status 400 and { error: \"title_required\" }, without mutating the task.",
+      "PATCH for an unknown id returns exactly status 404 and { error: \"task_not_found\" }.",
+      "Renaming a pending task leaves status \"pending\" and completedAt null.",
+      "Renaming a completed task leaves status \"completed\" and its completedAt unchanged.",
+      "Following a successful rename, GET /tasks/:id and GET /tasks expose the new trimmed title.",
+      "Existing tests and behavior for creation, retrieval, completion, reopening, completedAt, and status filtering continue to pass."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Add or use coverage for successful trimming, every invalid-body/title case, unknown ids, pending preservation, completed-task completedAt preservation, and visibility through both GET endpoints; because the task says not to modify tests, verify these cases with the implementation's test suite or external/manual requests without editing the existing tests.",
+      "Inspect that the service rename operation mutates only title and that route validation occurs before mutation."
+    ],
+    "ambiguities": [
+      {
+        "question": "What counts as an object for the request body, particularly arrays and null?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a JSON-object/record interpretation: require a non-null, non-array object; arrays, null, and primitives are invalid.",
+        "basis": "The user-visible contract explicitly requires an object and distinguishes non-object bodies; JSON request-object semantics and the existing route's null-safe object check support rejecting null and non-record values. Rejecting arrays avoids treating a JSON array as an object body."
+      },
+      {
+        "question": "Should a successful rename be implemented by mutating the existing Task instance or replacing it?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Either internal approach is acceptable as long as the returned and subsequently listed/retrieved task has only its title changed; the existing in-memory Map/service design makes a title-only mutation straightforward.",
+        "basis": "This is an internal implementation choice with no externally distinct behavior under the contract, provided status and completedAt are preserved."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

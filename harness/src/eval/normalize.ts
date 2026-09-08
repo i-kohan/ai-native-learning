@@ -3,7 +3,6 @@ import { isEscalationTask, runIdentity } from "./catalog.ts";
 import type {
   EfficiencyMetrics,
   FindingSummary,
-  FixedTaskId,
   OutcomeMetrics,
   PhaseEfficiency,
   ProbeMetrics,
@@ -12,19 +11,38 @@ import type {
   RunMetrics,
   VerificationOutcome,
 } from "./types.ts";
+import type { IndependentGraderResult } from "./grader.ts";
 
 export function normalizeRun(options: {
-  taskId: FixedTaskId;
+  taskId: string;
   runId: string;
   result: HarnessRunResult;
   expectedOutcomeMet: boolean;
+  trialIndex?: number;
+  trialCount?: number;
+  suiteVersion?: string;
+  configuredModel?: string | null;
+  independentGrader?: IndependentGraderResult | null;
 }): RunMetrics {
   const { taskId, runId, result, expectedOutcomeMet } = options;
-  const identity = runIdentity({ runId, taskId });
+  const identity = runIdentity({
+    runId,
+    taskId,
+    trialIndex: options.trialIndex,
+    trialCount: options.trialCount,
+    suiteVersion: options.suiteVersion,
+    baseRevision: result.workspace?.baseRevision ?? null,
+    configuredModel: options.configuredModel ?? null,
+  });
 
   return {
     identity,
-    outcome: outcomeMetrics(taskId, result, expectedOutcomeMet),
+    outcome: outcomeMetrics(
+      taskId,
+      result,
+      expectedOutcomeMet,
+      options.independentGrader,
+    ),
     recovery: recoveryMetrics(result),
     review: reviewMetrics(result),
     efficiency: efficiencyMetrics(result),
@@ -36,9 +54,10 @@ export function normalizeRun(options: {
 }
 
 function outcomeMetrics(
-  taskId: FixedTaskId,
+  taskId: string,
   result: HarnessRunResult,
   expectedOutcomeMet: boolean,
+  independentGrader?: IndependentGraderResult | null,
 ): OutcomeMetrics {
   const humanEscalation =
     result.workflowStatus === "needs_human_judgment" ||
@@ -58,19 +77,51 @@ function outcomeMetrics(
     specDecision: result.specDecision?.status ?? null,
     implementationStarted: result.implementationStarted,
     ...completionMetrics(taskId, result),
-    escapedDefect: null,
-    grader: {
-      name: result.implementationStarted ? "target-app npm test" : "none",
-      passed: result.implementationStarted
-        ? result.finalVerificationPassed
-        : null,
+    escapedDefect: escapedDefectOf(result, independentGrader),
+    grader: graderProvenance(result, independentGrader),
+  };
+}
+
+function escapedDefectOf(
+  result: HarnessRunResult,
+  independentGrader?: IndependentGraderResult | null,
+): boolean | null {
+  if (!independentGrader) {
+    return null;
+  }
+  return result.finalVerificationPassed === true && independentGrader.passed === false;
+}
+
+function graderProvenance(
+  result: HarnessRunResult,
+  independentGrader?: IndependentGraderResult | null,
+) {
+  if (independentGrader) {
+    return {
+      name: independentGrader.name,
+      passed: independentGrader.passed,
+      independentOfHarnessVerify: true,
+      provenance: "benchmark_owned_independent" as const,
+    };
+  }
+  if (!result.implementationStarted) {
+    return {
+      name: "none",
+      passed: null,
       independentOfHarnessVerify: false,
-    },
+      provenance: "none" as const,
+    };
+  }
+  return {
+    name: "target-app npm test",
+    passed: result.finalVerificationPassed,
+    independentOfHarnessVerify: false,
+    provenance: "harness_verify" as const,
   };
 }
 
 function completionMetrics(
-  taskId: FixedTaskId,
+  taskId: string,
   result: HarnessRunResult,
 ): Pick<
   OutcomeMetrics,
@@ -231,8 +282,8 @@ function summedEpisode(
   outputTokens: number | null,
 ): PhaseEfficiency {
   return {
-    modelCalls: episodes.reduce((sum, item) => sum + item.modelCalls, 0),
-    toolCalls: episodes.reduce((sum, item) => sum + item.toolCalls, 0),
+    modelCalls: episodes.reduce((sum, item) => item.modelCalls + sum, 0),
+    toolCalls: episodes.reduce((sum, item) => item.toolCalls + sum, 0),
     inputTokens,
     outputTokens,
     wallTimeMs: episodes.length
@@ -242,7 +293,7 @@ function summedEpisode(
 }
 
 function probeMetrics(
-  taskId: FixedTaskId,
+  taskId: string,
   result: HarnessRunResult,
   expectedOutcomeMet: boolean,
 ): ProbeMetrics {

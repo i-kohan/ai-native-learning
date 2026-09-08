@@ -17,8 +17,9 @@ Completed modules:
 11. ✅ 11 — Modern Model-Native Orchestration / Inner vs Outer Loop
 12. ✅ 12 — Planner / Worker / Reviewer
 13. ✅ 13 — Subagents
+14. ✅ 14 — Human-Reviewable Decomposition
 
-Current module: **14 — Human-Reviewable Decomposition** (mechanism probe in progress; not adopted; default architecture unchanged).
+Current module: **15 — Stronger Eval Methodology** (implemented and measured; pending Topic Chat review). Default architecture unchanged.
 
 ---
 
@@ -36,7 +37,8 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional in-episode Responses `previous_response_id` continuation inside `runAgentLoop`; default remains manual full-history replay because the Module 11 efficiency/adoption criterion was inconclusive;
 - optional explicit read-only Planner mechanism exists behind `planningEnabled`, but remains off by default because Module 12 P01 showed equal quality with worse end-to-end cost;
 - optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. Module 13 mechanism probe, not a change to the normal lifecycle;
-- optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker.
+- optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker;
+- eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY.
 
 Conceptual default flow:
 
@@ -55,6 +57,84 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 15 — Stronger Eval Methodology
+
+**Status:** implemented and measured. Qualification claim **supported** on this frozen workload/model snapshot. Topic Chat owns formal closure. Default architecture unchanged.
+
+Theory draft:
+
+`docs/learning/lessons/15-stronger-eval-methodology/theory.md`
+
+Practical notes/evidence:
+
+`docs/learning/lessons/15-stronger-eval-methodology/notes.md`
+
+## Learning-critical model
+
+```text
+DEV / known     = used to build, debug, or tune
+HOLDOUT         = frozen representative work, unused for tuning
+VERIFY          = harness gate the Worker can see
+independent grader = benchmark-owned ground truth after terminal outcome
+```
+
+Holdout lifecycle:
+
+```text
+fresh holdout → evaluate
+→ if used to change/tune the evaluated harness
+→ becomes DEV/known for future qualification
+```
+
+H01/H02 remain `fresh_holdout`. This run did not tune the harness against them.
+
+## Qualification protocol (frozen before outcomes)
+
+```text
+T01–T04: 1 regression run each
+H01: 3 independent trials from the same frozen base
+H02: 3 independent trials from the same frozen base
+Claim supported only if:
+  T01–T04 no regression
+  H01 independent grader 3/3
+  H02 independent grader 3/3
+  escaped defects 0
+  grader calibration valid
+```
+
+`2/3` is unsupported, not inconclusive. `3/3` is an observed count, not 100% reliability.
+
+## Result (2026-09-07)
+
+Suite: `qualification-m15`. Model: `gpt-5.6-luna`. Base: `a6b8e5001298`. Invalid trials: none. Contaminated: none.
+
+| Split | Result |
+| --- | --- |
+| T01–T04 | 4/4 expected; first-pass 3/3; T04 escalated |
+| H01 independent grader | 3/3 PASS; escaped 0/3 |
+| H02 independent grader | 3/3 PASS; escaped 0/3 |
+| Calibration | valid |
+| Verdict | **supported** |
+
+H01 efficiency: wall median 41556ms (37431–74635); model calls median 8 (8–11); tool calls median 18 (16–21); tokens in median 27549 (26678–44651); tokens out median 3284 (3075–4799).
+
+H02 efficiency: wall median 38464ms (30034–41537); model calls median 8 (7–9); tool calls median 16 (16–17); tokens in median 24480 (23493–33871); tokens out median 2870 (2509–3008).
+
+Evidence: `docs/learning/lessons/15-stronger-eval-methodology/traces/2026-09-07T17-26-05-593Z.txt`
+
+Harness unit tests: **174 passed**.
+
+## Module decision (pending Topic Chat)
+
+```text
+eval methodology     = implemented
+qualification claim  = supported on this frozen workload / gpt-5.6-luna
+H01/H02              = still fresh holdout (not used to tune)
+normal default       = unchanged
+```
 
 ---
 
@@ -138,7 +218,7 @@ Formally closed by Master. Do not reopen.
 
 # Module 14 — Human-Reviewable Decomposition
 
-**Status:** mechanism implemented and measured; **not** accepted by Master. Topic Chat owns the human-review signal and acceptance.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-01. Mechanism implemented and measured; not adopted as default.
 
 Theory draft:
 
@@ -203,14 +283,17 @@ After the correction: again 6/6; ISO01 PASS; SEC01 PASS; no hard regressions.
 
 Evidence: `docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-31T12-27-55-652Z.txt`
 
-## Module decision (pending Topic Chat)
+## Module decision
 
 ```text
-review-decomposition mechanism = implemented + corrected
+review-decomposition mechanism = implemented + corrected + understood
 P02 first experiment           = mechanism_failed / no genuine surfaces
 P02 corrected experiment       = candidate_pending_human_review
+adoption                       = conditional, not default
 normal default                 = Spec → one Worker, single_change first-class
 ```
+
+Closed by Topic Chat on 2026-09-01. See `docs/learning/lessons/14-human-reviewable-decomposition/closure.md`.
 
 ---
 

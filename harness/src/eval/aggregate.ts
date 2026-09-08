@@ -1,17 +1,25 @@
 import {
+  evaluationRoleOf,
   isEscalationTask,
   isExecutableCapabilityTask,
+  isFixedSuiteTask,
+  requireCatalogEntry,
   taskKindOf,
 } from "./catalog.ts";
 import { formatEvalReport } from "./report.ts";
+import { numericSummary } from "./trials.ts";
 import { EVIDENCE_GUIDED_REPAIR_SKILL_ID } from "../skills.ts";
 import type { IsolationProbeResult } from "../iso01.ts";
 import type { SecurityProbeResult } from "../sec01.ts";
 import {
-  IsolationEval,
+  QUALIFICATION_SUITE_VERSION,
   SUITE_VERSION,
   type CapabilityEval,
   type EvalResult,
+  type HoldoutEval,
+  type HoldoutTaskEval,
+  type IsolationEval,
+  type MethodologyProvenance,
   type ProbeEval,
   type Ratio,
   type RecurringFinding,
@@ -24,12 +32,18 @@ export function aggregateRuns(
   options?: {
     isolation?: IsolationProbeResult;
     security?: SecurityProbeResult;
+    suiteVersion?: string;
   },
 ): EvalResult {
-  const capabilityRuns = runs.filter(
-    (run) => run.identity.taskKind === "capability_regression",
+  const capabilityRuns = runs.filter(isFixedCapabilityRun);
+  const holdoutRuns = runs.filter(
+    (run) => run.identity.evaluationRole === "holdout",
+  );
+  const fixedSuiteRuns = runs.filter((run) =>
+    isFixedSuiteTask(run.identity.taskId),
   );
   const capability = capabilityEval(capabilityRuns);
+  const holdout = holdoutEval(holdoutRuns);
   const probes = probeEval(runs);
   const isolation = isolationEval(options?.isolation);
   const security = securityEval(options?.security);
@@ -40,15 +54,18 @@ export function aggregateRuns(
     options?.security,
   );
   const diagnostics = diagnosticWarnings(runs, recurringFindings);
+  const methodology = methodologyProvenance(runs, options?.suiteVersion);
 
   const evalResult: EvalResult = {
-    suiteVersion: SUITE_VERSION,
+    suiteVersion: options?.suiteVersion ?? SUITE_VERSION,
     runCount: runs.length,
-    allFixedContracts: ratio(runs, (run) => run.outcome.expectedOutcomeMet),
+    allFixedContracts: ratio(fixedSuiteRuns, (run) => run.outcome.expectedOutcomeMet),
     capability,
+    holdout,
     probes,
     isolation,
     security,
+    methodology,
     recurringFindings,
     regressions,
     diagnostics,
@@ -57,6 +74,15 @@ export function aggregateRuns(
   };
   evalResult.report = formatEvalReport(evalResult);
   return evalResult;
+}
+
+function isFixedCapabilityRun(run: RunMetrics): boolean {
+  const entry = requireCatalogEntry(run.identity.taskId);
+  return (
+    entry.evaluationRole === "dev" &&
+    entry.taskKind === "capability_regression" &&
+    entry.inFixedSuite
+  );
 }
 
 function capabilityEval(runs: RunMetrics[]): CapabilityEval {
@@ -100,9 +126,69 @@ function capabilityEval(runs: RunMetrics[]): CapabilityEval {
   };
 }
 
+function holdoutEval(runs: RunMetrics[]): HoldoutEval {
+  const byTask = new Map<string, RunMetrics[]>();
+  for (const run of runs) {
+    const list = byTask.get(run.identity.taskId) ?? [];
+    list.push(run);
+    byTask.set(run.identity.taskId, list);
+  }
+
+  const tasks: HoldoutTaskEval[] = [...byTask.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([taskId, trialRuns]) => holdoutTaskEval(taskId, trialRuns));
+
+  return {
+    tasks,
+    independentGraderPass: ratio(
+      runs,
+      (run) => run.outcome.grader.passed === true,
+    ),
+    escapedDefects: {
+      met: runs.filter((run) => run.outcome.escapedDefect === true).length,
+      total: runs.filter((run) => run.outcome.escapedDefect !== null).length,
+    },
+  };
+}
+
+function holdoutTaskEval(
+  taskId: string,
+  runs: RunMetrics[],
+): HoldoutTaskEval {
+  return {
+    taskId,
+    evaluationRole: "holdout",
+    contaminationStatus:
+      runs[0]?.identity.contaminationStatus ??
+      requireCatalogEntry(taskId).contaminationStatus,
+    trials: runs.length,
+    independentGraderPass: ratio(
+      runs,
+      (run) => run.outcome.grader.passed === true,
+    ),
+    escapedDefects: {
+      met: runs.filter((run) => run.outcome.escapedDefect === true).length,
+      total: runs.filter((run) => run.outcome.escapedDefect !== null).length,
+    },
+    efficiency: {
+      wallTimeMs: numericSummary(runs.map((run) => run.efficiency.wallTimeMs)),
+      modelCalls: numericSummary(runs.map((run) => run.efficiency.modelCalls)),
+      toolCalls: numericSummary(runs.map((run) => run.efficiency.toolCalls)),
+      inputTokens: numericSummary(runs.map((run) => run.efficiency.inputTokens)),
+      outputTokens: numericSummary(
+        runs.map((run) => run.efficiency.outputTokens),
+      ),
+    },
+    trialRunIds: runs.map((run) => run.identity.runId),
+  };
+}
+
 function probeEval(runs: RunMetrics[]): ProbeEval {
   const probes: ProbeEval = {};
   for (const run of runs) {
+    if (evaluationRoleOf(run.identity.taskId) !== "probe") {
+      continue;
+    }
     if (
       run.identity.taskId === "R01" &&
       run.probe?.mechanism === "verification_repair"
@@ -187,6 +273,28 @@ function securityEval(result?: SecurityProbeResult): SecurityEval {
   };
 }
 
+function methodologyProvenance(
+  runs: RunMetrics[],
+  suiteVersion?: string,
+): MethodologyProvenance {
+  const revisions = unique(
+    runs
+      .map((run) => run.identity.baseRevision)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const models = unique(
+    runs
+      .map((run) => run.identity.configuredModel)
+      .filter((value): value is string => Boolean(value)),
+  );
+  return {
+    suiteVersion: suiteVersion ?? SUITE_VERSION,
+    qualificationSuiteVersion: QUALIFICATION_SUITE_VERSION,
+    baseRevision: revisions[0] ?? null,
+    configuredModel: models[0] ?? null,
+  };
+}
+
 function hardRegressions(
   runs: RunMetrics[],
   isolation?: IsolationProbeResult,
@@ -205,7 +313,7 @@ function hardRegressions(
   for (const run of runs) {
     const { taskId } = run.identity;
     if (
-      taskKindOf(taskId) === "capability_regression" &&
+      isFixedCapabilityRun(run) &&
       !run.outcome.expectedOutcomeMet
     ) {
       if (taskId === "T04") {
@@ -270,7 +378,10 @@ function skillLoadDiagnostics(run: RunMetrics): string[] {
   const { taskId } = run.identity;
   const loads = run.skills.loads;
 
-  if (isExecutableCapabilityTask(taskId) || isEscalationTask(taskId)) {
+  if (
+    evaluationRoleOf(taskId) === "dev" &&
+    taskKindOf(taskId) === "capability_regression"
+  ) {
     if (loads.length === 0) {
       return [];
     }
@@ -321,4 +432,8 @@ function ratio(
     met: runs.filter(predicate).length,
     total: runs.length,
   };
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
 }

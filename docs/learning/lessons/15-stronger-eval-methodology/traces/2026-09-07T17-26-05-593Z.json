@@ -1,0 +1,1281 @@
+{
+  "suiteVersion": "qualification-m15",
+  "runCount": 10,
+  "allFixedContracts": {
+    "met": 4,
+    "total": 4
+  },
+  "capability": {
+    "expectedOutcomesMet": {
+      "met": 4,
+      "total": 4
+    },
+    "executableTaskCount": 3,
+    "firstPassSuccess": {
+      "met": 3,
+      "total": 3
+    },
+    "eventualSuccess": {
+      "met": 3,
+      "total": 3
+    },
+    "recoveredSuccess": {
+      "met": 0,
+      "total": 3
+    },
+    "correctEscalations": {
+      "met": 1,
+      "total": 1
+    },
+    "autonomousCompletion": {
+      "met": 3,
+      "total": 4
+    },
+    "humanEscalation": {
+      "met": 1,
+      "total": 4
+    },
+    "knownEscapedDefects": {
+      "count": 0,
+      "independentGroundTruthRuns": 0
+    }
+  },
+  "holdout": {
+    "tasks": [
+      {
+        "taskId": "H01",
+        "evaluationRole": "holdout",
+        "contaminationStatus": "fresh_holdout",
+        "trials": 3,
+        "independentGraderPass": {
+          "met": 3,
+          "total": 3
+        },
+        "escapedDefects": {
+          "met": 0,
+          "total": 3
+        },
+        "efficiency": {
+          "wallTimeMs": {
+            "median": 41556,
+            "min": 37431,
+            "max": 74635,
+            "values": [
+              41556,
+              37431,
+              74635
+            ]
+          },
+          "modelCalls": {
+            "median": 8,
+            "min": 8,
+            "max": 11,
+            "values": [
+              8,
+              8,
+              11
+            ]
+          },
+          "toolCalls": {
+            "median": 18,
+            "min": 16,
+            "max": 21,
+            "values": [
+              16,
+              18,
+              21
+            ]
+          },
+          "inputTokens": {
+            "median": 27549,
+            "min": 26678,
+            "max": 44651,
+            "values": [
+              27549,
+              26678,
+              44651
+            ]
+          },
+          "outputTokens": {
+            "median": 3284,
+            "min": 3075,
+            "max": 4799,
+            "values": [
+              3284,
+              3075,
+              4799
+            ]
+          }
+        },
+        "trialRunIds": [
+          "H01-qualify-1-2026-09-07T17-21-38-126Z",
+          "H01-qualify-2-2026-09-07T17-22-20-330Z",
+          "H01-qualify-3-2026-09-07T17-22-58-391Z"
+        ]
+      },
+      {
+        "taskId": "H02",
+        "evaluationRole": "holdout",
+        "contaminationStatus": "fresh_holdout",
+        "trials": 3,
+        "independentGraderPass": {
+          "met": 3,
+          "total": 3
+        },
+        "escapedDefects": {
+          "met": 0,
+          "total": 3
+        },
+        "efficiency": {
+          "wallTimeMs": {
+            "median": 38464,
+            "min": 30034,
+            "max": 41537,
+            "values": [
+              30034,
+              41537,
+              38464
+            ]
+          },
+          "modelCalls": {
+            "median": 8,
+            "min": 7,
+            "max": 9,
+            "values": [
+              8,
+              9,
+              7
+            ]
+          },
+          "toolCalls": {
+            "median": 16,
+            "min": 16,
+            "max": 17,
+            "values": [
+              16,
+              16,
+              17
+            ]
+          },
+          "inputTokens": {
+            "median": 24480,
+            "min": 23493,
+            "max": 33871,
+            "values": [
+              24480,
+              33871,
+              23493
+            ]
+          },
+          "outputTokens": {
+            "median": 2870,
+            "min": 2509,
+            "max": 3008,
+            "values": [
+              2509,
+              3008,
+              2870
+            ]
+          }
+        },
+        "trialRunIds": [
+          "H02-qualify-1-2026-09-07T17-24-13-653Z",
+          "H02-qualify-2-2026-09-07T17-24-44-312Z",
+          "H02-qualify-3-2026-09-07T17-25-26-480Z"
+        ]
+      }
+    ],
+    "independentGraderPass": {
+      "met": 6,
+      "total": 6
+    },
+    "escapedDefects": {
+      "met": 0,
+      "total": 6
+    }
+  },
+  "probes": {},
+  "isolation": {},
+  "security": {},
+  "methodology": {
+    "suiteVersion": "qualification-m15",
+    "qualificationSuiteVersion": "qualification-m15",
+    "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+    "configuredModel": "gpt-5.6-luna"
+  },
+  "recurringFindings": [],
+  "regressions": [],
+  "diagnostics": [],
+  "runs": [
+    {
+      "identity": {
+        "runId": "T01-variant-manual-2026-09-07T17-20-02-252Z",
+        "taskId": "T01",
+        "taskKind": "capability_regression",
+        "evaluationRole": "dev",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 1,
+        "trialCount": 1,
+        "contaminationStatus": "not_applicable",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": null,
+        "grader": {
+          "name": "target-app npm test",
+          "passed": true,
+          "independentOfHarnessVerify": false,
+          "provenance": "harness_verify"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 8,
+        "toolCalls": 13,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 9
+        },
+        "inputTokens": 21401,
+        "outputTokens": 1790,
+        "wallTimeMs": 36102,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4497,
+            "outputTokens": 751,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 4,
+            "toolCalls": 5,
+            "inputTokens": 12998,
+            "outputTokens": 1013,
+            "wallTimeMs": 16870
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 260
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 2,
+            "toolCalls": 1,
+            "inputTokens": 3906,
+            "outputTokens": 26,
+            "wallTimeMs": 5801
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "T02-variant-manual-2026-09-07T17-20-38-747Z",
+        "taskId": "T02",
+        "taskKind": "capability_regression",
+        "evaluationRole": "dev",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 1,
+        "trialCount": 1,
+        "contaminationStatus": "not_applicable",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": null,
+        "grader": {
+          "name": "target-app npm test",
+          "passed": true,
+          "independentOfHarnessVerify": false,
+          "provenance": "harness_verify"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 7,
+        "toolCalls": 14,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 10
+        },
+        "inputTokens": 18524,
+        "outputTokens": 1669,
+        "wallTimeMs": 24813,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4514,
+            "outputTokens": 884,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 4,
+            "toolCalls": 6,
+            "inputTokens": 12424,
+            "outputTokens": 678,
+            "wallTimeMs": 12596
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 253
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 1586,
+            "outputTokens": 107,
+            "wallTimeMs": 2391
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "T03-variant-manual-2026-09-07T17-21-03-950Z",
+        "taskId": "T03",
+        "taskKind": "capability_regression",
+        "evaluationRole": "dev",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 1,
+        "trialCount": 1,
+        "contaminationStatus": "not_applicable",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": null,
+        "grader": {
+          "name": "target-app npm test",
+          "passed": true,
+          "independentOfHarnessVerify": false,
+          "provenance": "harness_verify"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 7,
+        "toolCalls": 16,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 12
+        },
+        "inputTokens": 19259,
+        "outputTokens": 1570,
+        "wallTimeMs": 22773,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 8,
+            "inputTokens": 4625,
+            "outputTokens": 910,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 4,
+            "toolCalls": 7,
+            "inputTokens": 12825,
+            "outputTokens": 603,
+            "wallTimeMs": 10402
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 251
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 1809,
+            "outputTokens": 57,
+            "wallTimeMs": 1531
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "T04-variant-manual-2026-09-07T17-21-27-122Z",
+        "taskId": "T04",
+        "taskKind": "capability_regression",
+        "evaluationRole": "dev",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 1,
+        "trialCount": 1,
+        "contaminationStatus": "not_applicable",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "needs_human_judgment",
+        "failureLayer": null,
+        "autonomousCompletion": false,
+        "humanEscalation": true,
+        "specDecision": "needs_human_judgment",
+        "implementationStarted": false,
+        "firstPassSuccess": null,
+        "eventualSuccess": null,
+        "recoveredSuccess": null,
+        "escapedDefect": null,
+        "grader": {
+          "name": "none",
+          "passed": null,
+          "independentOfHarnessVerify": false,
+          "provenance": "none"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": null,
+        "verificationAttempts": 0,
+        "verificationSequence": [],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 0,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 2,
+        "toolCalls": 7,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 6
+        },
+        "inputTokens": 4444,
+        "outputTokens": 929,
+        "wallTimeMs": 10592,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4444,
+            "outputTokens": 929,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "verification": {
+            "attempts": 0,
+            "wallTimeMs": 0
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "H01-qualify-1-2026-09-07T17-21-38-126Z",
+        "taskId": "H01",
+        "taskKind": "capability_regression",
+        "evaluationRole": "holdout",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 1,
+        "trialCount": 3,
+        "contaminationStatus": "fresh_holdout",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": false,
+        "grader": {
+          "name": "H01 independent grader",
+          "passed": true,
+          "independentOfHarnessVerify": true,
+          "provenance": "benchmark_owned_independent"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 8,
+        "toolCalls": 16,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 11
+        },
+        "inputTokens": 27549,
+        "outputTokens": 3284,
+        "wallTimeMs": 41556,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4931,
+            "outputTokens": 1164,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 5,
+            "toolCalls": 8,
+            "inputTokens": 19089,
+            "outputTokens": 1880,
+            "wallTimeMs": 24585
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 247
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 3529,
+            "outputTokens": 240,
+            "wallTimeMs": 4600
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "H01-qualify-2-2026-09-07T17-22-20-330Z",
+        "taskId": "H01",
+        "taskKind": "capability_regression",
+        "evaluationRole": "holdout",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 2,
+        "trialCount": 3,
+        "contaminationStatus": "fresh_holdout",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": false,
+        "grader": {
+          "name": "H01 independent grader",
+          "passed": true,
+          "independentOfHarnessVerify": true,
+          "provenance": "benchmark_owned_independent"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 8,
+        "toolCalls": 18,
+        "repoDiscoveryToolCalls": {
+          "list_files": 3,
+          "read_file": 10
+        },
+        "inputTokens": 26678,
+        "outputTokens": 3075,
+        "wallTimeMs": 37431,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 9,
+            "inputTokens": 4993,
+            "outputTokens": 1203,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 5,
+            "toolCalls": 8,
+            "inputTokens": 18220,
+            "outputTokens": 1769,
+            "wallTimeMs": 21953
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 249
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 3465,
+            "outputTokens": 103,
+            "wallTimeMs": 2379
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "H01-qualify-3-2026-09-07T17-22-58-391Z",
+        "taskId": "H01",
+        "taskKind": "capability_regression",
+        "evaluationRole": "holdout",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 3,
+        "trialCount": 3,
+        "contaminationStatus": "fresh_holdout",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": false,
+        "grader": {
+          "name": "H01 independent grader",
+          "passed": true,
+          "independentOfHarnessVerify": true,
+          "provenance": "benchmark_owned_independent"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 11,
+        "toolCalls": 21,
+        "repoDiscoveryToolCalls": {
+          "list_files": 3,
+          "read_file": 11
+        },
+        "inputTokens": 44651,
+        "outputTokens": 4799,
+        "wallTimeMs": 74635,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 9,
+            "inputTokens": 4993,
+            "outputTokens": 1287,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 8,
+            "toolCalls": 11,
+            "inputTokens": 36075,
+            "outputTokens": 3257,
+            "wallTimeMs": 54777
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 246
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 3583,
+            "outputTokens": 255,
+            "wallTimeMs": 5717
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "H02-qualify-1-2026-09-07T17-24-13-653Z",
+        "taskId": "H02",
+        "taskKind": "capability_regression",
+        "evaluationRole": "holdout",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 1,
+        "trialCount": 3,
+        "contaminationStatus": "fresh_holdout",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": false,
+        "grader": {
+          "name": "H02 independent grader",
+          "passed": true,
+          "independentOfHarnessVerify": true,
+          "provenance": "benchmark_owned_independent"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 8,
+        "toolCalls": 16,
+        "repoDiscoveryToolCalls": {
+          "list_files": 1,
+          "read_file": 10
+        },
+        "inputTokens": 24480,
+        "outputTokens": 2509,
+        "wallTimeMs": 30034,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4860,
+            "outputTokens": 857,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 5,
+            "toolCalls": 8,
+            "inputTokens": 16475,
+            "outputTokens": 1572,
+            "wallTimeMs": 18923
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 259
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 3145,
+            "outputTokens": 80,
+            "wallTimeMs": 1914
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "H02-qualify-2-2026-09-07T17-24-44-312Z",
+        "taskId": "H02",
+        "taskKind": "capability_regression",
+        "evaluationRole": "holdout",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 2,
+        "trialCount": 3,
+        "contaminationStatus": "fresh_holdout",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": false,
+        "grader": {
+          "name": "H02 independent grader",
+          "passed": true,
+          "independentOfHarnessVerify": true,
+          "provenance": "benchmark_owned_independent"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 9,
+        "toolCalls": 16,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 11
+        },
+        "inputTokens": 33871,
+        "outputTokens": 3008,
+        "wallTimeMs": 41537,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4860,
+            "outputTokens": 1135,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 6,
+            "toolCalls": 8,
+            "inputTokens": 25552,
+            "outputTokens": 1768,
+            "wallTimeMs": 24316
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 254
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 3459,
+            "outputTokens": 105,
+            "wallTimeMs": 2563
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    },
+    {
+      "identity": {
+        "runId": "H02-qualify-3-2026-09-07T17-25-26-480Z",
+        "taskId": "H02",
+        "taskKind": "capability_regression",
+        "evaluationRole": "holdout",
+        "suiteVersion": "qualification-m15",
+        "trialIndex": 3,
+        "trialCount": 3,
+        "contaminationStatus": "fresh_holdout",
+        "baseRevision": "a6b8e50012980cb79df820c1555c1211a1d76c94",
+        "configuredModel": "gpt-5.6-luna"
+      },
+      "outcome": {
+        "expectedOutcomeMet": true,
+        "workflowStatus": "success",
+        "failureLayer": null,
+        "autonomousCompletion": true,
+        "humanEscalation": false,
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "firstPassSuccess": true,
+        "eventualSuccess": true,
+        "recoveredSuccess": false,
+        "escapedDefect": false,
+        "grader": {
+          "name": "H02 independent grader",
+          "passed": true,
+          "independentOfHarnessVerify": true,
+          "provenance": "benchmark_owned_independent"
+        }
+      },
+      "recovery": {
+        "firstVerificationPassed": true,
+        "verificationAttempts": 1,
+        "verificationSequence": [
+          "PASS"
+        ],
+        "verificationRepairAttempts": 0,
+        "repeatedFailure": false
+      },
+      "review": {
+        "reviewAttempts": 1,
+        "reviewRepairAttempts": 0,
+        "repeatedFinding": false,
+        "findingsObserved": 0,
+        "acceptedBlocking": 0,
+        "acceptedNonBlocking": 0,
+        "rejected": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "modelCalls": 7,
+        "toolCalls": 17,
+        "repoDiscoveryToolCalls": {
+          "list_files": 0,
+          "read_file": 11
+        },
+        "inputTokens": 23493,
+        "outputTokens": 2870,
+        "wallTimeMs": 38464,
+        "phases": {
+          "spec": {
+            "modelCalls": 2,
+            "toolCalls": 7,
+            "inputTokens": 4860,
+            "outputTokens": 1080,
+            "wallTimeMs": null
+          },
+          "implementation": {
+            "modelCalls": 4,
+            "toolCalls": 9,
+            "inputTokens": 15192,
+            "outputTokens": 1684,
+            "wallTimeMs": 23288
+          },
+          "verification": {
+            "attempts": 1,
+            "wallTimeMs": 249
+          },
+          "repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          },
+          "review": {
+            "modelCalls": 1,
+            "toolCalls": 1,
+            "inputTokens": 3441,
+            "outputTokens": 106,
+            "wallTimeMs": 2851
+          },
+          "review_repair": {
+            "modelCalls": 0,
+            "toolCalls": 0,
+            "inputTokens": null,
+            "outputTokens": null,
+            "wallTimeMs": null
+          }
+        }
+      },
+      "skills": {
+        "loads": []
+      }
+    }
+  ],
+  "report": "=== Eval Report (qualification-m15) ===\n\nCapability / Regression\nExpected outcomes      4 / 4\nExecutable tasks        3\nFirst-pass success     3 / 3\nEventual success       3 / 3\nRecovered success      0 / 3\nCorrect escalations    1 / 1\nAutonomous completion  3 / 4\nHuman escalation       1 / 4\nKnown escaped defects   n/a (grader = harness VERIFY; no independent ground truth)\n\nHoldout\nIndependent grader pass  6 / 6\nEscaped defects          0 / 6\n(observed counts only; not a reliability percentage)\n\nH01  role=holdout  contamination=fresh_holdout  trials=3\n  independent grader     3/3\n  escaped defects        0/3\n  wallTimeMs             median=41556 range=37431–74635\n  modelCalls             median=8 range=8–11\n  toolCalls              median=18 range=16–21\n  inputTokens            median=27549 range=26678–44651\n  outputTokens           median=3284 range=3075–4799\n  raw trials             H01-qualify-1-2026-09-07T17-21-38-126Z, H01-qualify-2-2026-09-07T17-22-20-330Z, H01-qualify-3-2026-09-07T17-22-58-391Z\n\nH02  role=holdout  contamination=fresh_holdout  trials=3\n  independent grader     3/3\n  escaped defects        0/3\n  wallTimeMs             median=38464 range=30034–41537\n  modelCalls             median=8 range=7–9\n  toolCalls              median=16 range=16–17\n  inputTokens            median=24480 range=23493–33871\n  outputTokens           median=2870 range=2509–3008\n  raw trials             H02-qualify-1-2026-09-07T17-24-13-653Z, H02-qualify-2-2026-09-07T17-24-44-312Z, H02-qualify-3-2026-09-07T17-25-26-480Z\n\nMechanism probes\nR01 verification repair      (not in this eval)\nREV01 independent review     (not in this eval)\n\nIsolation\nISO01 workspace isolation    (not in this eval)\n(not included in capability first-pass / task-success denominators)\n\nSecurity\nSEC01 verification secret isolation      (not in this eval)\n(not included in capability first-pass / task-success denominators)\n\nSkills\nT01   (none)\nT02   (none)\nT03   (none)\nT04   (none)\nH01   (none)\nH01   (none)\nH01   (none)\nH02   (none)\nH02   (none)\nH02   (none)\n\nAll fixed benchmark contracts  4 / 4\n(qualified: capability expected outcomes + probe contracts, not an overall success rate)\n\nMethodology\nsuite=qualification-m15 qualification=qualification-m15\nbaseRevision=a6b8e50012980cb79df820c1555c1211a1d76c94\nconfiguredModel=gpt-5.6-luna\n\nHard regressions\n- (none)\n\nDiagnostics (not correctness regressions)\n- (none)\n\nPer-run\nT01  dev/capability_regression  trial=1/1  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none\nT02  dev/capability_regression  trial=1/1  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none\nT03  dev/capability_regression  trial=1/1  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none\nT04  dev/capability_regression  trial=1/1  expected=yes  first_pass=n/a  autonomous=false  escalate=true  verify=n/a  skills=none\nH01  holdout/capability_regression  trial=1/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false\nH01  holdout/capability_regression  trial=2/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false\nH01  holdout/capability_regression  trial=3/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false\nH02  holdout/capability_regression  trial=1/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false\nH02  holdout/capability_regression  trial=2/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false\nH02  holdout/capability_regression  trial=3/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false\n\n=== Qualification ===\nclaim: Current default harness preserves known regression contracts and correctly completes the two frozen holdout workloads under the Module 15 qualification protocol.\nverdict: supported\nclaimSupported: yes\nT01–T04 regression-free: yes\nH01 independent grader: 3/3\nH02 independent grader: 3/3\nescaped defects: 0\ncalibration: valid\n\nDecision rule\nPredefined Module 15 qualification rule (frozen before examining qualification outcomes):\nClaim: Current default harness preserves known regression contracts and correctly completes the two frozen holdout workloads under the Module 15 qualification protocol.\nThe claim is SUPPORTED only if all of the following hold:\n1. T01–T04 have no regression (each expected capability contract met).\n2. H01 independent grader = 3/3 PASS.\n3. H02 independent grader = 3/3 PASS.\n4. escaped defects = 0 across holdout trials with independent ground truth.\n5. grader calibration is valid.\nA holdout result such as 2/3 does NOT satisfy the rule and is unsupported, not inconclusive.\nDo not call a failed predefined criterion inconclusive merely because the sample size is small.\nUse inconclusive only when the evidence itself cannot support a clean decision: invalid trials, flaky grader, contamination, uncontrolled environment/model change, or an uncovered trade-off.\nAny conclusion remains workload-bounded. Never report 3/3 as 100% reliability.\nHoldout lifecycle: fresh holdout → evaluate → if its result is used to change/tune the evaluated harness/mechanism → it becomes DEV/known for future qualification.\n\nReasons\n- T01–T04 contracts held; H01 3/3; H02 3/3; escaped defects 0; calibration valid\n- Workload-bounded: 3/3 is an observed count, not 100% reliability\n\nDo not read 3/3 as 100% reliability. Counts are observed on this frozen workload and model snapshot.",
+  "generatedAt": "2026-09-07T17:26:05.593Z"
+}

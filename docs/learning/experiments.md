@@ -1722,3 +1722,57 @@ Hard regressions            none
 ```
 
 After the correction, same suite again: `docs/learning/lessons/14-human-reviewable-decomposition/traces/2026-08-31T12-27-55-652Z.txt` — 6/6 contracts, ISO01 PASS, SEC01 PASS, no hard regressions, decomposition still off.
+
+---
+
+## Module 15 — Stronger eval methodology qualification
+
+### Hypothesis
+
+A predefined qualification protocol with DEV/HOLDOUT split, independent graders, repeated holdout trials, and frozen decision rules can support a workload-bounded claim without inventing an overall success percentage.
+
+### Protocol (frozen before outcomes)
+
+```text
+T01–T04: 1 regression run each
+H01: 3 independent trials from the same frozen base
+H02: 3 independent trials from the same frozen base
+Claim supported iff:
+  T01–T04 no regression
+  H01 independent grader 3/3
+  H02 independent grader 3/3
+  escaped defects 0
+  grader calibration valid
+```
+
+2/3 is unsupported, not inconclusive. 3/3 is an observed count, not 100% reliability.
+
+### Calibration (deterministic, before LLM qualification)
+
+H01/H02 graders PASS known-correct implementations, FAIL representative defects (`no-trim`, `mutates-lifecycle`, `missing-is-200`, `no-op-delete`, `wrong-success-status`), and are stable on rerun. Valid.
+
+### Results (2026-09-07)
+
+Model: `gpt-5.6-luna`. Base: `a6b8e5001298`. Suite: `qualification-m15`. Contaminated: none. Invalid trials: none. H01/H02 remain `fresh_holdout`.
+
+| Split | Result |
+| --- | --- |
+| T01–T04 | 4/4 expected; first-pass 3/3; T04 escalated |
+| H01 | independent grader 3/3; escaped 0/3 |
+| H02 | independent grader 3/3; escaped 0/3 |
+| Verdict | **supported** |
+
+H01 efficiency: wall median 41.6s (37.4–74.6); model calls median 8 (8–11); tool calls median 18 (16–21); tokens in/out median 27.5k / 3.3k.
+
+H02 efficiency: wall median 38.5s (30.0–41.5); model calls median 8 (7–9); tool calls median 16 (16–17); tokens in/out median 24.5k / 2.9k.
+
+Raw trial artifacts kept. No overall success percentage.
+
+Evidence: `docs/learning/lessons/15-stronger-eval-methodology/traces/2026-09-07T17-26-05-593Z.txt`
+
+### Caveats
+
+1. Graders were host-owned and never executed by VERIFY. Task/grader files were frozen on the working tree before the LLM run; workspaces used the committed fixture SHA.
+2. This qualification does not include R01/REV01/ISO01/SEC01.
+3. If H01/H02 results are later used to tune the harness, they become DEV/known.
+4. Workload-bounded to these tasks and this model snapshot.

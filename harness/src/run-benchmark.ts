@@ -11,8 +11,16 @@ import {
   type HarnessRunResult,
 } from "./run.ts";
 import { aggregateRuns } from "./eval/aggregate.ts";
+import { HOLDOUT_GRADER_CONTRACTS } from "./eval/calibrate.ts";
+import { workspaceContainsGraderFiles } from "./eval/grader.ts";
 import { normalizeRun } from "./eval/normalize.ts";
-import type { EvalResult, FixedTaskId } from "./eval/types.ts";
+import {
+  gradeHoldoutWorkspace,
+  runQualificationProtocol,
+  writeQualificationArtifact,
+  type HoldoutTrialAttempt,
+} from "./eval/qualification-run.ts";
+import type { EvalResult, FixedTaskId, HoldoutTaskId } from "./eval/types.ts";
 import { writeEvalArtifact } from "./eval/write.ts";
 import type { ConversationStateMode } from "./loop.ts";
 import {
@@ -286,6 +294,7 @@ export async function runFixedSuite(
       runId: runIdFromTracePath(result.tracePath),
       result,
       expectedOutcomeMet: scoreExpectedOutcome(taskId, result),
+      configuredModel: loadConfig().model,
     }),
   );
   const evalResult = aggregateRuns(metrics, { isolation, security });
@@ -298,6 +307,117 @@ export async function runFixedSuite(
   console.log(`\neval_json: ${artifacts.jsonPath}`);
   console.log(`eval_report: ${artifacts.reportPath}`);
   return evalResult;
+}
+
+export function prepareHoldout(
+  taskId: HoldoutTaskId,
+  config: HarnessConfig,
+): {
+  task: string;
+  initialTestsPassed: boolean;
+  initialTestOutput: string;
+  graderLeakedIntoWorkspace: boolean;
+} {
+  restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
+  const hostTask = path.join(REPO_ROOT, "benchmarks", taskId, "task.md");
+  if (!fs.existsSync(hostTask)) {
+    throw new Error(`Missing ${taskId} task file: ${hostTask}`);
+  }
+  const graderDir = HOLDOUT_GRADER_CONTRACTS[taskId].graderDir;
+  const graderLeakedIntoWorkspace = workspaceContainsGraderFiles(
+    config.targetAppRoot,
+    graderDir,
+  );
+  const verification = runFinalVerification(config);
+  return {
+    task: fs.readFileSync(hostTask, "utf8").trim(),
+    initialTestsPassed: verification.passed,
+    initialTestOutput: verification.output,
+    graderLeakedIntoWorkspace,
+  };
+}
+
+export async function executeHoldoutTrial(options: {
+  taskId: HoldoutTaskId;
+  trialIndex: number;
+  runId: string;
+}): Promise<HoldoutTrialAttempt> {
+  return withIsolatedWorkspace(options.runId, async (config, workspace) => {
+    try {
+      const prep = prepareHoldout(options.taskId, config);
+      if (!prep.initialTestsPassed) {
+        return {
+          result: null,
+          graderPassed: null,
+          graderLeakedIntoWorkspace: prep.graderLeakedIntoWorkspace,
+          error: `${options.taskId}: expected green fixture tests to PASS before the holdout run, but they failed.\n${prep.initialTestOutput}`,
+        };
+      }
+      if (prep.graderLeakedIntoWorkspace) {
+        return {
+          result: null,
+          graderPassed: null,
+          graderLeakedIntoWorkspace: true,
+          error: `${options.taskId}: independent grader files were present in the Worker workspace before the run.`,
+        };
+      }
+      console.log(
+        `\n=== Preparing ${options.taskId} trial ${options.trialIndex}/3 workspace=${workspace.id} ===`,
+      );
+      console.log(
+        "initial_tests: PASS (green fixture; independent grader is not in VERIFY)",
+      );
+      console.log(
+        `workspace: ${workspace.id} @ ${workspace.baseRevision.slice(0, 12)}`,
+      );
+      const beforeSnapshot = snapshotDirectory(config.targetSrcRoot);
+      const result = await runV1Harness({
+        config,
+        task: prep.task,
+        runId: options.runId,
+        beforeSnapshot,
+        contextMode: "variant",
+        conversationStateMode: "manual",
+        workspace,
+      });
+      const grader = gradeHoldoutWorkspace({
+        taskId: options.taskId,
+        config,
+      });
+      printHarnessResult(result);
+      console.log(
+        `${options.taskId} independent grader: ${grader.passed ? "PASS" : "FAIL"}`,
+      );
+      return {
+        result,
+        graderPassed: grader.passed,
+        graderLeakedIntoWorkspace: false,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        result: null,
+        graderPassed: null,
+        graderLeakedIntoWorkspace: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+}
+
+export async function runModule15Qualification() {
+  const configuredModel = loadConfig().model;
+  return runQualificationProtocol({
+    configuredModel,
+    runCapability: (taskId) => runBenchmark(taskId, "variant"),
+    runHoldout: (taskId, trialIndex) =>
+      executeHoldoutTrial({
+        taskId,
+        trialIndex,
+        runId: `${taskId}-qualify-${trialIndex}-${timestamp()}`,
+      }),
+    scoreCapability: scoreExpectedOutcome,
+  });
 }
 
 export function isExpectedV1Outcome(
@@ -982,6 +1102,7 @@ type CliOptions = {
   isolationProbe: boolean;
   securityProbe: boolean;
   evalSuite: boolean;
+  qualifySuite?: boolean;
   routingExperiment: boolean;
   orchestrationExperiment?: boolean;
   planningExperiment?: boolean;
@@ -1002,6 +1123,21 @@ function parseArgs(argv: string[]): CliOptions {
     ? "previous_response_id"
     : "manual";
 
+  if (argv.includes("--qualify") || argv.includes("qualify")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      qualifySuite: true,
+      routingExperiment: false,
+      contextMode,
+      conversationStateMode,
+    };
+  }
   if (argv.includes("--eval") || argv.includes("--fixed-suite")) {
     return {
       all: false,
@@ -1215,6 +1351,7 @@ async function main(): Promise<void> {
     isolationProbe,
     securityProbe,
     evalSuite,
+    qualifySuite,
     routingExperiment,
     orchestrationExperiment,
     planningExperiment,
@@ -1236,6 +1373,16 @@ async function main(): Promise<void> {
     const result = runIsolationProbe();
     printIsolationProbeSummary(result);
     process.exit(isExpectedISO01Outcome(result) ? 0 : 1);
+    return;
+  }
+
+  if (qualifySuite) {
+    const result = await runModule15Qualification();
+    const artifacts = writeQualificationArtifact(result);
+    console.log(`\n${result.report}`);
+    console.log(`\nqualification_json: ${artifacts.jsonPath}`);
+    console.log(`qualification_report: ${artifacts.reportPath}`);
+    process.exit(result.decision.claimSupported ? 0 : 1);
     return;
   }
 
@@ -1342,6 +1489,7 @@ async function main(): Promise<void> {
     );
     console.error("   or: npm run benchmark:experiment");
     console.error("   or: npm run benchmark:eval [-- --previous-response-id]");
+    console.error("   or: npm run benchmark:qualify");
     console.error("   or: npm run benchmark:routing");
     console.error("   or: npm run benchmark:planning");
     console.error("   or: npm run benchmark:subagents");

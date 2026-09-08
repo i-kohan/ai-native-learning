@@ -1,0 +1,118 @@
+=== Eval Report (qualification-m15) ===
+
+Capability / Regression
+Expected outcomes      4 / 4
+Executable tasks        3
+First-pass success     3 / 3
+Eventual success       3 / 3
+Recovered success      0 / 3
+Correct escalations    1 / 1
+Autonomous completion  3 / 4
+Human escalation       1 / 4
+Known escaped defects   n/a (grader = harness VERIFY; no independent ground truth)
+
+Holdout
+Independent grader pass  6 / 6
+Escaped defects          0 / 6
+(observed counts only; not a reliability percentage)
+
+H01  role=holdout  contamination=fresh_holdout  trials=3
+  independent grader     3/3
+  escaped defects        0/3
+  wallTimeMs             median=41556 range=37431–74635
+  modelCalls             median=8 range=8–11
+  toolCalls              median=18 range=16–21
+  inputTokens            median=27549 range=26678–44651
+  outputTokens           median=3284 range=3075–4799
+  raw trials             H01-qualify-1-2026-09-07T17-21-38-126Z, H01-qualify-2-2026-09-07T17-22-20-330Z, H01-qualify-3-2026-09-07T17-22-58-391Z
+
+H02  role=holdout  contamination=fresh_holdout  trials=3
+  independent grader     3/3
+  escaped defects        0/3
+  wallTimeMs             median=38464 range=30034–41537
+  modelCalls             median=8 range=7–9
+  toolCalls              median=16 range=16–17
+  inputTokens            median=24480 range=23493–33871
+  outputTokens           median=2870 range=2509–3008
+  raw trials             H02-qualify-1-2026-09-07T17-24-13-653Z, H02-qualify-2-2026-09-07T17-24-44-312Z, H02-qualify-3-2026-09-07T17-25-26-480Z
+
+Mechanism probes
+R01 verification repair      (not in this eval)
+REV01 independent review     (not in this eval)
+
+Isolation
+ISO01 workspace isolation    (not in this eval)
+(not included in capability first-pass / task-success denominators)
+
+Security
+SEC01 verification secret isolation      (not in this eval)
+(not included in capability first-pass / task-success denominators)
+
+Skills
+T01   (none)
+T02   (none)
+T03   (none)
+T04   (none)
+H01   (none)
+H01   (none)
+H01   (none)
+H02   (none)
+H02   (none)
+H02   (none)
+
+All fixed benchmark contracts  4 / 4
+(qualified: capability expected outcomes + probe contracts, not an overall success rate)
+
+Methodology
+suite=qualification-m15 qualification=qualification-m15
+baseRevision=a6b8e50012980cb79df820c1555c1211a1d76c94
+configuredModel=gpt-5.6-luna
+
+Hard regressions
+- (none)
+
+Diagnostics (not correctness regressions)
+- (none)
+
+Per-run
+T01  dev/capability_regression  trial=1/1  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none
+T02  dev/capability_regression  trial=1/1  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none
+T03  dev/capability_regression  trial=1/1  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none
+T04  dev/capability_regression  trial=1/1  expected=yes  first_pass=n/a  autonomous=false  escalate=true  verify=n/a  skills=none
+H01  holdout/capability_regression  trial=1/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false
+H01  holdout/capability_regression  trial=2/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false
+H01  holdout/capability_regression  trial=3/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false
+H02  holdout/capability_regression  trial=1/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false
+H02  holdout/capability_regression  trial=2/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false
+H02  holdout/capability_regression  trial=3/3  expected=yes  first_pass=yes  autonomous=true  escalate=false  verify=PASS  skills=none independent_grader=PASS escaped=false
+
+=== Qualification ===
+claim: Current default harness preserves known regression contracts and correctly completes the two frozen holdout workloads under the Module 15 qualification protocol.
+verdict: supported
+claimSupported: yes
+T01–T04 regression-free: yes
+H01 independent grader: 3/3
+H02 independent grader: 3/3
+escaped defects: 0
+calibration: valid
+
+Decision rule
+Predefined Module 15 qualification rule (frozen before examining qualification outcomes):
+Claim: Current default harness preserves known regression contracts and correctly completes the two frozen holdout workloads under the Module 15 qualification protocol.
+The claim is SUPPORTED only if all of the following hold:
+1. T01–T04 have no regression (each expected capability contract met).
+2. H01 independent grader = 3/3 PASS.
+3. H02 independent grader = 3/3 PASS.
+4. escaped defects = 0 across holdout trials with independent ground truth.
+5. grader calibration is valid.
+A holdout result such as 2/3 does NOT satisfy the rule and is unsupported, not inconclusive.
+Do not call a failed predefined criterion inconclusive merely because the sample size is small.
+Use inconclusive only when the evidence itself cannot support a clean decision: invalid trials, flaky grader, contamination, uncontrolled environment/model change, or an uncovered trade-off.
+Any conclusion remains workload-bounded. Never report 3/3 as 100% reliability.
+Holdout lifecycle: fresh holdout → evaluate → if its result is used to change/tune the evaluated harness/mechanism → it becomes DEV/known for future qualification.
+
+Reasons
+- T01–T04 contracts held; H01 3/3; H02 3/3; escaped defects 0; calibration valid
+- Workload-bounded: 3/3 is an observed count, not 100% reliability
+
+Do not read 3/3 as 100% reliability. Counts are observed on this frozen workload and model snapshot.

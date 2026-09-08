@@ -97,3 +97,14 @@ Harness benchmark/eval runs use per-run Git worktrees (Module 08). Do not use wo
 ## Durable decisions
 
 If a chat produces a decision that matters later, write it into the appropriate repo document. Do not rely on chat history as project state.
+
+Eval methodology (Module 15):
+
+```text
+DEV / known  ≠  HOLDOUT
+VERIFY       ≠  independent eval grader
+3/3          ≠  100% reliability
+2/3          ≠  inconclusive
+```
+
+Holdout lifecycle: fresh holdout → evaluate → if used to tune the harness → becomes DEV/known. Do not infer `escapedDefect=false` without an independent grader.

@@ -1,0 +1,88 @@
+{
+  "task": "# H02 — Delete a task\n\nAdd `DELETE /tasks/:id` so a client can remove an existing task.\n\nUser-visible contract:\n\n- Deleting an existing task returns HTTP 204 and an empty body (`null`).\n- After a successful delete, `GET /tasks/:id` returns HTTP 404 with `{ \"error\": \"task_not_found\" }`.\n- After a successful delete, `GET /tasks` does not include that task.\n- After a successful delete, `GET /tasks?status=pending` and `GET /tasks?status=completed` do not include that task.\n- Deleting an unknown task id returns HTTP 404 with `{ \"error\": \"task_not_found\" }`.\n- `POST /tasks/:id/complete` and `POST /tasks/:id/reopen` on a deleted id return HTTP 404 with `{ \"error\": \"task_not_found\" }`.\n- Delete works for both pending and completed tasks.\n- Other remaining tasks keep their existing create, get, complete, reopen, `completedAt`, and status-filter behavior.\n\nImplement the missing behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Add support for deleting tasks through DELETE /tasks/:id while preserving all existing task operations and filtering behavior.",
+    "requirements": [
+      "Add a TaskService deletion operation that removes the task with the requested id from the in-memory task store.",
+      "Add DELETE /tasks/:id routing and return HTTP 204 with body null when the task exists, for both pending and completed tasks.",
+      "Return HTTP 404 with {\"error\":\"task_not_found\"} when DELETE /tasks/:id targets an unknown id.",
+      "After deletion, GET /tasks/:id must return HTTP 404 with {\"error\":\"task_not_found\"}.",
+      "After deletion, GET /tasks must omit the deleted task.",
+      "After deletion, GET /tasks?status=pending and GET /tasks?status=completed must omit the deleted task.",
+      "After deletion, POST /tasks/:id/complete and POST /tasks/:id/reopen must return HTTP 404 with {\"error\":\"task_not_found\"}.",
+      "Do not alter existing create, get, complete, reopen, completedAt, status-filter, or remaining-task behavior."
+    ],
+    "constraints": [
+      "Keep the existing TypeScript application structure and in-memory TaskService model.",
+      "Use the existing HttpResponse shape, representing the required empty 204 response body as null.",
+      "Do not modify tests.",
+      "Do not change behavior for routes or task ids unrelated to the deletion request."
+    ],
+    "nonGoals": [
+      "Changing task creation, completion, reopening, listing, or validation semantics.",
+      "Changing id allocation or reusing ids after deletion.",
+      "Adding persistence, authentication, or a separate HTTP server layer."
+    ],
+    "acceptance": [
+      "Deleting an existing pending task returns status 204 and body null.",
+      "Deleting an existing completed task returns status 204 and body null.",
+      "Deleting an unknown task returns status 404 and body {\"error\":\"task_not_found\"}.",
+      "A successfully deleted task is absent from unfiltered and both valid status-filtered task lists.",
+      "GET, complete, and reopen requests for a deleted id return the existing task-not-found response.",
+      "All other tasks retain their existing fields and behavior."
+    ],
+    "verification": [
+      "Add or run focused tests covering deletion of pending and completed tasks, the 204/null response, unknown-id deletion, absence from GET and both status-filtered lists, and failed get/complete/reopen operations after deletion.",
+      "Run the repository test script (npm test) and confirm existing tests remain passing.",
+      "Type-check or otherwise verify that the new service and route code conforms to the existing TypeScript interfaces."
+    ],
+    "ambiguities": [
+      {
+        "question": "What should the successful DELETE response status and body be?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 204 with body null.",
+        "basis": "Explicit user-visible contract in the task."
+      },
+      {
+        "question": "What response should DELETE use for an unknown id?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return HTTP 404 with {\"error\":\"task_not_found\"}.",
+        "basis": "Explicit user-visible contract; this also matches the existing get/complete/reopen not-found convention in task-routes.ts."
+      },
+      {
+        "question": "Should deletion apply to both task statuses?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Yes, delete both pending and completed tasks.",
+        "basis": "Explicit user-visible contract."
+      },
+      {
+        "question": "What should happen to the task after successful deletion across other endpoints and filters?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "The task is removed from the service store, so GET and both status-filtered lists omit it and get/complete/reopen return task_not_found.",
+        "basis": "Explicit user-visible contract, consistent with TaskService.list/get/complete/reopen all reading the same private Map."
+      },
+      {
+        "question": "Should existing behavior for remaining tasks change?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "No; preserve all existing create, get, complete, reopen, completedAt, status-filter, and remaining-task behavior.",
+        "basis": "Explicit user-visible contract."
+      },
+      {
+        "question": "What implementation location and local helper naming should be used?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Extend TaskService with a deletion method and add a route handler alongside the existing task handlers.",
+        "basis": "Matches the repository's current service-and-routes separation; no externally observable ambiguity."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

@@ -1,0 +1,60 @@
+{
+  "task": "# T01 — Missing task returns wrong status\n\nRequesting a task that does not exist currently returns HTTP 500.\n\nExpected: HTTP 404 with a clear not-found error body.\n\nFind the bug, fix it, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Correct GET /tasks/:id handling so a missing task returns HTTP 404 instead of HTTP 500, with the existing clear not-found error body.",
+    "requirements": [
+      "Update the GET task route's missing-task response status from 500 to 404.",
+      "Return the not-found response body { error: \"task_not_found\" } for a missing task, matching the existing complete/reopen missing-task responses and the current test contract.",
+      "Preserve successful GET /tasks/:id behavior and all unrelated task route behavior."
+    ],
+    "constraints": [
+      "Make the smallest targeted change in src/tasks/task-routes.ts.",
+      "Do not change the TaskService lookup contract or task data model.",
+      "Use the repository's existing HttpResponse shape and error identifier.",
+      "Add or retain automated coverage for GET /tasks/missing asserting both status 404 and body { error: \"task_not_found\" }."
+    ],
+    "nonGoals": [
+      "No changes to task creation, listing, completion, reopening, or status-filter semantics.",
+      "No changes to error payload naming or API routing beyond the missing GET task status.",
+      "No changes to persistence, IDs, or application architecture."
+    ],
+    "acceptance": [
+      "GET /tasks/missing returns status 404.",
+      "The response body for a missing GET task is exactly { error: \"task_not_found\" }.",
+      "GET /tasks/:id for an existing task still returns status 200 and the task.",
+      "The task test suite passes."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Confirm the existing GET /tasks/:id missing-task test passes, including its status and body assertions.",
+      "Confirm the existing-task GET test and the complete/reopen and list tests remain passing."
+    ],
+    "ambiguities": [
+      {
+        "question": "What error body should accompany the 404 response?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Use { error: \"task_not_found\" }.",
+        "basis": "src/tasks/task-routes.ts already uses this body for missing complete/reopen operations, and tests/tasks.test.ts explicitly asserts this body for GET /tasks/missing."
+      },
+      {
+        "question": "Should successful GET behavior or other routes change as part of this fix?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "No; only the missing GET task status is changed.",
+        "basis": "The task specifically identifies the wrong status for a missing task, while the existing route and tests define successful GET and other route behavior."
+      },
+      {
+        "question": "Is a new test needed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Retain/use the existing regression test, which already covers the requested status and body; no additional test is necessary unless implementation workflow requires it.",
+        "basis": "tests/tasks.test.ts already contains the exact missing-task regression assertions."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

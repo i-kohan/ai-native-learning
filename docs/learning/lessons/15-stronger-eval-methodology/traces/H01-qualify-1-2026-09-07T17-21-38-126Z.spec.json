@@ -1,0 +1,68 @@
+{
+  "task": "# H01 — Rename an existing task\n\nAdd `PATCH /tasks/:id` so a client can change the title of an existing task.\n\nUser-visible contract:\n\n- The request body must be an object that includes `title`.\n- `title` must be a string that is non-empty after trimming whitespace.\n- Store and return the trimmed title.\n- Missing body, a non-object body, omitted `title`, a non-string `title`, or a whitespace-only `title` returns HTTP 400 with `{ \"error\": \"title_required\" }`.\n- An unknown task id returns HTTP 404 with `{ \"error\": \"task_not_found\" }`.\n- A successful rename returns HTTP 200 and the updated task.\n- `PATCH` must not change `status` or `completedAt`.\n- Renaming a completed task keeps `status` as `\"completed\"` and keeps the same `completedAt` value.\n- After a successful rename, `GET /tasks/:id` returns the new title.\n- After a successful rename, `GET /tasks` includes the task with the new title.\n- Existing `POST /tasks`, `GET /tasks/:id`, complete, reopen, `completedAt`, and `GET /tasks?status=` behavior must remain unchanged.\n\nImplement the missing behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Add PATCH /tasks/:id to rename an existing task while preserving its status and completedAt, without changing existing task behavior.",
+    "requirements": [
+      "Register a PATCH route matching /tasks/:id and pass the request body through validation.",
+      "Accept only a JSON-object-like request body containing a title property; missing body, null, arrays/non-object values, omitted title, non-string title, and titles that trim to an empty string must return HTTP 400 with {\"error\":\"title_required\"}.",
+      "Trim a valid title before storing it and return the updated task with HTTP 200.",
+      "Return HTTP 404 with {\"error\":\"task_not_found\"} when the requested id does not exist.",
+      "Rename must update only title; it must not alter status or completedAt, including for completed tasks.",
+      "A renamed task must subsequently be returned with its new title by GET /tasks/:id and by GET /tasks, including status-filtered listings as applicable.",
+      "Preserve existing POST /tasks, GET /tasks/:id, complete, reopen, completedAt, and GET /tasks?status= behavior."
+    ],
+    "constraints": [
+      "Use the existing HttpRequest/HttpResponse route shape and Task/TaskService model.",
+      "The service stores tasks in a Map and existing route handlers use service methods; add the rename operation consistently with that design.",
+      "Do not modify tests.",
+      "Do not introduce changes to task status transitions, completion timestamps, ID generation, or list ordering."
+    ],
+    "nonGoals": [
+      "No new endpoint beyond PATCH /tasks/:id.",
+      "No support for renaming through POST or query parameters.",
+      "No changes to title validation or response behavior of POST /tasks unless required by shared internal helpers without changing its observable behavior.",
+      "No changes to status, completedAt, completion, reopening, filtering, or task identity semantics."
+    ],
+    "acceptance": [
+      "PATCH /tasks/:id with {title:\"  New title  \"} returns 200 and a task whose title is \"New title\".",
+      "PATCH validation failures for missing body, non-object body, omitted title, non-string title, and whitespace-only title each return exactly status 400 and {error:\"title_required\"}.",
+      "PATCH against an unknown id returns exactly status 404 and {error:\"task_not_found\"}.",
+      "For a pending task, a successful rename leaves status \"pending\" and completedAt null.",
+      "For a completed task, a successful rename leaves status \"completed\" and preserves the exact pre-rename completedAt value.",
+      "After a successful rename, GET /tasks/:id and GET /tasks return the renamed task/title; status filtering continues to select it according to its unchanged status.",
+      "Existing tests for creation, retrieval, completion, reopening, timestamps, and status filtering continue to pass."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Add or run focused checks for PATCH validation, successful trimming, missing IDs, pending-field preservation, completed-field preservation, and visibility through both GET endpoints without modifying the existing tests.",
+      "Review the route matching order to ensure PATCH /tasks/:id does not interfere with GET, complete, reopen, or fallback 404 behavior."
+    ],
+    "ambiguities": [
+      {
+        "question": "What constitutes an object for request-body validation, particularly whether arrays should be accepted because JavaScript typeof [] is object?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Treat the body as a JSON object, not an array; require a non-null, non-array object with a title property.",
+        "basis": "The contract distinguishes an object body from a non-object body, and HTTP/JSON object terminology excludes arrays. The existing HttpRequest body is unknown, so validation must explicitly exclude null and arrays."
+      },
+      {
+        "question": "Should the rename operation be implemented in TaskService rather than mutating the task directly in the route?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Add a focused TaskService rename/update method and have the route use it.",
+        "basis": "Existing mutations are encapsulated by TaskService methods (create, complete, reopen), so this is a low-risk consistency choice with no externally observable semantic change."
+      },
+      {
+        "question": "Should PATCH return the same task object shape as other task endpoints?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return the existing Task shape with id, title, status, and completedAt.",
+        "basis": "The task explicitly says return the updated task, and all existing task endpoints expose the Task model defined in src/tasks/types.ts."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

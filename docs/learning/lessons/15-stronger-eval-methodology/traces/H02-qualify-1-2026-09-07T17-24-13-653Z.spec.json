@@ -1,0 +1,57 @@
+{
+  "task": "# H02 — Delete a task\n\nAdd `DELETE /tasks/:id` so a client can remove an existing task.\n\nUser-visible contract:\n\n- Deleting an existing task returns HTTP 204 and an empty body (`null`).\n- After a successful delete, `GET /tasks/:id` returns HTTP 404 with `{ \"error\": \"task_not_found\" }`.\n- After a successful delete, `GET /tasks` does not include that task.\n- After a successful delete, `GET /tasks?status=pending` and `GET /tasks?status=completed` do not include that task.\n- Deleting an unknown task id returns HTTP 404 with `{ \"error\": \"task_not_found\" }`.\n- `POST /tasks/:id/complete` and `POST /tasks/:id/reopen` on a deleted id return HTTP 404 with `{ \"error\": \"task_not_found\" }`.\n- Delete works for both pending and completed tasks.\n- Other remaining tasks keep their existing create, get, complete, reopen, `completedAt`, and status-filter behavior.\n\nImplement the missing behavior. Do not modify tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Implement task deletion by adding DELETE /tasks/:id while preserving all existing task lifecycle and status-filter behavior.",
+    "requirements": [
+      "Add handling for DELETE requests matching /tasks/:id.",
+      "When the id identifies an existing pending or completed task, remove it from TaskService and return { status: 204, body: null }.",
+      "When the id is unknown, return { status: 404, body: { error: \"task_not_found\" } } without changing other tasks.",
+      "After deletion, the task must be absent from GET /tasks/:id, GET /tasks, GET /tasks?status=pending, and GET /tasks?status=completed.",
+      "After deletion, POST /tasks/:id/complete and POST /tasks/:id/reopen must continue to return HTTP 404 with { error: \"task_not_found\" }.",
+      "Existing create, get, complete, reopen, completedAt, status-filter, and behavior for remaining tasks must remain unchanged.",
+      "Implement the deletion operation in the task service using the existing in-memory task storage and expose it through the task routes."
+    ],
+    "constraints": [
+      "Do not modify tests.",
+      "Use the repository's existing HttpResponse shape, representing the 204 empty response body as null.",
+      "Preserve the existing task model and route error format.",
+      "Do not change behavior for routes or tasks unrelated to the deleted id."
+    ],
+    "nonGoals": [
+      "No persistence beyond the existing in-memory TaskService.",
+      "No changes to task creation, identifier generation, validation, status transitions, or query validation.",
+      "No new API endpoints beyond DELETE /tasks/:id."
+    ],
+    "acceptance": [
+      "Deleting a pending task returns status 204 and body null, and removes it from direct lookup and both filtered and unfiltered lists.",
+      "Deleting a completed task returns status 204 and body null, and removes it from direct lookup and both filtered and unfiltered lists.",
+      "Deleting an unknown id returns status 404 with exactly { error: \"task_not_found\" }.",
+      "Complete and reopen requests for a deleted id return status 404 with exactly { error: \"task_not_found\" }.",
+      "Existing tests continue to pass and existing behavior for remaining tasks is unchanged."
+    ],
+    "verification": [
+      "Add or run tests covering deletion of pending and completed tasks, the 204/null response, unknown-id deletion, absence from direct and filtered/unfiltered list endpoints, and complete/reopen after deletion.",
+      "Run the repository test script: npm test."
+    ],
+    "ambiguities": [
+      {
+        "question": "What should the response body for the HTTP 204 deletion response be in this app's response abstraction?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Return body null.",
+        "basis": "The task explicitly specifies an empty body (null), and HttpResponse requires a body field of type unknown."
+      },
+      {
+        "question": "How should deletion be represented in the service layer?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Add a service delete operation that removes the id from the existing Map and returns whether/removal result sufficient for route status selection.",
+        "basis": "The app stores tasks in TaskService.tasks, and existing get/complete/reopen operations use Map lookup; this is a local implementation detail with no additional product semantics."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}
