@@ -231,7 +231,7 @@ export function writeSpecArtifact(
   return specPath;
 }
 
-function parseSpec(
+export function parseSpec(
   value: unknown,
 ): { ok: true; value: Spec } | { ok: false; error: string } {
   if (!isRecord(value)) {

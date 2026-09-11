@@ -4,7 +4,9 @@ dist/
 .env
 traces/*.jsonl
 traces/*.json
+traces/*.txt
 traces/*.md
+traces/workflows/
 evals/*.json
 evals/*.txt
 *.log

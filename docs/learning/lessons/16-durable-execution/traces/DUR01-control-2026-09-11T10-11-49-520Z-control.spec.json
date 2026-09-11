@@ -1,0 +1,54 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure task completion state maintains the `completedAt` timestamp lifecycle: completing a task records a timestamp, and reopening it clears that timestamp.",
+    "requirements": [
+      "In `TaskService.complete`, a successful completion must leave the task with status `\"completed\"` and a non-empty timestamp string in `completedAt`.",
+      "In `TaskService.reopen`, a successful reopen must leave the task with status `\"pending\"` and `completedAt: null`.",
+      "Preserve existing not-found behavior and HTTP route response shapes; the change belongs in the task state transition logic.",
+      "Use the existing `Task.completedAt: string | null` contract. An ISO-formatted current-time string is an appropriate timestamp representation consistent with the TypeScript field and existing tests."
+    ],
+    "constraints": [
+      "Do not alter task creation behavior: newly created tasks remain pending with `completedAt: null`.",
+      "Do not change status filtering, validation, IDs, or route/status-code behavior.",
+      "Do not introduce a dependency; use the platform/runtime date facilities."
+    ],
+    "nonGoals": [
+      "No persistence or schema migration is needed; tasks are held in the existing in-memory map.",
+      "No changes to the public endpoint paths or request formats.",
+      "No requirement to change unrelated task fields or add timestamp behavior to task creation."
+    ],
+    "acceptance": [
+      "Completing an existing task returns HTTP 200 with status `completed` and a non-empty string `completedAt`.",
+      "The completion timestamp is a valid timestamp representation (for example, an ISO 8601 string).",
+      "Reopening a completed task returns HTTP 200 with status `pending` and `completedAt` equal to `null`.",
+      "A newly created task still has `completedAt: null`.",
+      "Existing task tests, including not-found and status-filter behavior, continue to pass."
+    ],
+    "verification": [
+      "Run `npm test` using the repository's configured test script.",
+      "Confirm the complete/reopen tests pass and cover the returned task bodies.",
+      "Optionally run the TypeScript test command after the implementation if type-checking is added separately; no separate typecheck script is currently defined in `package.json`."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp format should `completedAt` use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a current timestamp serialized as an ISO string, such as `new Date().toISOString()`.",
+        "basis": "The field is typed as `string | null`, and the existing completion test requires a non-empty string; ISO serialization is the standard runtime representation and does not add a product dependency."
+      },
+      {
+        "question": "What should happen on repeated completion of an already completed task?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Maintain the required completed-state invariant and timestamp behavior without changing the endpoint contract; the task only specifies the transition to completed and reopening behavior.",
+        "basis": "The requested behavior concerns completion/reopening lifecycle fields, while existing routes and tests establish only successful completion and subsequent reopening. No separate repeated-completion product rule is requested."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

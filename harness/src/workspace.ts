@@ -1,13 +1,25 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import type { HarnessConfig } from "./config.ts";
+import { snapshotDirectory } from "./diff.ts";
+import { WorkflowError } from "./workflow-error.ts";
 
 export type Workspace = {
   id: string;
   root: string;
   baseRevision: string;
   ref: string;
+};
+
+export type WorkspaceResumeEvidence = {
+  id: string;
+  root: string;
+  baseRevision: string;
+  ref: string;
+  headRevision: string;
+  workingTreeFingerprint: string;
 };
 
 let scopedWorkspaceRef: string | null = null;
@@ -121,6 +133,34 @@ export function bindConfig(
   };
 }
 
+export function captureWorkspaceResumeEvidence(
+  workspace: Workspace,
+): WorkspaceResumeEvidence {
+  return {
+    id: workspace.id,
+    root: path.resolve(workspace.root),
+    baseRevision: workspace.baseRevision,
+    ref: workspace.ref,
+    headRevision: readWorkspaceHead(workspace.root),
+    workingTreeFingerprint: fingerprintWorkingTree(workspaceSourceRoot(workspace)),
+  };
+}
+
+export function bindResumedWorkspace(options: {
+  hostRepoRoot: string;
+  config: HarnessConfig;
+  expected: WorkspaceResumeEvidence;
+}): { config: HarnessConfig; workspace: Workspace } {
+  const workspace = assertWorkspaceMatchesResumeEvidence(
+    options.hostRepoRoot,
+    options.expected,
+  );
+  return {
+    workspace,
+    config: bindConfig(options.config, workspace),
+  };
+}
+
 export function workspacePath(hostRepoRoot: string, id: string): string {
   return path.join(hostRepoRoot, ".worktrees", sanitizeWorkspaceId(id));
 }
@@ -141,6 +181,72 @@ export function listRegisteredWorktrees(hostRepoRoot: string): string[] {
     }
   }
   return roots;
+}
+
+function assertWorkspaceMatchesResumeEvidence(
+  hostRepoRoot: string,
+  expected: WorkspaceResumeEvidence,
+): Workspace {
+  const root = path.resolve(expected.root);
+  if (!isWorkspacePresent(hostRepoRoot, root)) {
+    throw new WorkflowError(
+      "workspace_missing",
+      `Persisted workspace is missing: ${root}`,
+    );
+  }
+
+  const actualHead = readWorkspaceHead(root);
+  const actualFingerprint = fingerprintWorkingTree(
+    path.join(root, "target-app", "src"),
+  );
+  const mismatches: string[] = [];
+  if (actualHead !== expected.headRevision) {
+    mismatches.push(
+      `HEAD ${actualHead} != persisted ${expected.headRevision}`,
+    );
+  }
+  if (actualHead !== expected.baseRevision) {
+    mismatches.push(
+      `HEAD ${actualHead} != persisted baseRevision ${expected.baseRevision}`,
+    );
+  }
+  if (actualFingerprint !== expected.workingTreeFingerprint) {
+    mismatches.push("working tree fingerprint does not match persisted evidence");
+  }
+
+  if (mismatches.length > 0) {
+    throw new WorkflowError(
+      "workspace_mismatch",
+      `Persisted workspace does not match disk: ${mismatches.join("; ")}`,
+    );
+  }
+
+  return {
+    id: expected.id,
+    root,
+    baseRevision: expected.baseRevision,
+    ref: expected.ref,
+  };
+}
+
+function fingerprintWorkingTree(targetSrcRoot: string): string {
+  const snapshot = snapshotDirectory(targetSrcRoot);
+  const hash = createHash("sha256");
+  for (const rel of [...snapshot.keys()].sort()) {
+    hash.update(rel);
+    hash.update("\0");
+    hash.update(snapshot.get(rel) ?? "");
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
+function readWorkspaceHead(workspaceRoot: string): string {
+  return git(workspaceRoot, ["rev-parse", "HEAD"]).trim();
+}
+
+function workspaceSourceRoot(workspace: Workspace): string {
+  return path.join(workspace.root, "target-app", "src");
 }
 
 function linkTargetAppNodeModules(

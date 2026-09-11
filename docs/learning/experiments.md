@@ -1776,3 +1776,62 @@ Evidence: `docs/learning/lessons/15-stronger-eval-methodology/traces/2026-09-07T
 2. This qualification does not include R01/REV01/ISO01/SEC01.
 3. If H01/H02 results are later used to tune the harness, they become DEV/known.
 4. Workload-bounded to these tasks and this model snapshot.
+
+---
+
+## Module 16 — Durable execution (DUR01 mechanism probe)
+
+### Hypothesis
+
+A harness-owned file-backed WorkflowState checkpoint after an admitted executable Spec can survive a genuine outer-process restart: a fresh process can load the same workflow, reuse the intended workspace, skip Spec, and continue the existing Worker → VERIFY → REVIEW path.
+
+### What this experiment is
+
+A **bounded durability mechanism probe**, not a production workflow engine and not Module 17 generalized checkpoint/resume.
+
+CONTROL: one durable T02 run uninterrupted.
+
+INTERRUPTED/RESUMED:
+
+```text
+process A: spec_required → admit Spec → persist implementation_ready → exit
+process B: fresh Node process → load same workflowId → skip Spec → Worker → VERIFY → REVIEW → persist terminal
+```
+
+Task: T02 (DEV). Holdout unused. Experimental Planner/Subagent/ReviewPlan seams are rejected on the durable path.
+
+### Decision rule
+
+Pass only if all are true:
+
+1. `implementation_ready` persisted before process A ended
+2. process B is a distinct PID/invocation
+3. process B loads the same workflow ID
+4. process B does not rerun Spec
+5. process B reuses/validates the intended workspace/base
+6. Worker → VERIFY → REVIEW authority unchanged
+7. expected T02 behavior passes on both arms
+8. terminal workflow state is persisted
+
+### Results (2026-09-11)
+
+Command: `npm run benchmark:dur01`
+
+Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-09-11T10-12-56-353Z.txt`
+
+Harness unit tests: **187 passed**.
+
+| Arm | pid | phase start → exit | Spec calls | VERIFY | REVIEW | expected |
+| --- | ---: | --- | ---: | --- | --- | --- |
+| Control | 89678 | spec_required → terminal | 2 | PASS | pass | yes |
+| Process A | 91015 | spec_required → implementation_ready | 2 | n/a | skipped | checkpoint |
+| Process B | 91509 | implementation_ready → terminal | 0 | PASS | pass | yes |
+
+Interrupted workflow ID shared. Spec ran once across A+B (`spec_phase_started=1`, `spec_phase_skipped=1`). Workspace `e38407f1029e` reused.
+
+### Conclusion
+
+Hypothesis supported for this first checkpoint. Default `runV1Harness()` stays in-memory unless `durable` is opted in. Mid-Worker crash/idempotency and generalized checkpoint/resume remain out of scope.
+
+Module 16 experiment recorded; Topic Chat owns formal closure. Do not mark the module complete from this implementation pass.
+

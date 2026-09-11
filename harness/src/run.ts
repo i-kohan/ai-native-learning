@@ -1,4 +1,5 @@
-import type { HarnessConfig } from "./config.ts";
+import { REPO_ROOT, type HarnessConfig } from "./config.ts";
+import path from "node:path";
 import {
   buildRepositoryMap,
   combineTokenUsage,
@@ -65,9 +66,29 @@ import {
   runScopedVerification,
   type VerificationResult,
 } from "./verify.ts";
-import type { Workspace } from "./workspace.ts";
+import { bindResumedWorkspace, type Workspace } from "./workspace.ts";
+import { WorkflowError } from "./workflow-error.ts";
+import { loadWorkflowState, saveWorkflowState } from "./workflow-store.ts";
+import {
+  admitImplementationReady,
+  admitTerminal,
+  nextDurableAction,
+  type ImplementationReadyState,
+  type WorkflowState,
+} from "./workflow-state.ts";
 
-export type WorkflowStatus = "success" | "failure" | "needs_human_judgment";
+export type WorkflowStatus =
+  | "success"
+  | "failure"
+  | "needs_human_judgment"
+  | "paused";
+
+export type DurableRunOptions = {
+  workflowId: string;
+  storeDir: string;
+  hostRepoRoot?: string;
+  stopAfter?: "implementation_ready";
+};
 
 export type WorkflowFailureReason =
   | AgentRunResult["failureReason"]
@@ -164,6 +185,8 @@ export type HarnessRunResult = {
   contextMetrics: ContextRunMetrics;
   skillLoads: SkillLoadRecord[];
   workspace?: Workspace;
+  workflowId?: string;
+  durableCheckpoint?: "implementation_ready";
 };
 
 export async function runV1Harness(options: {
@@ -187,17 +210,82 @@ export async function runV1Harness(options: {
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
+  /** Opt-in Module 16 durability. Absent = current in-memory workflow. */
+  durable?: DurableRunOptions;
 }): Promise<HarnessRunResult> {
-  const { config, task, runId } = options;
-  const contextMode = options.contextMode ?? "baseline";
-  const conversationStateMode: ConversationStateMode =
-    options.conversationStateMode ?? "manual";
+  const durable = options.durable;
+  if (durable) {
+    assertDurableModeSupported(options);
+  }
+
+  let workflow = durable
+    ? loadWorkflowState(durable.storeDir, durable.workflowId)
+    : null;
+  if (workflow && nextDurableAction(workflow) === "reject_terminal") {
+    throw new WorkflowError(
+      "terminal_resume",
+      `Workflow ${workflow.workflowId} is already terminal.`,
+    );
+  }
+
+  let config = options.config;
+  let workspace = options.workspace;
+  if (workflow) {
+    const bound = bindResumedWorkspace({
+      hostRepoRoot: durable?.hostRepoRoot ?? REPO_ROOT,
+      config,
+      expected: workflow.workspace,
+    });
+    if (
+      options.workspace &&
+      (pathMismatch(options.workspace.root, bound.workspace.root) ||
+        options.workspace.id !== bound.workspace.id)
+    ) {
+      throw new WorkflowError(
+        "workspace_mismatch",
+        "Caller workspace does not match persisted workflow workspace.",
+      );
+    }
+    config = bound.config;
+    workspace = bound.workspace;
+  }
+
+  const task = workflow?.task ?? options.task;
+  const runId = options.runId;
   const planningEnabled = shouldRunPlanner(options.planningEnabled === true);
   const subagentsEnabled = shouldEnableSubagents(
     options.subagentsEnabled === true,
   );
+  const conversationStateMode: ConversationStateMode =
+    options.conversationStateMode ?? "manual";
   const startedAt = Date.now();
   const tracer = new Tracer(config.tracesDir, runId);
+
+  if (workflow?.phase === "implementation_ready") {
+    return continueAfterAdmittedSpec({
+      config,
+      task,
+      runId,
+      tracer,
+      startedAt,
+      decision: { status: "executable", spec: workflow.spec },
+      specPhase: resumedSpecPhase(workflow),
+      contextMode: workflow.contextMode,
+      conversationStateMode,
+      planningEnabled,
+      subagentsEnabled,
+      architectureConstraints: options.architectureConstraints,
+      bindReviewPlan: options.bindReviewPlan,
+      reviewUnitTemplates: options.reviewUnitTemplates,
+      afterImplementationEpisode: options.afterImplementationEpisode,
+      workspace,
+      durable,
+      workflow,
+      specSkipped: true,
+    });
+  }
+
+  const contextMode = options.contextMode ?? "baseline";
   const beforeSnapshot =
     options.beforeSnapshot ?? snapshotDirectory(config.targetSrcRoot);
 
@@ -230,14 +318,22 @@ export async function runV1Harness(options: {
     repoRoot: config.repoRoot,
     targetAppRoot: config.targetAppRoot,
     targetSrcRoot: config.targetSrcRoot,
-    ...(options.workspace
+    pid: process.pid,
+    ...(workspace
       ? {
           workspace: {
-            id: options.workspace.id,
-            root: options.workspace.root,
-            baseRevision: options.workspace.baseRevision,
-            ref: options.workspace.ref,
+            id: workspace.id,
+            root: workspace.root,
+            baseRevision: workspace.baseRevision,
+            ref: workspace.ref,
           },
+        }
+      : {}),
+    ...(durable
+      ? {
+          workflowId: durable.workflowId,
+          durablePhase: workflow?.phase ?? null,
+          invocationId: runId,
         }
       : {}),
   });
@@ -285,11 +381,16 @@ export async function runV1Harness(options: {
       tracePath: tracer.tracePath,
       durationMs: Date.now() - startedAt,
       skillLoads: [],
-      workspace: options.workspace,
+      workspace,
+      workflowId: workflow?.workflowId,
     });
     tracer.record("harness_gate", {
       action: "abort",
       reason: specPhase.failureReason ?? "spec_phase_failed",
+    });
+    persistDurableTerminal(durable, workflow, {
+      workflowStatus: "failure",
+      failureReason: "spec_phase_failed",
     });
     await finishRun(tracer, result);
     return result;
@@ -336,10 +437,171 @@ export async function runV1Harness(options: {
       tracePath: tracer.tracePath,
       durationMs: Date.now() - startedAt,
       skillLoads: [],
-      workspace: options.workspace,
+      workspace,
+      workflowId: workflow?.workflowId,
+    });
+    persistDurableTerminal(durable, workflow, {
+      workflowStatus: "needs_human_judgment",
     });
     await finishRun(tracer, result);
     return result;
+  }
+
+  if (workflow) {
+    workflow = persistImplementationReady({
+      durable,
+      workflow,
+      decision,
+      specInspectedPaths: specPhase.inspectedPaths,
+      contextMode,
+      tracer,
+    });
+    if (durable?.stopAfter === "implementation_ready") {
+      return pausedAfterSpec({
+        task,
+        specPhase,
+        decision,
+        planningEnabled,
+        subagentsEnabled,
+        contextMode,
+        conversationStateMode,
+        contextPreparation,
+        tracer,
+        startedAt,
+        beforeSnapshot,
+        workspace,
+        workflowId: workflow.workflowId,
+      });
+    }
+  }
+
+  return continueAfterAdmittedSpec({
+    config,
+    task,
+    runId,
+    tracer,
+    startedAt,
+    beforeSnapshot,
+    decision,
+    specPhase,
+    contextMode,
+    conversationStateMode,
+    contextPreparation,
+    repositoryMap,
+    planningEnabled,
+    subagentsEnabled,
+    architectureConstraints: options.architectureConstraints,
+    bindReviewPlan: options.bindReviewPlan,
+    reviewUnitTemplates: options.reviewUnitTemplates,
+    afterImplementationEpisode: options.afterImplementationEpisode,
+    workspace,
+    durable,
+    workflow,
+    specSkipped: false,
+  });
+}
+
+async function continueAfterAdmittedSpec(options: {
+  config: HarnessConfig;
+  task: string;
+  runId: string;
+  tracer: Tracer;
+  startedAt: number;
+  beforeSnapshot?: FileSnapshot;
+  decision: Extract<SpecDecision, { status: "executable" }>;
+  specPhase: {
+    turns: number;
+    modelCalls: number;
+    toolCalls: number;
+    inspectedPaths: InspectedPaths;
+    discovery: PhaseDiscoveryMetrics;
+    tokenUsage: TokenUsageSummary | null;
+  };
+  contextMode: ContextMode;
+  conversationStateMode: ConversationStateMode;
+  contextPreparation?: ContextPreparation | null;
+  repositoryMap?: ReusableContext["repositoryMap"];
+  planningEnabled: boolean;
+  subagentsEnabled: boolean;
+  architectureConstraints?: ArchitectureConstraint[];
+  bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
+  reviewUnitTemplates?: ChangeUnitTemplate[];
+  afterImplementationEpisode?: () => void;
+  workspace?: Workspace;
+  durable?: DurableRunOptions;
+  workflow: WorkflowState | null;
+  specSkipped: boolean;
+}): Promise<HarnessRunResult> {
+  const {
+    config,
+    task,
+    runId,
+    tracer,
+    startedAt,
+    decision,
+    specPhase,
+    conversationStateMode,
+    planningEnabled,
+    subagentsEnabled,
+    durable,
+  } = options;
+  let { repositoryMap } = options;
+  let contextPreparation: ContextPreparation | null =
+    options.contextPreparation ?? null;
+  const contextMode = options.contextMode;
+  const workspace = options.workspace;
+  const beforeSnapshot =
+    options.beforeSnapshot ?? snapshotDirectory(config.targetSrcRoot);
+
+  if (options.specSkipped) {
+    tracer.record("spec_phase_skipped", {
+      reason: "durable_resume_implementation_ready",
+      workflowId: options.workflow?.workflowId ?? null,
+      pid: process.pid,
+      invocationId: runId,
+    });
+    tracer.record("run_started", {
+      version: "v3",
+      task,
+      model: config.model,
+      repairModel: config.repairModel ?? null,
+      maxTurns: config.maxTurns,
+      maxRepairAttempts: config.maxRepairAttempts,
+      maxReviewRepairAttempts: config.maxReviewRepairAttempts,
+      contextMode,
+      conversationStateMode,
+      planningEnabled,
+      subagentsEnabled,
+      repoRoot: config.repoRoot,
+      targetAppRoot: config.targetAppRoot,
+      targetSrcRoot: config.targetSrcRoot,
+      pid: process.pid,
+      specSkipped: true,
+      workflowId: durable?.workflowId ?? null,
+      durablePhase: "implementation_ready",
+      invocationId: runId,
+      ...(workspace
+        ? {
+            workspace: {
+              id: workspace.id,
+              root: workspace.root,
+              baseRevision: workspace.baseRevision,
+              ref: workspace.ref,
+            },
+          }
+        : {}),
+    });
+    if (contextMode === "variant") {
+      contextPreparation = buildRepositoryMap(config);
+      repositoryMap = contextPreparation.map;
+      tracer.record("context_prepared", {
+        contextMode,
+        durationMs: contextPreparation.durationMs,
+        pathsScanned: contextPreparation.pathsScanned,
+        mapEntryCount: contextPreparation.map.entries.length,
+        recomputedOnResume: true,
+      });
+    }
   }
 
   const reusableContext: ReusableContext | undefined =
@@ -396,12 +658,17 @@ export async function runV1Harness(options: {
         tracePath: tracer.tracePath,
         durationMs: Date.now() - startedAt,
         skillLoads: [],
-        workspace: options.workspace,
+        workspace,
+        workflowId: options.workflow?.workflowId,
       });
       tracer.record("harness_gate", {
         action: "abort",
         reason: plannerPhase.failureReason ?? "plan_phase_failed",
         implementationStarted: false,
+      });
+      persistDurableTerminal(durable, options.workflow, {
+        workflowStatus: "failure",
+        failureReason: "plan_phase_failed",
       });
       await finishRun(tracer, result);
       return result;
@@ -447,13 +714,18 @@ export async function runV1Harness(options: {
         tracePath: tracer.tracePath,
         durationMs: Date.now() - startedAt,
         skillLoads: [],
-        workspace: options.workspace,
+        workspace,
+        workflowId: options.workflow?.workflowId,
       });
       tracer.record("harness_gate", {
         action: "abort",
         reason: "review_plan_invalid",
         implementationStarted: false,
         reviewPlanError: bound.error,
+      });
+      persistDurableTerminal(durable, options.workflow, {
+        workflowStatus: "failure",
+        failureReason: "review_plan_invalid",
       });
       await finishRun(tracer, result);
       return result;
@@ -655,8 +927,15 @@ export async function runV1Harness(options: {
     tracePath: tracer.tracePath,
     durationMs: Date.now() - startedAt,
     skillLoads,
-    workspace: options.workspace,
+    workspace,
+    workflowId: options.workflow?.workflowId,
   });
+  if (result.workflowStatus !== "paused") {
+    persistDurableTerminal(durable, options.workflow, {
+      workflowStatus: result.workflowStatus,
+      failureReason: result.failureReason,
+    });
+  }
   await finishRun(tracer, result);
   return result;
 }
@@ -671,6 +950,12 @@ export function printHarnessResult(result: HarnessRunResult): void {
     console.log(`workspace_root: ${result.workspace.root}`);
   }
   console.log(`workflow_status: ${result.workflowStatus}`);
+  if (result.workflowId) {
+    console.log(`workflow_id: ${result.workflowId}`);
+  }
+  if (result.durableCheckpoint) {
+    console.log(`durable_checkpoint: ${result.durableCheckpoint}`);
+  }
   console.log(`spec_decision: ${result.specDecision?.status ?? "(none)"}`);
   console.log(`planning_enabled: ${result.planningEnabled}`);
   console.log(`subagents_enabled: ${result.subagentsEnabled}`);
@@ -1716,6 +2001,7 @@ function baseResult(fields: {
   durationMs: number;
   skillLoads?: SkillLoadRecord[];
   workspace?: Workspace;
+  workflowId?: string;
 }): HarnessRunResult {
   const implementation = fields.implementation;
   const implDiscovery = implementation?.discovery ?? null;
@@ -1899,6 +2185,7 @@ function baseResult(fields: {
     contextMetrics,
     skillLoads: fields.skillLoads ?? [],
     ...(fields.workspace ? { workspace: fields.workspace } : {}),
+    ...(fields.workflowId ? { workflowId: fields.workflowId } : {}),
   };
 }
 
@@ -2036,6 +2323,172 @@ async function finishRun(
     skillLoads: result.skillLoads,
   });
   await tracer.close();
+}
+
+function assertDurableModeSupported(options: {
+  planningEnabled?: boolean;
+  subagentsEnabled?: boolean;
+  bindReviewPlan?: unknown;
+}): void {
+  if (options.planningEnabled) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "Durable execution does not support planningEnabled.",
+    );
+  }
+  if (options.subagentsEnabled) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "Durable execution does not support subagentsEnabled.",
+    );
+  }
+  if (options.bindReviewPlan) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "Durable execution does not support ReviewPlan decomposition.",
+    );
+  }
+}
+
+function persistImplementationReady(options: {
+  durable?: DurableRunOptions;
+  workflow: WorkflowState;
+  decision: Extract<SpecDecision, { status: "executable" }>;
+  specInspectedPaths: InspectedPaths;
+  contextMode: ContextMode;
+  tracer: Tracer;
+}): WorkflowState {
+  if (!options.durable) {
+    return options.workflow;
+  }
+  const next = admitImplementationReady({
+    current: options.workflow,
+    decision: options.decision,
+    specInspectedPaths: options.specInspectedPaths,
+    contextMode: options.contextMode,
+  });
+  saveWorkflowState(options.durable.storeDir, next);
+  options.tracer.record("durable_transition", {
+    from: options.workflow.phase,
+    to: next.phase,
+    workflowId: next.workflowId,
+    pid: process.pid,
+    persisted: true,
+  });
+  return next;
+}
+
+function persistDurableTerminal(
+  durable: DurableRunOptions | undefined,
+  workflow: WorkflowState | null,
+  outcome: {
+    workflowStatus: Exclude<WorkflowStatus, "paused">;
+    failureReason?: WorkflowFailureReason;
+  },
+): void {
+  if (!durable || !workflow) {
+    return;
+  }
+  const next = admitTerminal({ current: workflow, outcome });
+  saveWorkflowState(durable.storeDir, next);
+}
+
+async function pausedAfterSpec(options: {
+  task: string;
+  specPhase: {
+    turns: number;
+    modelCalls: number;
+    toolCalls: number;
+    inspectedPaths: InspectedPaths;
+    discovery: PhaseDiscoveryMetrics;
+    tokenUsage: TokenUsageSummary | null;
+    modelFinalResponse?: string;
+  };
+  decision: Extract<SpecDecision, { status: "executable" }>;
+  planningEnabled: boolean;
+  subagentsEnabled: boolean;
+  contextMode: ContextMode;
+  conversationStateMode: ConversationStateMode;
+  contextPreparation: ContextPreparation | null;
+  tracer: Tracer;
+  startedAt: number;
+  beforeSnapshot: FileSnapshot;
+  workspace?: Workspace;
+  workflowId: string;
+}): Promise<HarnessRunResult> {
+  const { changedFiles, unifiedDiff } = diffSnapshots(
+    options.beforeSnapshot,
+    options.beforeSnapshot,
+  );
+  const result = baseResult({
+    task: options.task,
+    workflowStatus: "paused",
+    specDecision: options.decision,
+    unresolvedQuestions: [],
+    implementationStarted: false,
+    implementation: null,
+    specPhase: options.specPhase,
+    plannerPhase: emptyPlannerPhase(),
+    planningEnabled: options.planningEnabled,
+    subagentsEnabled: options.subagentsEnabled,
+    contextMode: options.contextMode,
+    conversationStateMode: options.conversationStateMode,
+    contextPreparation: options.contextPreparation,
+    receivedTerminalResponse: false,
+    verificationAttempts: 0,
+    repairAttempts: 0,
+    repeatedFailure: false,
+    verifications: [],
+    repairs: [],
+    finalVerificationPassed: false,
+    finalVerification: null,
+    modelFinalResponse:
+      options.specPhase.modelFinalResponse ??
+      "durable_checkpoint:implementation_ready",
+    changedFiles,
+    unifiedDiff,
+    tracePath: options.tracer.tracePath,
+    durationMs: Date.now() - options.startedAt,
+    skillLoads: [],
+    workspace: options.workspace,
+    workflowId: options.workflowId,
+  });
+  result.durableCheckpoint = "implementation_ready";
+  options.tracer.record("durable_checkpoint", {
+    phase: "implementation_ready",
+    workflowId: options.workflowId,
+    pid: process.pid,
+    stopAfter: "implementation_ready",
+  });
+  await finishRun(options.tracer, result);
+  return result;
+}
+
+function resumedSpecPhase(state: ImplementationReadyState): {
+  turns: number;
+  modelCalls: number;
+  toolCalls: number;
+  inspectedPaths: InspectedPaths;
+  discovery: PhaseDiscoveryMetrics;
+  tokenUsage: TokenUsageSummary | null;
+} {
+  return {
+    turns: 0,
+    modelCalls: 0,
+    toolCalls: 0,
+    inspectedPaths: state.specInspectedPaths,
+    discovery: {
+      listFilesCalls: 0,
+      readFileCalls: 0,
+      readFilePaths: state.specInspectedPaths.readFiles,
+      listedPaths: state.specInspectedPaths.listedPaths,
+    },
+    tokenUsage: null,
+  };
+}
+
+function pathMismatch(left: string, right: string): boolean {
+  return path.resolve(left) !== path.resolve(right);
 }
 
 function emptyPlannerPhase(): PlannerPhaseResult {

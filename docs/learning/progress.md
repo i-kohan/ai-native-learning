@@ -18,8 +18,9 @@ Completed modules:
 12. ✅ 12 — Planner / Worker / Reviewer
 13. ✅ 13 — Subagents
 14. ✅ 14 — Human-Reviewable Decomposition
+15. ✅ 15 — Stronger Eval Methodology (closed by Master; see phase-3 consolidation)
 
-Current module: **15 — Stronger Eval Methodology** (implemented and measured; pending Topic Chat review). Default architecture unchanged.
+Current module: **16 — Durable Execution** (mechanism implemented and measured; pending Topic Chat review). Not marked complete.
 
 ---
 
@@ -38,7 +39,8 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional explicit read-only Planner mechanism exists behind `planningEnabled`, but remains off by default because Module 12 P01 showed equal quality with worse end-to-end cost;
 - optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. Module 13 mechanism probe, not a change to the normal lifecycle;
 - optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker;
-- eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY.
+- eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
+- opt-in durable workflow checkpoint `spec_required → implementation_ready` (Module 16 probe). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path.
 
 Conceptual default flow:
 
@@ -57,6 +59,59 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 16 — Durable Execution
+
+**Status:** implemented and measured. Mechanism probe DUR01 **passed**. Topic Chat owns formal closure. Not marked complete.
+
+Theory draft:
+
+`docs/learning/lessons/16-durable-execution/theory.md`
+
+Practical notes/evidence:
+
+`docs/learning/lessons/16-durable-execution/notes.md`
+
+## Learning-critical model
+
+```text
+model proposes Spec
+→ outer harness admits executable Spec
+→ persist implementation_ready (checkpoint completed only after rename)
+→ process may die
+→ fresh process loads WorkflowState
+→ bind/validate existing workspace
+→ skip Spec
+→ existing Worker → VERIFY → REVIEW
+→ persist terminal
+```
+
+Durable identity is `workflowId`, not one Node `runId` / PID. Trace JSONL is evidence, not authoritative workflow state.
+
+## Result (2026-09-11)
+
+Task: T02 DEV. Control + interrupted/resumed. Harness unit tests: **187 passed**.
+
+| Arm | workflow | Spec | Worker | VERIFY | REVIEW | terminal |
+| --- | --- | --- | --- | --- | --- | --- |
+| Control | one process | ran | yes | PASS | pass | persisted |
+| Process A | pid 91015 | ran once | no | n/a | n/a | `implementation_ready` persisted |
+| Process B | pid 91509 | skipped (`specModelCalls=0`) | yes | PASS | pass | persisted |
+
+Same interrupted workflow ID. Distinct PIDs and invocation IDs. Workspace/base reused.
+
+Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-09-11T10-12-56-353Z.txt`
+
+## Module decision (pending Topic Chat)
+
+```text
+durable checkpoint mechanism = implemented
+DUR01                         = passed
+default runV1Harness          = still in-memory unless durable is opted in
+Module 17 generalized resume  = not started
+```
 
 ---
 

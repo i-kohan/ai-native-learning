@@ -24,6 +24,11 @@ import type { EvalResult, FixedTaskId, HoldoutTaskId } from "./eval/types.ts";
 import { writeEvalArtifact } from "./eval/write.ts";
 import type { ConversationStateMode } from "./loop.ts";
 import {
+  isExpectedDUR01Outcome,
+  printDurabilityProbeSummary,
+  runDurabilityProbe,
+} from "./durability-probe.ts";
+import {
   isExpectedISO01Outcome,
   printIsolationProbeSummary,
   runIsolationProbe,
@@ -820,6 +825,12 @@ function printRepairProbeSummary(result: HarnessRunResult): void {
   console.log(`outcome: ${expected}`);
 }
 
+export async function runDurabilityMechanismProbe() {
+  return runDurabilityProbe({
+    prepare: (config) => prepareBenchmark("T02", config),
+  });
+}
+
 export async function runReviewProbe(
   conversationStateMode: ConversationStateMode = "manual",
 ): Promise<HarnessRunResult> {
@@ -1108,6 +1119,7 @@ type CliOptions = {
   planningExperiment?: boolean;
   subagentsExperiment?: boolean;
   decompositionExperiment?: boolean;
+  durabilityProbe?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
@@ -1240,6 +1252,21 @@ function parseArgs(argv: string[]): CliOptions {
       conversationStateMode,
     };
   }
+  if (argv.includes("--durability") || argv.includes("DUR01")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      durabilityProbe: true,
+      contextMode: "variant",
+      conversationStateMode,
+    };
+  }
   if (argv.includes("SEC01") || argv.includes("--security-probe")) {
     return {
       all: false,
@@ -1357,10 +1384,18 @@ async function main(): Promise<void> {
     planningExperiment,
     subagentsExperiment,
     decompositionExperiment,
+    durabilityProbe,
     taskId,
     contextMode,
     conversationStateMode,
   } = parseArgs(process.argv.slice(2));
+
+  if (durabilityProbe) {
+    const result = await runDurabilityMechanismProbe();
+    printDurabilityProbeSummary(result);
+    process.exit(isExpectedDUR01Outcome(result) ? 0 : 1);
+    return;
+  }
 
   if (securityProbe) {
     const result = runSecurityProbe();
@@ -1499,6 +1534,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark -- SEC01");
     console.error("   or: npm run benchmark -- R01");
     console.error("   or: npm run benchmark -- REV01");
+    console.error("   or: npm run benchmark -- DUR01");
     process.exit(1);
   }
 

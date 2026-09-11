@@ -1,0 +1,21 @@
+{
+  "workflowId": "DUR01-interrupted-2026-09-11T10-11-49-520Z",
+  "invocationId": "DUR01-interrupted-2026-09-11T10-11-49-520Z-B",
+  "pid": 91509,
+  "ppid": 91508,
+  "phaseOnStart": "implementation_ready",
+  "phaseOnExit": "terminal",
+  "stopAfter": null,
+  "workflowStatus": "success",
+  "specDecision": "executable",
+  "implementationStarted": true,
+  "specModelCalls": 0,
+  "specToolCalls": 0,
+  "durableCheckpoint": null,
+  "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/DUR01-interrupted-2026-09-11T10-11-49-520Z-B.jsonl",
+  "finalVerificationPassed": true,
+  "finalReviewerOutcome": "pass",
+  "workspaceId": "DUR01-interrupted-2026-09-11T10-11-49-520Z",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-interrupted-2026-09-11T10-11-49-520Z",
+  "baseRevision": "e38407f1029eadb1298f328fc7229415f6e3a905"
+}

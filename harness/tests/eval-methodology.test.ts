@@ -270,6 +270,8 @@ describe("task catalog classification", () => {
     assert.equal(catalogEntry("REV01")?.evaluationRole, "probe");
     assert.equal(catalogEntry("ISO01")?.evaluationRole, "isolation");
     assert.equal(catalogEntry("SEC01")?.evaluationRole, "security");
+    assert.equal(catalogEntry("DUR01")?.evaluationRole, "probe");
+    assert.equal(catalogEntry("DUR01")?.inFixedSuite, false);
   });
 
   it("documents holdout contamination as a catalog lifecycle change, not a silent role flip", () => {

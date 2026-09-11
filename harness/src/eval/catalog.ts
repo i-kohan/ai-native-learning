@@ -63,6 +63,7 @@ const ENTRIES: TaskCatalogEntry[] = [
   }),
   entry("ISO01", "isolation", "mechanism_probe"),
   entry("SEC01", "security", "mechanism_probe"),
+  entry("DUR01", "probe", "mechanism_probe"),
 ];
 
 const BY_ID = new Map(ENTRIES.map((item) => [item.taskId, item]));

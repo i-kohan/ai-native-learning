@@ -1,6 +1,6 @@
 # Harness Architecture
 
-Last consolidated: 2026-09-08, after Master closure of Module 15.
+Last consolidated: 2026-09-11, after Module 16 durable checkpoint probe (module not formally closed).
 
 This document is a compact map of the **current architecture**, not a target-state design. Historical experiment details remain in `docs/learning/lessons/` and `docs/learning/experiments.md`.
 
@@ -84,6 +84,15 @@ Owns:
 - workflow success/failure;
 - trace/eval truth.
 
+When durability is opted in, the outer harness also owns:
+
+- WorkflowState schema and phase;
+- admission of `spec_required → implementation_ready`;
+- atomic local-file persistence;
+- resume binding to the persisted workspace.
+
+The model still cannot mutate WorkflowState. Trace JSONL is not authoritative workflow state.
+
 Security-sensitive decisions belong here when the harness can technically enforce them.
 
 ## 3. Main implementation surfaces
@@ -100,6 +109,7 @@ Security-sensitive decisions belong here when the harness can technically enforc
 | Skills | `harness/src/skills.ts`, `skills/evidence-guided-repair/` |
 | Model routing | `harness/src/model-routing.ts`, `harness/src/config.ts` |
 | Workspace isolation | `harness/src/workspace.ts` |
+| Durable workflow state | `harness/src/workflow-state.ts`, `harness/src/workflow-store.ts` |
 | Tracing | `harness/src/trace.ts` |
 | Evals / qualification | `harness/src/eval/` |
 | Benchmark/probe runner | `harness/src/run-benchmark.ts` |
@@ -120,6 +130,23 @@ The presence of a mechanism in source code does **not** mean it belongs to the d
 - tracing and eval normalization;
 - worktree isolation for benchmark/eval runs;
 - DEV / HOLDOUT / probe separation and independent holdout graders.
+
+### Opt-in: first durable checkpoint
+
+**Status:** implemented as a mechanism probe; default `runV1Harness()` remains in-memory.
+
+Supported:
+
+- harness-owned `spec_required → implementation_ready` admission;
+- file-backed WorkflowState with atomic replace;
+- resume in a fresh process without rerunning Spec;
+- fail-closed load and workspace mismatch.
+
+Not started:
+
+- mid-Worker crash/idempotency;
+- Temporal / queues / leases;
+- Module 17 generalized checkpoint/resume.
 
 ### Experimental: `previous_response_id`
 
@@ -224,23 +251,13 @@ Worktree isolation and security containment are separate concerns.
 - swarm/manager hierarchy;
 - parallel task scheduler;
 - stacked-PR platform;
-- durable workflow framework before the Durable Execution module.
+- a generic Temporal-style workflow engine (Module 16 is one local checkpoint, not that).
 
 ### Do not refactor yet
 
 `run.ts` is now a gravity center, but extracting pieces only for file-size aesthetics would add churn without improving the model.
 
-Durable Execution should create the natural next architecture:
-
-```text
-Durable WorkflowState
-→ explicit transition / policy functions
-→ bounded episode executors
-→ persistence adapter
-→ resume / reconciliation entrypoint
-```
-
-At that point `run.ts` can become a thinner coordinator instead of one large in-memory lifecycle function.
+Durable Execution introduced the first bounded slice of that architecture: WorkflowState, harness-owned admission, a file persistence adapter, and resume/reconciliation for `implementation_ready`. `run.ts` now has a post-Spec executor reused by both the uninterrupted path and durable resume. It is still not a generic workflow engine.
 
 ## 8. Known cleanup / production debts entering Phase 4
 
@@ -253,12 +270,16 @@ These are intentional follow-ups, not reasons to reopen completed modules.
 5. **Provider snapshot provenance is limited to configured model identity.** Backend changes hidden behind a stable provider alias are not fully detectable.
 6. **Current security boundary is not hostile-code containment.** A real production deployment would require stronger process/container/network isolation.
 
-## 9. Next architectural question
+## 9. Remaining Phase 4 question
 
-Phase 3 optimized a working in-memory workflow.
+Module 16 proved one checkpoint:
 
-Phase 4 starts with a different failure mode:
+```text
+spec_required → implementation_ready → (fresh process) Worker/VERIFY/REVIEW → terminal
+```
 
-> What happens if the outer process dies, is restarted, retries work, or loses ownership while the task is still in progress?
+Still open:
 
-The next module is therefore **Durable Execution**, not another agent-role mechanism.
+> What happens if the process dies mid-Worker, mid-VERIFY, or while ownership is contested?
+
+That is later durable/distributed work, not a reason to reopen this first checkpoint.
