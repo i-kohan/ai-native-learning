@@ -1,8 +1,8 @@
 # 16 — Durable Execution
 
-Практический журнал Module 16. `theory.md` — короткий черновик; формальное закрытие остаётся Topic Chat.
+Практический журнал Module 16. Формальное закрытие остаётся Topic Chat.
 
-**Status:** implemented and measured. DUR01 passed. **Not marked complete.**
+**Status:** implemented and measured. Initial DUR01 passed. **Not marked complete; post-review hardening/rerun pending.**
 
 ## Что построили
 
@@ -32,7 +32,7 @@ spec_required
 
 ## Persistence
 
-Local JSON under `traces/workflows/`. Checkpoint считается завершённым только после успешного `rename`. Нет `fsync`, нет claim про power-loss durability.
+Local JSON under `traces/workflows/`. Checkpoint считается завершённым только после успешного `rename`. Нет `fsync`, WAL или claim про power-loss durability.
 
 Trace JSONL и `previous_response_id` не являются WorkflowState.
 
@@ -48,7 +48,9 @@ Benchmark `setup.patch` оставляет uncommitted source, который н
 
 Не проверяем clean git status. Не создаём replacement workspace.
 
-## DUR01
+Fingerprint `target-app/src` достаточен для bounded T02 probe, но не является универсальным full-workspace/environment integrity proof.
+
+## DUR01 initial recorded run
 
 Command: `npm run benchmark:dur01`
 
@@ -64,7 +66,61 @@ Same interrupted workflow ID. Spec once across A+B. Workspace `e38407f1029e` reu
 
 Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-09-11T10-12-56-353Z.txt`
 
-Harness unit tests: **187 passed**.
+Harness unit tests on the initial implementation: **187 passed**.
+
+## Topic Chat review — 2026-09-11
+
+Overall architecture review: the first durable boundary is sound.
+
+Confirmed:
+
+- `WorkflowState` is small and semantic rather than a serialized `HarnessRunResult`;
+- `implementation_ready` contains the admitted Spec and only small handoff/context data;
+- resume enters the shared post-Spec executor and does not rerun `buildSpec()`;
+- repository map is recomputed rather than made authoritative durable state;
+- temp-file → rename persistence is correctly scoped as local process-crash protection, without overclaiming power-loss durability;
+- missing/corrupt/unsupported state and workspace mismatch fail closed;
+- process A/B evidence demonstrates a real fresh-process boundary;
+- existing VERIFY and independent REVIEW still determine workflow success in the recorded run.
+
+### Review finding 1 — transition admission hardening
+
+`admitTerminal()` originally rejected only transitions *from* terminal, so its public transition API technically allowed:
+
+```text
+spec_required → terminal(success)
+```
+
+Even though `run.ts` did not exercise that path, the state-machine admission API was weaker than the intended authority model.
+
+Hardened after review:
+
+```text
+spec_required → terminal(failure / needs_human_judgment) = allowed
+spec_required → terminal(success)                       = illegal
+implementation_ready → terminal(...)                    = allowed
+terminal → anything                                     = illegal
+```
+
+This keeps success downstream of an admitted executable Spec and the implementation/verification path.
+
+### Review finding 2 — DUR01 decision rule is stricter than its code assertion
+
+The written decision rule says:
+
+```text
+Worker → VERIFY → REVIEW authority remains unchanged
+```
+
+The recorded evidence does contain independent `REVIEW=pass`, but the current `workerVerifyReviewUnchanged` boolean only requires:
+
+```text
+workerStarted && VERIFY PASS
+```
+
+So the initial run supports the claim empirically, but the executable PASS rule should also require `reviewOutcomes` to contain `pass` (and preferably the arm-level expected outcome should require `finalReviewerOutcome === "pass"`).
+
+**Closure rule:** harden that assertion, rerun unit tests + DUR01, then record fresh evidence before marking Module 16 complete.
 
 ## Failure semantics covered
 
@@ -78,7 +134,10 @@ Harness unit tests: **187 passed**.
 ## Intentionally deferred
 
 - mid-Worker crash / idempotency
-- Temporal, queues, databases, leases
+- reconciliation of arbitrary external side effects
+- Temporal, queues, databases, leases / stale-worker fencing
 - durable Planner/Subagent/ReviewPlan
-- Module 17 generalized checkpoint/resume
+- generalized checkpoint/resume
+- power-loss durability
+- full workspace/environment fingerprinting
 - making `runV1Harness()` durable by default
