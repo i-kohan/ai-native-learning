@@ -124,6 +124,12 @@ export function admitTerminal(options: {
       `Illegal terminal workflowStatus: ${String(outcome.workflowStatus)}.`,
     );
   }
+  if (current.phase === "spec_required" && outcome.workflowStatus === "success") {
+    throw new WorkflowError(
+      "illegal_transition",
+      "Cannot admit terminal success before an executable Spec reached implementation_ready.",
+    );
+  }
 
   return {
     schemaVersion: WORKFLOW_STATE_SCHEMA_VERSION,
