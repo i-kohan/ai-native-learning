@@ -1,0 +1,54 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion state transitions so completed tasks receive a timestamp in completedAt and reopened tasks clear completedAt.",
+    "requirements": [
+      "In TaskService.complete, when an existing task is completed, set completedAt to a non-empty timestamp string while setting status to \"completed\".",
+      "In TaskService.reopen, when an existing task is reopened, set status to \"pending\" and completedAt to null.",
+      "Preserve the existing not-found behavior and route/API response shapes.",
+      "Use the existing Task.completedAt type (string | null); an ISO timestamp generated at completion is an appropriate implementation choice.",
+      "Keep newly created tasks initialized with status \"pending\" and completedAt null."
+    ],
+    "constraints": [
+      "Changes should be limited to the relevant task service behavior unless tests need adjustment.",
+      "Do not alter endpoint paths, HTTP statuses, validation, filtering, or task identity behavior.",
+      "The application is an in-memory TypeScript app and the existing test command is `npm test`."
+    ],
+    "nonGoals": [
+      "No persistence or database changes.",
+      "No changes to timestamp display, sorting, filtering, or additional task fields.",
+      "No changes to unrelated task routes or validation behavior."
+    ],
+    "acceptance": [
+      "Completing an existing task through POST /tasks/:id/complete returns status 200, status \"completed\", and a non-empty string completedAt timestamp.",
+      "Reopening a completed existing task through POST /tasks/:id/reopen returns status 200, status \"pending\", and completedAt equal to null.",
+      "A newly created task still has completedAt equal to null.",
+      "Missing-task completion and reopening continue to return 404 with {\"error\":\"task_not_found\"}."
+    ],
+    "verification": [
+      "Run the existing test suite with `npm test`.",
+      "The repository already contains tests covering completion timestamp creation and clearing completedAt on reopen; confirm they pass.",
+      "Optionally verify the service-level state through the existing route responses and confirm the timestamp is a string."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp representation should completedAt use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Generate the current time as an ISO 8601 string using Date.toISOString(), which satisfies the declared string field and the task's timestamp requirement.",
+        "basis": "Task.completedAt is typed as string | null, and existing tests require a non-empty string but impose no narrower format."
+      },
+      {
+        "question": "Should repeated completion of an already completed task preserve or replace its timestamp?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Set completedAt when the complete operation is performed; no separate idempotency or timestamp-preservation contract is specified, and the requested behavior is the completion transition behavior.",
+        "basis": "The service currently exposes a direct complete operation with no timestamp semantics, while the task only requires a timestamp when completed and tests cover the pending-to-completed transition."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

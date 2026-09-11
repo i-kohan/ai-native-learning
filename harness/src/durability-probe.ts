@@ -98,9 +98,31 @@ export async function runDurabilityProbe(options: {
     prepare: options.prepare,
   });
 
+  const assertions = evaluateDurabilityAssertions(control, interrupted);
+
+  const passed = Object.values(assertions).every(Boolean);
+  const result: DurabilityProbeResult = {
+    taskId: DURABILITY_PROBE_ID,
+    taskKind: "mechanism_probe",
+    mechanism: "durable_execution",
+    task: DURABILITY_TASK_ID,
+    passed,
+    control,
+    interrupted,
+    assertions,
+    evidencePath: "",
+  };
+  result.evidencePath = writeDurabilityEvidence(storeDir, result);
+  return result;
+}
+
+export function evaluateDurabilityAssertions(
+  control: DurableArmEvidence,
+  interrupted: DurableArmEvidence,
+): Record<string, boolean> {
   const processA = interrupted.invocations[0];
   const processB = interrupted.invocations[1];
-  const assertions = {
+  return {
     controlExpected: control.expectedOutcomeMet,
     controlTerminalPersisted: control.terminalPhase === "terminal",
     processAPersistedImplementationReady:
@@ -127,26 +149,26 @@ export async function runDurabilityProbe(options: {
       processB?.baseRevision === interrupted.baseRevision,
     workerVerifyReviewUnchanged:
       interrupted.workerStarted &&
-      interrupted.verifyOutcomes.includes("PASS"),
+      interrupted.verifyOutcomes.includes("PASS") &&
+      interrupted.reviewOutcomes.includes("pass"),
     interruptedExpected: interrupted.expectedOutcomeMet,
     interruptedTerminalPersisted: interrupted.terminalPhase === "terminal",
     distinctFromControlWorkflow: control.workflowId !== interrupted.workflowId,
   };
+}
 
-  const passed = Object.values(assertions).every(Boolean);
-  const result: DurabilityProbeResult = {
-    taskId: DURABILITY_PROBE_ID,
-    taskKind: "mechanism_probe",
-    mechanism: "durable_execution",
-    task: DURABILITY_TASK_ID,
-    passed,
-    control,
-    interrupted,
-    assertions,
-    evidencePath: "",
-  };
-  result.evidencePath = writeDurabilityEvidence(storeDir, result);
-  return result;
+export function isExpectedDurableArmOutcome(
+  last: DurableInvocationEvidence,
+  traces: Array<{ workerStarted: boolean }>,
+): boolean {
+  return (
+    last.workflowStatus === "success" &&
+    last.specDecision === "executable" &&
+    last.implementationStarted &&
+    last.finalVerificationPassed &&
+    last.finalReviewerOutcome === "pass" &&
+    traces.some((item) => item.workerStarted)
+  );
 }
 
 export function isExpectedDUR01Outcome(result: DurabilityProbeResult): boolean {
@@ -220,12 +242,7 @@ async function runArm(options: {
     const finalState = loadWorkflowState(options.storeDir, options.workflowId);
     const traces = invocations.map((item) => inspectTrace(item.tracePath));
     const last = invocations[invocations.length - 1];
-    const expectedOutcomeMet =
-      last.workflowStatus === "success" &&
-      last.specDecision === "executable" &&
-      last.implementationStarted &&
-      last.finalVerificationPassed &&
-      traces.some((item) => item.workerStarted);
+    const expectedOutcomeMet = isExpectedDurableArmOutcome(last, traces);
 
     return {
       workflowId: options.workflowId,

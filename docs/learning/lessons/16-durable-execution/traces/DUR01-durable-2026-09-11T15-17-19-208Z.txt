@@ -1,0 +1,51 @@
+=== DUR01 Durable Execution Probe ===
+DUR01 passes only if all are true:
+1. implementation_ready was durably persisted before process A ended.
+2. process B is a fresh process/invocation.
+3. process B loads the same workflow ID.
+4. process B does not execute the Spec phase again.
+5. process B reuses and validates the intended workspace/base provenance.
+6. existing Worker -> VERIFY -> REVIEW authority remains unchanged.
+7. expected T02 task behavior passes on both arms.
+8. terminal workflow state is persisted.
+Control (uninterrupted durable T02) must also pass.
+
+passed: yes
+
+Control (uninterrupted)
+workflowId: DUR01-control-2026-09-11T15-16-22-615Z
+workspace: DUR01-control-2026-09-11T15-16-22-615Z @ b5f17482124e
+spec_phase_started: 1
+spec_phase_skipped: 0
+worker_started: yes
+verify: PASS
+review: pass
+terminal_phase: terminal
+expected: yes
+  DUR01-control-2026-09-11T15-16-22-615Z-control pid=45299 start=spec_required exit=terminal specCalls=2 impl=yes status=success
+
+Interrupted / resumed
+workflowId: DUR01-interrupted-2026-09-11T15-16-22-615Z
+workspace: DUR01-interrupted-2026-09-11T15-16-22-615Z @ b5f17482124e
+spec_phase_started: 1
+spec_phase_skipped: 1
+worker_started: yes
+verify: PASS
+review: pass
+terminal_phase: terminal
+expected: yes
+  DUR01-interrupted-2026-09-11T15-16-22-615Z-A pid=46556 start=spec_required exit=implementation_ready specCalls=2 impl=no status=paused
+  DUR01-interrupted-2026-09-11T15-16-22-615Z-B pid=47362 start=implementation_ready exit=terminal specCalls=0 impl=yes status=success
+
+Assertions
+- controlExpected: yes
+- controlTerminalPersisted: yes
+- processAPersistedImplementationReady: yes
+- processBFresh: yes
+- sameWorkflowId: yes
+- processBDidNotRerunSpec: yes
+- processBReusedWorkspace: yes
+- workerVerifyReviewUnchanged: yes
+- interruptedExpected: yes
+- interruptedTerminalPersisted: yes
+- distinctFromControlWorkflow: yes

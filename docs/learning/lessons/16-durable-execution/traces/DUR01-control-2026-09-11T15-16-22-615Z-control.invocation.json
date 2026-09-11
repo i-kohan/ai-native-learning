@@ -1,0 +1,21 @@
+{
+  "workflowId": "DUR01-control-2026-09-11T15-16-22-615Z",
+  "invocationId": "DUR01-control-2026-09-11T15-16-22-615Z-control",
+  "pid": 45299,
+  "ppid": 45298,
+  "phaseOnStart": "spec_required",
+  "phaseOnExit": "terminal",
+  "stopAfter": null,
+  "workflowStatus": "success",
+  "specDecision": "executable",
+  "implementationStarted": true,
+  "specModelCalls": 2,
+  "specToolCalls": 7,
+  "durableCheckpoint": null,
+  "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/DUR01-control-2026-09-11T15-16-22-615Z-control.jsonl",
+  "finalVerificationPassed": true,
+  "finalReviewerOutcome": "pass",
+  "workspaceId": "DUR01-control-2026-09-11T15-16-22-615Z",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-control-2026-09-11T15-16-22-615Z",
+  "baseRevision": "b5f17482124eaed3292e27149868045f4aca2538"
+}

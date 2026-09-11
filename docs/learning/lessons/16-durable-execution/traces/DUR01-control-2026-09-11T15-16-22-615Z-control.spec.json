@@ -1,0 +1,51 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion state so completed tasks have a completion timestamp and reopened tasks have no completion timestamp.",
+    "requirements": [
+      "In TaskService.complete, when an existing task is completed, set its completedAt field to a non-empty timestamp string while setting status to \"completed\".",
+      "In TaskService.reopen, when an existing task is reopened, set completedAt to null while setting status to \"pending\".",
+      "Preserve existing not-found behavior and route/API response shapes."
+    ],
+    "constraints": [
+      "Use the existing Task.completedAt type of string | null.",
+      "Keep the change scoped to the task completion/reopen behavior; no route contract changes are needed.",
+      "A standard runtime-generated timestamp string (for example, an ISO 8601 string) is sufficient; the task does not require a particular clock source or exact format."
+    ],
+    "nonGoals": [
+      "Changing task creation behavior; newly created tasks already have completedAt set to null.",
+      "Changing task status filtering, validation, or HTTP status codes.",
+      "Adding persistence or changing the Task type."
+    ],
+    "acceptance": [
+      "Completing an existing task returns status \"completed\" and a non-empty string completedAt.",
+      "Reopening a completed task returns status \"pending\" and completedAt equal to null.",
+      "The completion/reopen behavior is observable through the existing POST /tasks/:id/complete and POST /tasks/:id/reopen endpoints.",
+      "Missing task IDs continue to return 404 with the existing task_not_found error."
+    ],
+    "verification": [
+      "Run the repository test suite with npm test.",
+      "The existing tests in tests/tasks.test.ts cover setting completedAt on completion and clearing it on reopen; they should pass after the service update."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp string format and clock source should be used?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Generate the current time as a standard timestamp string, preferably via new Date().toISOString().",
+        "basis": "The Task type requires a string and the tests require only a non-empty string; no exact format is specified, so standard ISO serialization is a low-risk implementation choice."
+      },
+      {
+        "question": "Should repeated completion of an already-completed task preserve or refresh completedAt?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Ensure completedAt is populated whenever complete succeeds; the task only specifies the transition to completed and does not require a distinct repeated-completion policy.",
+        "basis": "The requested behavior concerns completion and reopening, and the repository contains no separate repeated-completion contract. Either timestamp handling detail is outside the stated acceptance beyond requiring a timestamp on completed tasks."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

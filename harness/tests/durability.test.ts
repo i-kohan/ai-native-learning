@@ -27,6 +27,12 @@ import {
   type WorkflowState,
 } from "../src/workflow-state.ts";
 import type { Spec, SpecDecision } from "../src/spec.ts";
+import {
+  evaluateDurabilityAssertions,
+  isExpectedDurableArmOutcome,
+  type DurableArmEvidence,
+  type DurableInvocationEvidence,
+} from "../src/durability-probe.ts";
 
 function sampleSpec(): Spec {
   return {
@@ -302,7 +308,12 @@ describe("durable run.ts gates", () => {
     saveWorkflowState(
       storeDir,
       admitTerminal({
-        current: initial,
+        current: admitImplementationReady({
+          current: initial,
+          decision: executableDecision(),
+          specInspectedPaths: { readFiles: ["x.ts"], listedPaths: [] },
+          contextMode: "variant",
+        }),
         outcome: { workflowStatus: "success" },
       }),
     );
@@ -375,3 +386,155 @@ describe("durable process boundary", () => {
     assert.equal(payload.phase, "implementation_ready");
   });
 });
+
+describe("DUR01 decision rule", () => {
+  it("passes when Worker, VERIFY, and independent REVIEW all succeed", () => {
+    const assertions = evaluateDurabilityAssertions(
+      passingControlArm(),
+      passingInterruptedArm(),
+    );
+    assert.equal(assertions.workerVerifyReviewUnchanged, true);
+    assert.equal(Object.values(assertions).every(Boolean), true);
+  });
+
+  it("does not pass when Worker and VERIFY succeed but REVIEW is missing", () => {
+    const interrupted = passingInterruptedArm({
+      reviewOutcomes: [],
+      expectedOutcomeMet: true,
+    });
+    const assertions = evaluateDurabilityAssertions(
+      passingControlArm(),
+      interrupted,
+    );
+    assert.equal(assertions.workerVerifyReviewUnchanged, false);
+    assert.equal(Object.values(assertions).every(Boolean), false);
+  });
+
+  it("does not pass when Worker and VERIFY succeed but REVIEW does not pass", () => {
+    const interrupted = passingInterruptedArm({
+      reviewOutcomes: ["findings"],
+      expectedOutcomeMet: true,
+    });
+    const assertions = evaluateDurabilityAssertions(
+      passingControlArm(),
+      interrupted,
+    );
+    assert.equal(assertions.workerVerifyReviewUnchanged, false);
+    assert.equal(Object.values(assertions).every(Boolean), false);
+  });
+
+  it("does not count expected task success when the final invocation review is not pass", () => {
+    const last = passingProcessB({ finalReviewerOutcome: "findings" });
+    assert.equal(
+      isExpectedDurableArmOutcome(last, [{ workerStarted: true }]),
+      false,
+    );
+    assert.equal(
+      isExpectedDurableArmOutcome(
+        passingProcessB({ finalReviewerOutcome: "pass" }),
+        [{ workerStarted: true }],
+      ),
+      true,
+    );
+  });
+});
+
+function passingControlArm(): DurableArmEvidence {
+  return {
+    workflowId: "DUR01-control",
+    workspaceId: "ws",
+    workspaceRoot: "/tmp/ws",
+    baseRevision: "abc",
+    workingTreeFingerprint: "fp",
+    invocations: [
+      {
+        ...passingProcessB({
+          workflowId: "DUR01-control",
+          invocationId: "control",
+          pid: 3,
+          phaseOnStart: "spec_required",
+          specModelCalls: 2,
+        }),
+      },
+    ],
+    specPhaseStartedCount: 1,
+    specPhaseSkippedCount: 0,
+    workerStarted: true,
+    verifyOutcomes: ["PASS"],
+    reviewOutcomes: ["pass"],
+    terminalPhase: "terminal",
+    expectedOutcomeMet: true,
+  };
+}
+
+function passingInterruptedArm(
+  overrides: Partial<DurableArmEvidence> = {},
+): DurableArmEvidence {
+  return {
+    workflowId: "DUR01-interrupted",
+    workspaceId: "ws",
+    workspaceRoot: "/tmp/ws",
+    baseRevision: "abc",
+    workingTreeFingerprint: "fp",
+    invocations: [passingProcessA(), passingProcessB()],
+    specPhaseStartedCount: 1,
+    specPhaseSkippedCount: 1,
+    workerStarted: true,
+    verifyOutcomes: ["PASS"],
+    reviewOutcomes: ["pass"],
+    terminalPhase: "terminal",
+    expectedOutcomeMet: true,
+    ...overrides,
+  };
+}
+
+function passingProcessA(): DurableInvocationEvidence {
+  return {
+    workflowId: "DUR01-interrupted",
+    invocationId: "A",
+    pid: 1,
+    ppid: 0,
+    phaseOnStart: "spec_required",
+    phaseOnExit: "implementation_ready",
+    stopAfter: "implementation_ready",
+    workflowStatus: "paused",
+    specDecision: "executable",
+    implementationStarted: false,
+    specModelCalls: 2,
+    specToolCalls: 0,
+    durableCheckpoint: "implementation_ready",
+    tracePath: "a.jsonl",
+    finalVerificationPassed: false,
+    finalReviewerOutcome: "skipped",
+    workspaceId: "ws",
+    workspaceRoot: "/tmp/ws",
+    baseRevision: "abc",
+  };
+}
+
+function passingProcessB(
+  overrides: Partial<DurableInvocationEvidence> = {},
+): DurableInvocationEvidence {
+  return {
+    workflowId: "DUR01-interrupted",
+    invocationId: "B",
+    pid: 2,
+    ppid: 0,
+    phaseOnStart: "implementation_ready",
+    phaseOnExit: "terminal",
+    stopAfter: null,
+    workflowStatus: "success",
+    specDecision: "executable",
+    implementationStarted: true,
+    specModelCalls: 0,
+    specToolCalls: 0,
+    durableCheckpoint: "terminal",
+    tracePath: "b.jsonl",
+    finalVerificationPassed: true,
+    finalReviewerOutcome: "pass",
+    workspaceId: "ws",
+    workspaceRoot: "/tmp/ws",
+    baseRevision: "abc",
+    ...overrides,
+  };
+}

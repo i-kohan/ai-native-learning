@@ -64,7 +64,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 16 — Durable Execution
 
-**Status:** implemented and measured. Mechanism probe DUR01 **passed**. Topic Chat owns formal closure. Not marked complete.
+**Status:** implemented and measured. Mechanism probe DUR01 **passed** under the hardened independent-REVIEW assertion. Topic Chat owns formal closure. Not marked complete.
 
 Theory draft:
 
@@ -90,19 +90,21 @@ model proposes Spec
 
 Durable identity is `workflowId`, not one Node `runId` / PID. Trace JSONL is evidence, not authoritative workflow state.
 
-## Result (2026-09-11)
+## Result (2026-09-11, post-review DUR01 hardening)
 
-Task: T02 DEV. Control + interrupted/resumed. Harness unit tests: **187 passed**.
+Task: T02 DEV. Control + interrupted/resumed. Harness unit tests: **191 passed**.
+
+Executable PASS now requires Worker + VERIFY PASS + independent REVIEW `pass`, and arm expected outcome requires `finalReviewerOutcome === "pass"`.
 
 | Arm | workflow | Spec | Worker | VERIFY | REVIEW | terminal |
 | --- | --- | --- | --- | --- | --- | --- |
-| Control | one process | ran | yes | PASS | pass | persisted |
-| Process A | pid 91015 | ran once | no | n/a | n/a | `implementation_ready` persisted |
-| Process B | pid 91509 | skipped (`specModelCalls=0`) | yes | PASS | pass | persisted |
+| Control | pid 45299 | ran | yes | PASS | pass | persisted |
+| Process A | pid 46556 | ran once | no | n/a | skipped | `implementation_ready` persisted |
+| Process B | pid 47362 | skipped (`specModelCalls=0`) | yes | PASS | pass | persisted |
 
-Same interrupted workflow ID. Distinct PIDs and invocation IDs. Workspace/base reused.
+Same interrupted workflow ID. Distinct PIDs and invocation IDs. Workspace/base `b5f17482124e` reused. All executable DUR01 assertions passed.
 
-Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-09-11T10-12-56-353Z.txt`
+Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-09-11T15-17-19-208Z.txt`
 
 ## Module decision (pending Topic Chat)
 

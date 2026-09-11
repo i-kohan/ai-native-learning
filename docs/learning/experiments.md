@@ -1829,6 +1829,27 @@ Harness unit tests: **187 passed**.
 
 Interrupted workflow ID shared. Spec ran once across A+B (`spec_phase_started=1`, `spec_phase_skipped=1`). Workspace `e38407f1029e` reused.
 
+### Hardened decision-rule rerun (2026-09-11)
+
+The written rule already required Worker → VERIFY → REVIEW. The first executable assertion only required Worker + VERIFY PASS. After Topic Chat review, PASS also requires independent REVIEW:
+
+- `workerVerifyReviewUnchanged` includes `reviewOutcomes.includes("pass")`
+- arm `expectedOutcomeMet` requires `finalReviewerOutcome === "pass"`
+
+Command: `npm run benchmark:dur01`
+
+Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-09-11T15-17-19-208Z.txt`
+
+Harness unit tests: **191 passed**.
+
+| Arm | pid | phase start → exit | Spec calls | VERIFY | REVIEW | expected |
+| --- | ---: | --- | --- | --- | --- | --- |
+| Control | 45299 | spec_required → terminal | 2 | PASS | pass | yes |
+| Process A | 46556 | spec_required → implementation_ready | 2 | n/a | skipped | checkpoint |
+| Process B | 47362 | implementation_ready → terminal | 0 | PASS | pass | yes |
+
+Interrupted workflow ID shared. Spec ran once across A+B. Workspace `b5f17482124e` reused. `workerVerifyReviewUnchanged=yes` under the hardened rule.
+
 ### Conclusion
 
 Hypothesis supported for this first checkpoint. Default `runV1Harness()` stays in-memory unless `durable` is opted in. Mid-Worker crash/idempotency and generalized checkpoint/resume remain out of scope.

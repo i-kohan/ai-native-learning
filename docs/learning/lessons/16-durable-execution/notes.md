@@ -2,7 +2,7 @@
 
 Практический журнал Module 16. Формальное закрытие остаётся Topic Chat.
 
-**Status:** implemented and measured. Initial DUR01 passed. **Not marked complete; post-review hardening/rerun pending.**
+**Status:** implemented and measured. DUR01 passed under the hardened REVIEW assertion. **Not marked complete; Topic Chat owns formal closure.**
 
 ## Что построили
 
@@ -121,6 +121,34 @@ workerStarted && VERIFY PASS
 So the initial run supports the claim empirically, but the executable PASS rule should also require `reviewOutcomes` to contain `pass` (and preferably the arm-level expected outcome should require `finalReviewerOutcome === "pass"`).
 
 **Closure rule:** harden that assertion, rerun unit tests + DUR01, then record fresh evidence before marking Module 16 complete.
+
+### Hardened DUR01 rerun
+
+Executable PASS now requires independent REVIEW:
+
+```ts
+workerVerifyReviewUnchanged:
+  interrupted.workerStarted &&
+  interrupted.verifyOutcomes.includes("PASS") &&
+  interrupted.reviewOutcomes.includes("pass")
+
+expectedOutcomeMet also requires:
+  last.finalReviewerOutcome === "pass"
+```
+
+Command: `npm run benchmark:dur01`
+
+Harness unit tests: **191 passed**.
+
+| Arm | pid | start → exit | Spec calls | VERIFY | REVIEW |
+| --- | ---: | --- | --- | --- | --- |
+| Control | 45299 | spec_required → terminal | 2 | PASS | pass |
+| A | 46556 | spec_required → implementation_ready | 2 | n/a | skipped |
+| B | 47362 | implementation_ready → terminal | 0 | PASS | pass |
+
+Same interrupted workflow ID. Spec once across A+B. Workspace `b5f17482124e` reused. All executable DUR01 assertions passed, including `workerVerifyReviewUnchanged`.
+
+Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-09-11T15-17-19-208Z.txt`
 
 ## Failure semantics covered
 

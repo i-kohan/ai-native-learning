@@ -1,0 +1,125 @@
+{
+  "taskId": "DUR01",
+  "taskKind": "mechanism_probe",
+  "mechanism": "durable_execution",
+  "task": "T02",
+  "passed": true,
+  "control": {
+    "workflowId": "DUR01-control-2026-09-11T15-16-22-615Z",
+    "workspaceId": "DUR01-control-2026-09-11T15-16-22-615Z",
+    "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-control-2026-09-11T15-16-22-615Z",
+    "baseRevision": "b5f17482124eaed3292e27149868045f4aca2538",
+    "workingTreeFingerprint": "5917b4b216d4904aa303b87646449b052877706f707f33983c29a1ed5b873a9c",
+    "invocations": [
+      {
+        "workflowId": "DUR01-control-2026-09-11T15-16-22-615Z",
+        "invocationId": "DUR01-control-2026-09-11T15-16-22-615Z-control",
+        "pid": 45299,
+        "ppid": 45298,
+        "phaseOnStart": "spec_required",
+        "phaseOnExit": "terminal",
+        "stopAfter": null,
+        "workflowStatus": "success",
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "specModelCalls": 2,
+        "specToolCalls": 7,
+        "durableCheckpoint": null,
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/DUR01-control-2026-09-11T15-16-22-615Z-control.jsonl",
+        "finalVerificationPassed": true,
+        "finalReviewerOutcome": "pass",
+        "workspaceId": "DUR01-control-2026-09-11T15-16-22-615Z",
+        "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-control-2026-09-11T15-16-22-615Z",
+        "baseRevision": "b5f17482124eaed3292e27149868045f4aca2538"
+      }
+    ],
+    "specPhaseStartedCount": 1,
+    "specPhaseSkippedCount": 0,
+    "workerStarted": true,
+    "verifyOutcomes": [
+      "PASS"
+    ],
+    "reviewOutcomes": [
+      "pass"
+    ],
+    "terminalPhase": "terminal",
+    "expectedOutcomeMet": true
+  },
+  "interrupted": {
+    "workflowId": "DUR01-interrupted-2026-09-11T15-16-22-615Z",
+    "workspaceId": "DUR01-interrupted-2026-09-11T15-16-22-615Z",
+    "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-interrupted-2026-09-11T15-16-22-615Z",
+    "baseRevision": "b5f17482124eaed3292e27149868045f4aca2538",
+    "workingTreeFingerprint": "5917b4b216d4904aa303b87646449b052877706f707f33983c29a1ed5b873a9c",
+    "invocations": [
+      {
+        "workflowId": "DUR01-interrupted-2026-09-11T15-16-22-615Z",
+        "invocationId": "DUR01-interrupted-2026-09-11T15-16-22-615Z-A",
+        "pid": 46556,
+        "ppid": 46555,
+        "phaseOnStart": "spec_required",
+        "phaseOnExit": "implementation_ready",
+        "stopAfter": "implementation_ready",
+        "workflowStatus": "paused",
+        "specDecision": "executable",
+        "implementationStarted": false,
+        "specModelCalls": 2,
+        "specToolCalls": 7,
+        "durableCheckpoint": "implementation_ready",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/DUR01-interrupted-2026-09-11T15-16-22-615Z-A.jsonl",
+        "finalVerificationPassed": false,
+        "finalReviewerOutcome": "skipped",
+        "workspaceId": "DUR01-interrupted-2026-09-11T15-16-22-615Z",
+        "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-interrupted-2026-09-11T15-16-22-615Z",
+        "baseRevision": "b5f17482124eaed3292e27149868045f4aca2538"
+      },
+      {
+        "workflowId": "DUR01-interrupted-2026-09-11T15-16-22-615Z",
+        "invocationId": "DUR01-interrupted-2026-09-11T15-16-22-615Z-B",
+        "pid": 47362,
+        "ppid": 47361,
+        "phaseOnStart": "implementation_ready",
+        "phaseOnExit": "terminal",
+        "stopAfter": null,
+        "workflowStatus": "success",
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "specModelCalls": 0,
+        "specToolCalls": 0,
+        "durableCheckpoint": null,
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/DUR01-interrupted-2026-09-11T15-16-22-615Z-B.jsonl",
+        "finalVerificationPassed": true,
+        "finalReviewerOutcome": "pass",
+        "workspaceId": "DUR01-interrupted-2026-09-11T15-16-22-615Z",
+        "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-interrupted-2026-09-11T15-16-22-615Z",
+        "baseRevision": "b5f17482124eaed3292e27149868045f4aca2538"
+      }
+    ],
+    "specPhaseStartedCount": 1,
+    "specPhaseSkippedCount": 1,
+    "workerStarted": true,
+    "verifyOutcomes": [
+      "PASS"
+    ],
+    "reviewOutcomes": [
+      "pass"
+    ],
+    "terminalPhase": "terminal",
+    "expectedOutcomeMet": true
+  },
+  "assertions": {
+    "controlExpected": true,
+    "controlTerminalPersisted": true,
+    "processAPersistedImplementationReady": true,
+    "processBFresh": true,
+    "sameWorkflowId": true,
+    "processBDidNotRerunSpec": true,
+    "processBReusedWorkspace": true,
+    "workerVerifyReviewUnchanged": true,
+    "interruptedExpected": true,
+    "interruptedTerminalPersisted": true,
+    "distinctFromControlWorkflow": true
+  },
+  "evidencePath": "",
+  "decisionRule": "DUR01 passes only if all are true:\n1. implementation_ready was durably persisted before process A ended.\n2. process B is a fresh process/invocation.\n3. process B loads the same workflow ID.\n4. process B does not execute the Spec phase again.\n5. process B reuses and validates the intended workspace/base provenance.\n6. existing Worker -> VERIFY -> REVIEW authority remains unchanged.\n7. expected T02 task behavior passes on both arms.\n8. terminal workflow state is persisted.\nControl (uninterrupted durable T02) must also pass."
+}
