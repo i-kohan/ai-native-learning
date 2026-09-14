@@ -1,0 +1,178 @@
+{
+  "taskId": "CHK01",
+  "taskKind": "mechanism_probe",
+  "mechanism": "checkpoint_resume",
+  "task": "T02",
+  "passed": true,
+  "control": {
+    "workflowId": "CHK01-control-2026-09-14T18-06-19-464Z",
+    "workspaceId": "CHK01-control-2026-09-14T18-06-19-464Z",
+    "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/CHK01-control-2026-09-14T18-06-19-464Z",
+    "baseRevision": "57cdb750a43a392ab42ff014b4d751955102c826",
+    "workingTreeFingerprint": "5917b4b216d4904aa303b87646449b052877706f707f33983c29a1ed5b873a9c",
+    "invocations": [
+      {
+        "workflowId": "CHK01-control-2026-09-14T18-06-19-464Z",
+        "invocationId": "CHK01-control-2026-09-14T18-06-19-464Z-control",
+        "pid": 13614,
+        "ppid": 13613,
+        "phaseOnStart": "spec_required",
+        "phaseOnExit": "terminal",
+        "stopAfter": null,
+        "workflowStatus": "success",
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "specModelCalls": 2,
+        "specToolCalls": 7,
+        "durableCheckpoint": null,
+        "implementationSkipped": false,
+        "preReviewVerifySkipped": false,
+        "reviewBaselineRestored": false,
+        "reviewAttempts": 1,
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/CHK01-control-2026-09-14T18-06-19-464Z-control.jsonl",
+        "finalVerificationPassed": true,
+        "finalReviewerOutcome": "pass",
+        "workspaceId": "CHK01-control-2026-09-14T18-06-19-464Z",
+        "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/CHK01-control-2026-09-14T18-06-19-464Z",
+        "baseRevision": "57cdb750a43a392ab42ff014b4d751955102c826",
+        "changedFiles": [
+          "tasks/task-service.ts"
+        ],
+        "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+      }
+    ],
+    "specPhaseStartedCount": 1,
+    "specPhaseSkippedCount": 0,
+    "workerStartedCount": 1,
+    "workerSkippedCount": 0,
+    "preReviewVerifySkippedCount": 0,
+    "verifyBeforeReview": [
+      "PASS"
+    ],
+    "processBVerifyBeforeReview": [
+      "PASS"
+    ],
+    "verifyAfterReview": [],
+    "reviewOutcomes": [
+      "pass"
+    ],
+    "reviewStartedCount": 1,
+    "reviewBaselineRestoredCount": 0,
+    "reviewVerificationPassedCount": 1,
+    "terminalPhase": "terminal",
+    "expectedOutcomeMet": true,
+    "expectedReviewDelta": null
+  },
+  "interrupted": {
+    "workflowId": "CHK01-interrupted-2026-09-14T18-06-19-464Z",
+    "workspaceId": "CHK01-interrupted-2026-09-14T18-06-19-464Z",
+    "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/CHK01-interrupted-2026-09-14T18-06-19-464Z",
+    "baseRevision": "57cdb750a43a392ab42ff014b4d751955102c826",
+    "workingTreeFingerprint": "5917b4b216d4904aa303b87646449b052877706f707f33983c29a1ed5b873a9c",
+    "invocations": [
+      {
+        "workflowId": "CHK01-interrupted-2026-09-14T18-06-19-464Z",
+        "invocationId": "CHK01-interrupted-2026-09-14T18-06-19-464Z-A",
+        "pid": 14566,
+        "ppid": 14565,
+        "phaseOnStart": "implementation_ready",
+        "phaseOnExit": "review_ready",
+        "stopAfter": "review_ready",
+        "workflowStatus": "paused",
+        "specDecision": "executable",
+        "implementationStarted": true,
+        "specModelCalls": 0,
+        "specToolCalls": 0,
+        "durableCheckpoint": "review_ready",
+        "implementationSkipped": false,
+        "preReviewVerifySkipped": false,
+        "reviewBaselineRestored": false,
+        "reviewAttempts": 0,
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/CHK01-interrupted-2026-09-14T18-06-19-464Z-A.jsonl",
+        "finalVerificationPassed": true,
+        "finalReviewerOutcome": "skipped",
+        "workspaceId": "CHK01-interrupted-2026-09-14T18-06-19-464Z",
+        "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/CHK01-interrupted-2026-09-14T18-06-19-464Z",
+        "baseRevision": "57cdb750a43a392ab42ff014b4d751955102c826",
+        "changedFiles": [
+          "tasks/task-service.ts"
+        ],
+        "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+      },
+      {
+        "workflowId": "CHK01-interrupted-2026-09-14T18-06-19-464Z",
+        "invocationId": "CHK01-interrupted-2026-09-14T18-06-19-464Z-B",
+        "pid": 14818,
+        "ppid": 14817,
+        "phaseOnStart": "review_ready",
+        "phaseOnExit": "terminal",
+        "stopAfter": null,
+        "workflowStatus": "success",
+        "specDecision": "executable",
+        "implementationStarted": false,
+        "specModelCalls": 0,
+        "specToolCalls": 0,
+        "durableCheckpoint": null,
+        "implementationSkipped": true,
+        "preReviewVerifySkipped": true,
+        "reviewBaselineRestored": true,
+        "reviewAttempts": 1,
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/CHK01-interrupted-2026-09-14T18-06-19-464Z-B.jsonl",
+        "finalVerificationPassed": true,
+        "finalReviewerOutcome": "pass",
+        "workspaceId": "CHK01-interrupted-2026-09-14T18-06-19-464Z",
+        "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/CHK01-interrupted-2026-09-14T18-06-19-464Z",
+        "baseRevision": "57cdb750a43a392ab42ff014b4d751955102c826",
+        "changedFiles": [
+          "tasks/task-service.ts"
+        ],
+        "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+      }
+    ],
+    "specPhaseStartedCount": 0,
+    "specPhaseSkippedCount": 2,
+    "workerStartedCount": 1,
+    "workerSkippedCount": 1,
+    "preReviewVerifySkippedCount": 1,
+    "verifyBeforeReview": [
+      "PASS"
+    ],
+    "processBVerifyBeforeReview": [],
+    "verifyAfterReview": [],
+    "reviewOutcomes": [
+      "pass"
+    ],
+    "reviewStartedCount": 1,
+    "reviewBaselineRestoredCount": 1,
+    "reviewVerificationPassedCount": 1,
+    "terminalPhase": "terminal",
+    "expectedOutcomeMet": true,
+    "expectedReviewDelta": {
+      "changedFiles": [
+        "tasks/task-service.ts"
+      ],
+      "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+    }
+  },
+  "assertions": {
+    "controlExpected": true,
+    "controlTerminalPersisted": true,
+    "sameWorkflowId": true,
+    "processBFresh": true,
+    "processAPersistedReviewReady": true,
+    "processBResumedFromReviewReady": true,
+    "processBValidatedWorkspace": true,
+    "processBReconstructedBaseline": true,
+    "processBReconstructedDiffIdentity": true,
+    "processBDidNotRerunWorker": true,
+    "processBDidNotRerunPreReviewVerify": true,
+    "processBRanIndependentReview": true,
+    "processBReviewHadVerificationEvidence": true,
+    "interruptedExpected": true,
+    "interruptedTerminalPersisted": true,
+    "semanticOutcomePreserved": true,
+    "distinctFromControlWorkflow": true
+  },
+  "evidencePath": "",
+  "decisionRule": "CHK01 passes only if all are true:\n1. control succeeds end-to-end.\n2. interrupted A/B use the same workflow ID.\n3. A and B are separate process/invocation executions.\n4. A durably persists review_ready.\n5. B loads/resumes from review_ready.\n6. B validates the exact verified workspace artifact.\n7. B reconstructs the intended review baseline/diff.\n8. Worker is not rerun in B.\n9. pre-review VERIFY is not rerun in B merely for reconstruction.\n10. independent REVIEW runs in B.\n11. REVIEW receives verification evidence for the accepted artifact.\n12. expected T02 task behavior remains correct.\n13. terminal state is durably persisted.\n14. control and interrupted paths preserve the intended semantic outcome."
+}

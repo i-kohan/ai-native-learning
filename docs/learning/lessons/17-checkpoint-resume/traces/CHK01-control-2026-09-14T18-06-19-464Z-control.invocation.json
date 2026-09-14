@@ -1,0 +1,29 @@
+{
+  "workflowId": "CHK01-control-2026-09-14T18-06-19-464Z",
+  "invocationId": "CHK01-control-2026-09-14T18-06-19-464Z-control",
+  "pid": 13614,
+  "ppid": 13613,
+  "phaseOnStart": "spec_required",
+  "phaseOnExit": "terminal",
+  "stopAfter": null,
+  "workflowStatus": "success",
+  "specDecision": "executable",
+  "implementationStarted": true,
+  "specModelCalls": 2,
+  "specToolCalls": 7,
+  "durableCheckpoint": null,
+  "implementationSkipped": false,
+  "preReviewVerifySkipped": false,
+  "reviewBaselineRestored": false,
+  "reviewAttempts": 1,
+  "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/CHK01-control-2026-09-14T18-06-19-464Z-control.jsonl",
+  "finalVerificationPassed": true,
+  "finalReviewerOutcome": "pass",
+  "workspaceId": "CHK01-control-2026-09-14T18-06-19-464Z",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/CHK01-control-2026-09-14T18-06-19-464Z",
+  "baseRevision": "57cdb750a43a392ab42ff014b4d751955102c826",
+  "changedFiles": [
+    "tasks/task-service.ts"
+  ],
+  "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+}

@@ -52,6 +52,26 @@ Task: T02 DEV. Seed reaches `implementation_ready`; A continues to `review_ready
 
 Same interrupted workflow ID. Distinct PIDs. B reconstructed `tasks/task-service.ts` from baseline A vs verified B. Negative unit test: mutate B→C → `workspace_mismatch`, no `review_started`.
 
+### CHK01 diff-identity hardening (2026-09-14)
+
+Assertion `processBReconstructedDiffIdentity` now compares:
+
+- A's review delta at `review_ready`;
+- independently derived `diff(A, B)` from durable baseline + verified workspace after A;
+- B's reconstructed review input.
+
+Identity: sorted `changedFiles` + SHA-256 of normalized `unifiedDiff`. Recorded run: files=`tasks/task-service.ts`, fingerprint prefix `f4eb436e1d5b` on expected/A/B.
+
+| Arm | pid | start → exit |
+| --- | ---: | --- |
+| Control | 13614 | spec_required → terminal |
+| A | 14566 | implementation_ready → review_ready |
+| B | 14818 | review_ready → terminal |
+
+Evidence: `docs/learning/lessons/17-checkpoint-resume/traces/CHK01-checkpoint-2026-09-14T18-07-21-393Z.txt`
+
+Harness unit tests: **203 passed**.
+
 Evidence: `docs/learning/lessons/17-checkpoint-resume/traces/CHK01-checkpoint-2026-09-12T17-46-34-317Z.txt`
 
 Harness unit tests: **200 passed**.

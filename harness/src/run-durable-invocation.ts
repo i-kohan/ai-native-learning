@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { reviewDeltaIdentity } from "./diff.ts";
 import { loadConfig } from "./config.ts";
 import { printHarnessResult, runV1Harness } from "./run.ts";
 import { loadWorkflowState } from "./workflow-store.ts";
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
     workspaceRoot: result.workspace?.root ?? after.workspace.root,
     baseRevision:
       result.workspace?.baseRevision ?? after.workspace.baseRevision,
+    ...reviewDeltaIdentity(result.changedFiles, result.unifiedDiff),
   };
   fs.mkdirSync(args.storeDir, { recursive: true });
   fs.writeFileSync(

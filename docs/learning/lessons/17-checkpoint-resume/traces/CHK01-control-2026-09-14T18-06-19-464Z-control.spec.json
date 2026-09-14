@@ -1,0 +1,63 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion state so completed tasks receive a timestamp in `completedAt`, and reopening a completed task clears `completedAt` to `null`.",
+    "requirements": [
+      "In `TaskService.complete`, a successfully completed task must have a non-null timestamp in `completedAt` in the returned and stored task.",
+      "In `TaskService.reopen`, a successfully reopened task must have `status: \"pending\"` and `completedAt: null` in the returned and stored task.",
+      "Preserve existing not-found behavior: completing or reopening an unknown task returns `undefined`, which the routes expose as HTTP 404.",
+      "Keep task creation behavior unchanged: new tasks start pending with `completedAt: null`.",
+      "The completion timestamp must be generated at completion time; its exact string format is not prescribed by the task, provided it represents a timestamp."
+    ],
+    "constraints": [
+      "Limit the behavior change to the task completion/reopen state transitions and any corresponding tests.",
+      "Use the existing `Task` shape (`completedAt: string | null`) and existing route/service architecture.",
+      "Do not change HTTP status codes or response structure for the existing endpoints."
+    ],
+    "nonGoals": [
+      "Changing task creation, listing, filtering, titles, IDs, or not-found responses.",
+      "Adding persistence or changing the task model beyond maintaining `completedAt`.",
+      "Defining a product-specific timestamp display format beyond storing a timestamp string."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns HTTP 200 with status `completed` and a non-empty timestamp string in `completedAt`.",
+      "Reopening a completed task returns HTTP 200 with status `pending` and `completedAt: null`.",
+      "The state returned by subsequent GET/list operations reflects the same completed/reopened values.",
+      "Unknown task completion and reopening continue to return HTTP 404 with `{ error: \"task_not_found\" }`.",
+      "Existing tests pass, including the completion/reopen tests already present in `tests/tasks.test.ts`."
+    ],
+    "verification": [
+      "Run the repository test script (`npm test`).",
+      "Confirm the completion test observes `typeof completedAt === \"string\"` and a non-empty value.",
+      "Confirm the reopen test observes `completedAt === null`.",
+      "Optionally verify through GET `/tasks/:id` or list responses that the service stores the updated values, not only the immediate response."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp string format should `completedAt` use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a standard current timestamp string, such as `new Date().toISOString()`; the task requires a timestamp but does not prescribe a display format.",
+        "basis": "The `Task` type defines the field as `string | null`, and the existing test requires a non-empty string but no specific format."
+      },
+      {
+        "question": "What should happen if complete is called on a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "It is sufficient to ensure the task remains completed with a timestamp; assigning a current timestamp on the successful complete operation is consistent with the requested transition invariant and does not alter the specified API shape.",
+        "basis": "The task specifies the invariant for completed tasks and provides no distinct repeated-completion contract; existing service methods mutate the task in place and existing tests cover the required transition."
+      },
+      {
+        "question": "What should happen if reopen is called on an already pending task?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Leave it pending and ensure `completedAt` is null, matching the requested reopened-state invariant.",
+        "basis": "The existing service exposes idempotent-looking state mutation methods, and the task requires pending/reopened tasks to have `completedAt: null`; no alternative behavior is specified."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

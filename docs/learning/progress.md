@@ -112,6 +112,8 @@ Same interrupted workflow ID. Distinct PIDs. B validated workspace B and reconst
 
 Evidence: `docs/learning/lessons/17-checkpoint-resume/traces/CHK01-checkpoint-2026-09-12T17-46-34-317Z.txt`
 
+Hardened identity rerun (2026-09-14): `processBReconstructedDiffIdentity=yes`. Expected/A/B all `tasks/task-service.ts` / `f4eb436e1d5b`. Evidence: `docs/learning/lessons/17-checkpoint-resume/traces/CHK01-checkpoint-2026-09-14T18-07-21-393Z.txt`. Harness unit tests: **203 passed**.
+
 ## Module decision (pending Topic Chat)
 
 ```text

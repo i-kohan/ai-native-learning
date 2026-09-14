@@ -3,6 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, REPO_ROOT, type HarnessConfig } from "./config.ts";
+import {
+  diffSnapshots,
+  reviewDeltaIdentity,
+  reviewDeltasMatch,
+  snapshotDirectory,
+} from "./diff.ts";
+import { loadReviewBaseline } from "./review-baseline.ts";
 import { invocationEvidencePath } from "./run-durable-invocation.ts";
 import {
   bindConfig,
@@ -40,6 +47,8 @@ export type CheckpointInvocationEvidence = {
   workspaceId: string | null;
   workspaceRoot: string | null;
   baseRevision: string | null;
+  changedFiles: string[];
+  diffFingerprint: string;
 };
 
 export type CheckpointArmEvidence = {
@@ -63,6 +72,10 @@ export type CheckpointArmEvidence = {
   reviewVerificationPassedCount: number;
   terminalPhase: string | null;
   expectedOutcomeMet: boolean;
+  expectedReviewDelta: {
+    changedFiles: string[];
+    diffFingerprint: string;
+  } | null;
 };
 
 export type CheckpointProbeResult = {
@@ -178,6 +191,13 @@ export function evaluateCheckpointAssertions(
       processB?.reviewBaselineRestored === true &&
       interrupted.reviewBaselineRestoredCount >= 1 &&
       (!hasBTrace || bTrace.reconstructedChangedFiles > 0),
+    processBReconstructedDiffIdentity:
+      reviewDeltasMatch(processA, processB) &&
+      reviewDeltasMatch(interrupted.expectedReviewDelta, processB) &&
+      (!hasBTrace ||
+        (bTrace.diffFingerprint === processB.diffFingerprint &&
+          JSON.stringify(bTrace.reconstructedChangedFilesList) ===
+            JSON.stringify(processB.changedFiles))),
     processBDidNotRerunWorker:
       processB?.implementationStarted === false &&
       processB?.implementationSkipped === true &&
@@ -264,6 +284,8 @@ async function runArm(options: {
     });
 
     const invocations: CheckpointInvocationEvidence[] = [];
+    let expectedReviewDelta: CheckpointArmEvidence["expectedReviewDelta"] =
+      null;
     if (options.interrupt) {
       runInvocation({
         storeDir: options.storeDir,
@@ -278,6 +300,11 @@ async function runArm(options: {
           runId: `${options.workflowId}-A`,
           stopAfter: "review_ready",
         }),
+      );
+      expectedReviewDelta = expectedDeltaFromArtifacts(
+        options.storeDir,
+        options.workflowId,
+        workspace.root,
       );
       invocations.push(
         runInvocation({
@@ -347,6 +374,7 @@ async function runArm(options: {
       ),
       terminalPhase: finalState.phase,
       expectedOutcomeMet,
+      expectedReviewDelta,
     };
   } finally {
     cleanupWorkspace({ hostRepoRoot: REPO_ROOT, workspace });
@@ -412,6 +440,8 @@ function inspectTrace(tracePath: string): {
   promptIncludesVerificationEvidence: boolean;
   workspaceValidated: boolean;
   reconstructedChangedFiles: number;
+  reconstructedChangedFilesList: string[];
+  diffFingerprint: string;
 } {
   const empty = {
     specPhaseStarted: 0,
@@ -428,6 +458,8 @@ function inspectTrace(tracePath: string): {
     promptIncludesVerificationEvidence: false,
     workspaceValidated: false,
     reconstructedChangedFiles: 0,
+    reconstructedChangedFilesList: [] as string[],
+    diffFingerprint: "",
   };
   if (!tracePath || !fs.existsSync(tracePath)) {
     return empty;
@@ -488,6 +520,13 @@ function inspectTrace(tracePath: string): {
     reconstructedChangedFiles: Array.isArray(reconstructed?.changedFiles)
       ? reconstructed.changedFiles.length
       : 0,
+    reconstructedChangedFilesList: Array.isArray(reconstructed?.changedFiles)
+      ? (reconstructed.changedFiles as string[])
+      : [],
+    diffFingerprint:
+      typeof reconstructed?.diffFingerprint === "string"
+        ? reconstructed.diffFingerprint
+        : "",
   };
 }
 
@@ -563,13 +602,37 @@ function formatArm(arm: CheckpointArmEvidence): string {
     `verify_before_review_B: ${arm.processBVerifyBeforeReview.join("→") || "(none)"}`,
     `verify_after_review: ${arm.verifyAfterReview.join("→") || "(none)"}`,
     `review: ${arm.reviewOutcomes.join("→") || "(none)"}`,
+    `expected_delta: ${
+      arm.expectedReviewDelta
+        ? `${arm.expectedReviewDelta.changedFiles.join(",")} ${arm.expectedReviewDelta.diffFingerprint.slice(0, 12)}`
+        : "(none)"
+    }`,
     `terminal_phase: ${arm.terminalPhase ?? "(none)"}`,
     `expected: ${arm.expectedOutcomeMet ? "yes" : "no"}`,
     ...arm.invocations.map(
       (item) =>
-        `  ${item.invocationId} pid=${item.pid} start=${item.phaseOnStart} exit=${item.phaseOnExit} impl=${item.implementationStarted ? "yes" : "no"} skippedWorker=${item.implementationSkipped ? "yes" : "no"} skippedVerify=${item.preReviewVerifySkipped ? "yes" : "no"} reviews=${item.reviewAttempts} status=${item.workflowStatus}`,
+        `  ${item.invocationId} pid=${item.pid} start=${item.phaseOnStart} exit=${item.phaseOnExit} impl=${item.implementationStarted ? "yes" : "no"} skippedWorker=${item.implementationSkipped ? "yes" : "no"} skippedVerify=${item.preReviewVerifySkipped ? "yes" : "no"} reviews=${item.reviewAttempts} files=${item.changedFiles.join(",") || "(none)"} fp=${item.diffFingerprint.slice(0, 12) || "(none)"} status=${item.workflowStatus}`,
     ),
   ].join("\n");
+}
+
+function expectedDeltaFromArtifacts(
+  storeDir: string,
+  workflowId: string,
+  workspaceRoot: string,
+): { changedFiles: string[]; diffFingerprint: string } {
+  const state = loadWorkflowState(storeDir, workflowId);
+  if (state.phase !== "review_ready") {
+    throw new Error(
+      `Expected review_ready before deriving CHK01 delta, got ${state.phase}`,
+    );
+  }
+  const baseline = loadReviewBaseline(storeDir, state.reviewBaseline);
+  const current = snapshotDirectory(
+    path.join(workspaceRoot, "target-app", "src"),
+  );
+  const delta = diffSnapshots(baseline, current);
+  return reviewDeltaIdentity(delta.changedFiles, delta.unifiedDiff);
 }
 
 function copyIfExists(from: string, lessonDir: string): void {

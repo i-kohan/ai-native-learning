@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -25,7 +26,9 @@ export function diffSnapshots(
     }
     changedFiles.push(rel);
     if (left === undefined) {
-      chunks.push(`--- /dev/null\n+++ ${rel}\n${prefixLines(right ?? "", "+")}`);
+      chunks.push(
+        `--- /dev/null\n+++ ${rel}\n${prefixLines(right ?? "", "+")}`,
+      );
     } else if (right === undefined) {
       chunks.push(`--- ${rel}\n+++ /dev/null\n${prefixLines(left, "-")}`);
     } else {
@@ -37,6 +40,42 @@ export function diffSnapshots(
     changedFiles,
     unifiedDiff: chunks.join("\n"),
   };
+}
+
+export type ReviewDeltaIdentity = {
+  changedFiles: string[];
+  diffFingerprint: string;
+};
+
+export function reviewDeltaIdentity(
+  changedFiles: string[],
+  unifiedDiff: string,
+): ReviewDeltaIdentity {
+  const files = [...new Set(changedFiles)].sort();
+  const normalized = unifiedDiff.replace(/\r\n/g, "\n");
+  const hash = createHash("sha256");
+  hash.update(JSON.stringify(files));
+  hash.update("\n");
+  hash.update(normalized);
+  return {
+    changedFiles: files,
+    diffFingerprint: hash.digest("hex"),
+  };
+}
+
+export function reviewDeltasMatch(
+  left: ReviewDeltaIdentity | null | undefined,
+  right: ReviewDeltaIdentity | null | undefined,
+): boolean {
+  return (
+    Boolean(left) &&
+    Boolean(right) &&
+    left!.changedFiles.length > 0 &&
+    left!.diffFingerprint.length > 0 &&
+    JSON.stringify(left!.changedFiles) ===
+      JSON.stringify(right!.changedFiles) &&
+    left!.diffFingerprint === right!.diffFingerprint
+  );
 }
 
 function walk(root: string, current: string, snapshot: FileSnapshot): void {
@@ -57,7 +96,11 @@ function walk(root: string, current: string, snapshot: FileSnapshot): void {
   }
 }
 
-function simpleUnifiedDiff(file: string, before: string, after: string): string {
+function simpleUnifiedDiff(
+  file: string,
+  before: string,
+  after: string,
+): string {
   const beforeLines = before.split("\n");
   const afterLines = after.split("\n");
   const lines = [`--- ${file}`, `+++ ${file}`];

@@ -1,0 +1,29 @@
+{
+  "workflowId": "CHK01-interrupted-2026-09-14T18-06-19-464Z",
+  "invocationId": "CHK01-interrupted-2026-09-14T18-06-19-464Z-A",
+  "pid": 14566,
+  "ppid": 14565,
+  "phaseOnStart": "implementation_ready",
+  "phaseOnExit": "review_ready",
+  "stopAfter": "review_ready",
+  "workflowStatus": "paused",
+  "specDecision": "executable",
+  "implementationStarted": true,
+  "specModelCalls": 0,
+  "specToolCalls": 0,
+  "durableCheckpoint": "review_ready",
+  "implementationSkipped": false,
+  "preReviewVerifySkipped": false,
+  "reviewBaselineRestored": false,
+  "reviewAttempts": 0,
+  "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/CHK01-interrupted-2026-09-14T18-06-19-464Z-A.jsonl",
+  "finalVerificationPassed": true,
+  "finalReviewerOutcome": "skipped",
+  "workspaceId": "CHK01-interrupted-2026-09-14T18-06-19-464Z",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/CHK01-interrupted-2026-09-14T18-06-19-464Z",
+  "baseRevision": "57cdb750a43a392ab42ff014b4d751955102c826",
+  "changedFiles": [
+    "tasks/task-service.ts"
+  ],
+  "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+}

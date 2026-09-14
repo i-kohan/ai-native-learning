@@ -12,7 +12,12 @@ import {
   type ReusableContext,
   type TokenUsageSummary,
 } from "./context.ts";
-import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
+import {
+  diffSnapshots,
+  reviewDeltaIdentity,
+  snapshotDirectory,
+  type FileSnapshot,
+} from "./diff.ts";
 import { normalizeFailure, type NormalizedFailure } from "./failure.ts";
 import {
   runAgentLoop,
@@ -2558,10 +2563,12 @@ async function continueAfterVerifiedImplementation(options: {
     workspaceFingerprint: workflow.workspace.workingTreeFingerprint,
     verification: workflow.verification,
   });
+  const reconstructed = reviewDeltaIdentity(changedFiles, unifiedDiff);
   tracer.record("review_input_reconstructed", {
     workflowId: workflow.workflowId,
-    changedFiles,
+    changedFiles: reconstructed.changedFiles,
     unifiedDiffBytes: unifiedDiff.length,
+    diffFingerprint: reconstructed.diffFingerprint,
     baselineFingerprint: workflow.reviewBaseline.fingerprint,
     verification: workflow.verification,
   });

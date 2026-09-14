@@ -4,7 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { REPO_ROOT, type HarnessConfig } from "../src/config.ts";
-import { snapshotDirectory } from "../src/diff.ts";
+import {
+  reviewDeltaIdentity,
+  reviewDeltasMatch,
+  snapshotDirectory,
+} from "../src/diff.ts";
 import {
   loadReviewBaseline,
   persistReviewBaseline,
@@ -328,6 +332,27 @@ describe("review_ready workspace mismatch", () => {
 });
 
 describe("CHK01 decision rule", () => {
+  it("fingerprints the same changed files and normalized diff identically", () => {
+    const left = reviewDeltaIdentity(
+      ["tasks/task-service.ts"],
+      "--- tasks/task-service.ts\n+a\n",
+    );
+    const right = reviewDeltaIdentity(
+      ["tasks/task-service.ts"],
+      "--- tasks/task-service.ts\n+a\n",
+    );
+    assert.equal(reviewDeltasMatch(left, right), true);
+    assert.equal(
+      reviewDeltasMatch(
+        left,
+        reviewDeltaIdentity(
+          ["tasks/task-service.ts"],
+          "--- tasks/task-service.ts\n+b\n",
+        ),
+      ),
+      false,
+    );
+  });
   it("passes only when A persisted review_ready and B skipped Worker plus pre-review VERIFY", () => {
     const assertions = evaluateCheckpointAssertions(
       passingControlArm(),
@@ -336,7 +361,34 @@ describe("CHK01 decision rule", () => {
     assert.equal(assertions.processAPersistedReviewReady, true);
     assert.equal(assertions.processBDidNotRerunWorker, true);
     assert.equal(assertions.processBDidNotRerunPreReviewVerify, true);
+    assert.equal(assertions.processBReconstructedDiffIdentity, true);
     assert.equal(Object.values(assertions).every(Boolean), true);
+  });
+
+  it("fails if reconstructed changedFiles differ", () => {
+    const mismatchedFiles = passingInterruptedArm();
+    mismatchedFiles.invocations[1].changedFiles = ["tasks/task-routes.ts"];
+    const assertions = evaluateCheckpointAssertions(
+      passingControlArm(),
+      mismatchedFiles,
+    );
+    assert.equal(assertions.processBReconstructedDiffIdentity, false);
+    assert.equal(assertions.processBReconstructedBaseline, true);
+  });
+
+  it("fails if diff contents differ while remaining non-empty", () => {
+    const mismatchedDiff = passingInterruptedArm();
+    mismatchedDiff.invocations[1].diffFingerprint = "bbbbbbbbbbbbbbbb";
+    const assertions = evaluateCheckpointAssertions(
+      passingControlArm(),
+      mismatchedDiff,
+    );
+    assert.equal(assertions.processBReconstructedDiffIdentity, false);
+    assert.equal(
+      mismatchedDiff.invocations[1].changedFiles.length > 0,
+      true,
+    );
+    assert.equal(assertions.processBReconstructedBaseline, true);
   });
 
   it("fails when B reruns Worker or pre-review VERIFY", () => {
@@ -412,6 +464,7 @@ function passingControlArm(): CheckpointArmEvidence {
     reviewVerificationPassedCount: 1,
     terminalPhase: "terminal",
     expectedOutcomeMet: true,
+    expectedReviewDelta: null,
   };
 }
 
@@ -437,6 +490,10 @@ function passingInterruptedArm(): CheckpointArmEvidence {
     reviewVerificationPassedCount: 1,
     terminalPhase: "terminal",
     expectedOutcomeMet: true,
+    expectedReviewDelta: {
+      changedFiles: ["tasks/task-service.ts"],
+      diffFingerprint: "aaaaaaaaaaaaaaaa",
+    },
   };
 }
 
@@ -465,6 +522,8 @@ function passingProcessA(): CheckpointInvocationEvidence {
     workspaceId: "ws",
     workspaceRoot: "/tmp/ws",
     baseRevision: "abc",
+    changedFiles: ["tasks/task-service.ts"],
+    diffFingerprint: "aaaaaaaaaaaaaaaa",
   };
 }
 
@@ -495,6 +554,8 @@ function passingProcessB(
     workspaceId: "ws",
     workspaceRoot: "/tmp/ws",
     baseRevision: "abc",
+    changedFiles: ["tasks/task-service.ts"],
+    diffFingerprint: "aaaaaaaaaaaaaaaa",
     ...overrides,
   };
 }

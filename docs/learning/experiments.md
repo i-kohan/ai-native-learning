@@ -1900,6 +1900,8 @@ Harness unit tests: **200 passed**, including B→C workspace mismatch fail-clos
 
 Interrupted workflow ID shared. B reconstructed `tasks/task-service.ts` from persisted baseline A. `verify_before_review_B` empty.
 
+Hardened identity rerun (2026-09-14): expected/A/B review delta identity matched (`tasks/task-service.ts`, fingerprint prefix `f4eb436e1d5b`). `processBReconstructedDiffIdentity=yes`. Evidence: `docs/learning/lessons/17-checkpoint-resume/traces/CHK01-checkpoint-2026-09-14T18-07-21-393Z.txt`. Harness unit tests: **203 passed**.
+
 ### Conclusion
 
 Hypothesis supported for this second checkpoint. Default `runV1Harness()` stays in-memory unless `durable` is opted in. Crash-before-`review_ready` remains `implementation_ready` and fail-closed on dirty workspace. Retry/idempotency/reconciliation stay out of scope.
