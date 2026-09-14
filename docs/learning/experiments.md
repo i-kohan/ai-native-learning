@@ -1644,10 +1644,10 @@ Contaminated: **0**. First Spec-only attempt (ambiguous date grammar / PATCH omi
 
 ### Results
 
-| Arm     | expected | first VERIFY | repairs | model/tools avg | tokens in/out avg | wall avg | unit empty diffs |
-| ------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- | ---------------- |
-| baseline | 3/3     | 3/3 PASS     | 0 / 0   | 10 / 26         | 63.9k / 6.2k      | ~89s     | n/a              |
-| variant  | 3/3     | 3/3 PASS     | 0 / 0   | 20 / 48         | 125.0k / 9.1k     | ~101s    | 2, 1, 2          |
+| Arm      | expected | first VERIFY | repairs | model/tools avg | tokens in/out avg | wall avg | unit empty diffs |
+| -------- | -------- | ------------ | ------- | --------------- | ----------------- | -------- | ---------------- |
+| baseline | 3/3      | 3/3 PASS     | 0 / 0   | 10 / 26         | 63.9k / 6.2k      | ~89s     | n/a              |
+| variant  | 3/3      | 3/3 PASS     | 0 / 0   | 20 / 48         | 125.0k / 9.1k     | ~101s    | 2, 1, 2          |
 
 Quality equal. Intermediate unit verification always PASS. Variant ~2× model calls / tokens.
 
@@ -1755,12 +1755,12 @@ H01/H02 graders PASS known-correct implementations, FAIL representative defects 
 
 Model: `gpt-5.6-luna`. Base: `a6b8e5001298`. Suite: `qualification-m15`. Contaminated: none. Invalid trials: none. H01/H02 remain `fresh_holdout`.
 
-| Split | Result |
-| --- | --- |
+| Split   | Result                                      |
+| ------- | ------------------------------------------- |
 | T01–T04 | 4/4 expected; first-pass 3/3; T04 escalated |
-| H01 | independent grader 3/3; escaped 0/3 |
-| H02 | independent grader 3/3; escaped 0/3 |
-| Verdict | **supported** |
+| H01     | independent grader 3/3; escaped 0/3         |
+| H02     | independent grader 3/3; escaped 0/3         |
+| Verdict | **supported**                               |
 
 H01 efficiency: wall median 41.6s (37.4–74.6); model calls median 8 (8–11); tool calls median 18 (16–21); tokens in/out median 27.5k / 3.3k.
 
@@ -1821,11 +1821,11 @@ Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-
 
 Harness unit tests: **187 passed**.
 
-| Arm | pid | phase start → exit | Spec calls | VERIFY | REVIEW | expected |
-| --- | ---: | --- | ---: | --- | --- | --- |
-| Control | 89678 | spec_required → terminal | 2 | PASS | pass | yes |
-| Process A | 91015 | spec_required → implementation_ready | 2 | n/a | skipped | checkpoint |
-| Process B | 91509 | implementation_ready → terminal | 0 | PASS | pass | yes |
+| Arm       |   pid | phase start → exit                   | Spec calls | VERIFY | REVIEW  | expected   |
+| --------- | ----: | ------------------------------------ | ---------: | ------ | ------- | ---------- |
+| Control   | 89678 | spec_required → terminal             |          2 | PASS   | pass    | yes        |
+| Process A | 91015 | spec_required → implementation_ready |          2 | n/a    | skipped | checkpoint |
+| Process B | 91509 | implementation_ready → terminal      |          0 | PASS   | pass    | yes        |
 
 Interrupted workflow ID shared. Spec ran once across A+B (`spec_phase_started=1`, `spec_phase_skipped=1`). Workspace `e38407f1029e` reused.
 
@@ -1842,11 +1842,11 @@ Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-
 
 Harness unit tests: **191 passed**.
 
-| Arm | pid | phase start → exit | Spec calls | VERIFY | REVIEW | expected |
-| --- | ---: | --- | --- | --- | --- | --- |
-| Control | 45299 | spec_required → terminal | 2 | PASS | pass | yes |
-| Process A | 46556 | spec_required → implementation_ready | 2 | n/a | skipped | checkpoint |
-| Process B | 47362 | implementation_ready → terminal | 0 | PASS | pass | yes |
+| Arm       |   pid | phase start → exit                   | Spec calls | VERIFY | REVIEW  | expected   |
+| --------- | ----: | ------------------------------------ | ---------- | ------ | ------- | ---------- |
+| Control   | 45299 | spec_required → terminal             | 2          | PASS   | pass    | yes        |
+| Process A | 46556 | spec_required → implementation_ready | 2          | n/a    | skipped | checkpoint |
+| Process B | 47362 | implementation_ready → terminal      | 0          | PASS   | pass    | yes        |
 
 Interrupted workflow ID shared. Spec ran once across A+B. Workspace `b5f17482124e` reused. `workerVerifyReviewUnchanged=yes` under the hardened rule.
 
@@ -1854,5 +1854,54 @@ Interrupted workflow ID shared. Spec ran once across A+B. Workspace `b5f17482124
 
 Hypothesis supported for this first checkpoint. Default `runV1Harness()` stays in-memory unless `durable` is opted in. Mid-Worker crash/idempotency and generalized checkpoint/resume remain out of scope.
 
-Module 16 experiment recorded; Topic Chat owns formal closure. Do not mark the module complete from this implementation pass.
+Module 16 experiment recorded; later formally closed.
 
+---
+
+## Module 17 — Checkpoint / resume (CHK01 mechanism probe)
+
+### Hypothesis
+
+A second harness-owned checkpoint after Worker + VERIFY PASS can survive a genuine process restart: a fresh process can load `review_ready`, validate the verified workspace, reconstruct REVIEW from a durable pre-Worker baseline, and skip Worker plus the already-completed pre-review VERIFY.
+
+### What this experiment is
+
+A **bounded checkpoint/resume probe**, not retry/idempotency and not Module 18 reconciliation.
+
+CONTROL: one durable T02 run uninterrupted, including mid-flight persist of `review_ready`.
+
+INTERRUPTED/RESUMED:
+
+```text
+seed: spec_required → persist implementation_ready → exit
+process A: load implementation_ready → Worker → VERIFY PASS → persist review_ready → exit
+process B: fresh Node process → load same workflowId → validate B → reconstruct diff(A, B) → skip Worker/VERIFY → REVIEW → persist terminal
+```
+
+Task: T02 (DEV). Holdout unused.
+
+### Decision rule
+
+Pass only if all 14 CHK01 criteria hold (control e2e; same workflow ID; distinct A/B processes; A persisted `review_ready`; B resumed from it; exact workspace B; reconstructed baseline/diff; Worker not rerun; pre-review VERIFY not rerun; independent REVIEW; verification evidence bound to B; expected T02 behavior; terminal persisted; semantic outcome preserved).
+
+### Results (2026-09-12)
+
+Command: `npm run benchmark:chk01`
+
+Evidence: `docs/learning/lessons/17-checkpoint-resume/traces/CHK01-checkpoint-2026-09-12T17-46-34-317Z.txt`
+
+Harness unit tests: **200 passed**, including B→C workspace mismatch fail-closed.
+
+| Arm       |   pid | phase start → exit                  | Worker  | VERIFY before REVIEW | REVIEW  | expected   |
+| --------- | ----: | ----------------------------------- | ------- | -------------------- | ------- | ---------- |
+| Control   | 39758 | spec_required → terminal            | yes     | PASS                 | pass    | yes        |
+| Process A | 41111 | implementation_ready → review_ready | yes     | PASS                 | skipped | checkpoint |
+| Process B | 41457 | review_ready → terminal             | skipped | skipped              | pass    | yes        |
+
+Interrupted workflow ID shared. B reconstructed `tasks/task-service.ts` from persisted baseline A. `verify_before_review_B` empty.
+
+### Conclusion
+
+Hypothesis supported for this second checkpoint. Default `runV1Harness()` stays in-memory unless `durable` is opted in. Crash-before-`review_ready` remains `implementation_ready` and fail-closed on dirty workspace. Retry/idempotency/reconciliation stay out of scope.
+
+Module 17 experiment recorded; Topic Chat owns formal closure. Do not start Module 18.

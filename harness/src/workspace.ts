@@ -229,8 +229,9 @@ function assertWorkspaceMatchesResumeEvidence(
   };
 }
 
-function fingerprintWorkingTree(targetSrcRoot: string): string {
-  const snapshot = snapshotDirectory(targetSrcRoot);
+export function fingerprintSnapshot(
+  snapshot: ReturnType<typeof snapshotDirectory>,
+): string {
   const hash = createHash("sha256");
   for (const rel of [...snapshot.keys()].sort()) {
     hash.update(rel);
@@ -239,6 +240,10 @@ function fingerprintWorkingTree(targetSrcRoot: string): string {
     hash.update("\0");
   }
   return hash.digest("hex");
+}
+
+function fingerprintWorkingTree(targetSrcRoot: string): string {
+  return fingerprintSnapshot(snapshotDirectory(targetSrcRoot));
 }
 
 function readWorkspaceHead(workspaceRoot: string): string {

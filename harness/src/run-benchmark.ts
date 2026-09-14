@@ -24,6 +24,11 @@ import type { EvalResult, FixedTaskId, HoldoutTaskId } from "./eval/types.ts";
 import { writeEvalArtifact } from "./eval/write.ts";
 import type { ConversationStateMode } from "./loop.ts";
 import {
+  isExpectedCHK01Outcome,
+  printCheckpointProbeSummary,
+  runCheckpointProbe,
+} from "./checkpoint-probe.ts";
+import {
   isExpectedDUR01Outcome,
   printDurabilityProbeSummary,
   runDurabilityProbe,
@@ -831,6 +836,12 @@ export async function runDurabilityMechanismProbe() {
   });
 }
 
+export async function runCheckpointMechanismProbe() {
+  return runCheckpointProbe({
+    prepare: (config) => prepareBenchmark("T02", config),
+  });
+}
+
 export async function runReviewProbe(
   conversationStateMode: ConversationStateMode = "manual",
 ): Promise<HarnessRunResult> {
@@ -1120,6 +1131,7 @@ type CliOptions = {
   subagentsExperiment?: boolean;
   decompositionExperiment?: boolean;
   durabilityProbe?: boolean;
+  checkpointProbe?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
@@ -1249,6 +1261,21 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--checkpoint") || argv.includes("CHK01")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      checkpointProbe: true,
+      contextMode: "variant",
       conversationStateMode,
     };
   }
@@ -1385,10 +1412,18 @@ async function main(): Promise<void> {
     subagentsExperiment,
     decompositionExperiment,
     durabilityProbe,
+    checkpointProbe,
     taskId,
     contextMode,
     conversationStateMode,
   } = parseArgs(process.argv.slice(2));
+
+  if (checkpointProbe) {
+    const result = await runCheckpointMechanismProbe();
+    printCheckpointProbeSummary(result);
+    process.exit(isExpectedCHK01Outcome(result) ? 0 : 1);
+    return;
+  }
 
   if (durabilityProbe) {
     const result = await runDurabilityMechanismProbe();
@@ -1535,6 +1570,7 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark -- R01");
     console.error("   or: npm run benchmark -- REV01");
     console.error("   or: npm run benchmark -- DUR01");
+    console.error("   or: npm run benchmark -- CHK01");
     process.exit(1);
   }
 

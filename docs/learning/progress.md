@@ -19,8 +19,9 @@ Completed modules:
 13. ✅ 13 — Subagents
 14. ✅ 14 — Human-Reviewable Decomposition
 15. ✅ 15 — Stronger Eval Methodology (closed by Master; see phase-3 consolidation)
+16. ✅ 16 — Durable Execution (closed by Topic Chat)
 
-Current module: **16 — Durable Execution** (mechanism implemented and measured; pending Topic Chat review). Not marked complete.
+Current module: **17 — Checkpoint / Resume** (mechanism implemented and measured; pending Topic Chat review). Not marked complete.
 
 ---
 
@@ -40,7 +41,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. Module 13 mechanism probe, not a change to the normal lifecycle;
 - optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker;
 - eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
-- opt-in durable workflow checkpoint `spec_required → implementation_ready` (Module 16 probe). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path.
+- opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path.
 
 Conceptual default flow:
 
@@ -62,9 +63,69 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 ---
 
+# Module 17 — Checkpoint / Resume
+
+**Status:** implemented and measured. Mechanism probe CHK01 **passed**. Topic Chat owns formal closure. Not marked complete.
+
+Theory draft:
+
+`docs/learning/lessons/17-checkpoint-resume/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/17-checkpoint-resume/notes.md`
+
+## Learning-critical model
+
+```text
+Worker + VERIFY PASS
+→ persist review_ready (checkpoint completed only after persist)
+→ fresh process loads WorkflowState
+→ validate exact verified workspace B
+→ load durable pre-Worker baseline A
+→ reconstruct REVIEW input
+→ skip Worker
+→ skip pre-review VERIFY
+→ independent REVIEW
+→ persist terminal
+```
+
+```text
+phase result produced ≠ phase durably committed
+checkpoint = durable semantic recovery point
+resume = fresh dispatch from committed semantic state
+```
+
+Crash after VERIFY PASS and before persist stays `implementation_ready`. No silent promotion.
+
+## Result (2026-09-12)
+
+Task: T02 DEV. Control + seed/A/B. Harness unit tests: **200 passed**.
+
+| Arm       | workflow  | Worker  | pre-review VERIFY | REVIEW  | terminal                 |
+| --------- | --------- | ------- | ----------------- | ------- | ------------------------ |
+| Control   | pid 39758 | yes     | PASS              | pass    | persisted                |
+| Process A | pid 41111 | yes     | PASS              | skipped | `review_ready` persisted |
+| Process B | pid 41457 | skipped | skipped           | pass    | persisted                |
+
+Same interrupted workflow ID. Distinct PIDs. B validated workspace B and reconstructed diff(A, B). Negative B→C mismatch fails closed without REVIEW.
+
+Evidence: `docs/learning/lessons/17-checkpoint-resume/traces/CHK01-checkpoint-2026-09-12T17-46-34-317Z.txt`
+
+## Module decision (pending Topic Chat)
+
+```text
+review_ready checkpoint = implemented
+CHK01                   = passed
+default runV1Harness    = still in-memory unless durable is opted in
+Module 18 retry         = not started
+```
+
+---
+
 # Module 16 — Durable Execution
 
-**Status:** implemented and measured. Mechanism probe DUR01 **passed** under the hardened independent-REVIEW assertion. Topic Chat owns formal closure. Not marked complete.
+**Status:** ✅ COMPLETED — formally closed. Mechanism probe DUR01 passed under the hardened independent-REVIEW assertion.
 
 Theory draft:
 
@@ -96,11 +157,11 @@ Task: T02 DEV. Control + interrupted/resumed. Harness unit tests: **191 passed**
 
 Executable PASS now requires Worker + VERIFY PASS + independent REVIEW `pass`, and arm expected outcome requires `finalReviewerOutcome === "pass"`.
 
-| Arm | workflow | Spec | Worker | VERIFY | REVIEW | terminal |
-| --- | --- | --- | --- | --- | --- | --- |
-| Control | pid 45299 | ran | yes | PASS | pass | persisted |
-| Process A | pid 46556 | ran once | no | n/a | skipped | `implementation_ready` persisted |
-| Process B | pid 47362 | skipped (`specModelCalls=0`) | yes | PASS | pass | persisted |
+| Arm       | workflow  | Spec                         | Worker | VERIFY | REVIEW  | terminal                         |
+| --------- | --------- | ---------------------------- | ------ | ------ | ------- | -------------------------------- |
+| Control   | pid 45299 | ran                          | yes    | PASS   | pass    | persisted                        |
+| Process A | pid 46556 | ran once                     | no     | n/a    | skipped | `implementation_ready` persisted |
+| Process B | pid 47362 | skipped (`specModelCalls=0`) | yes    | PASS   | pass    | persisted                        |
 
 Same interrupted workflow ID. Distinct PIDs and invocation IDs. Workspace/base `b5f17482124e` reused. All executable DUR01 assertions passed.
 
@@ -112,7 +173,7 @@ Evidence: `docs/learning/lessons/16-durable-execution/traces/DUR01-durable-2026-
 durable checkpoint mechanism = implemented
 DUR01                         = passed
 default runV1Harness          = still in-memory unless durable is opted in
-Module 17 generalized resume  = not started
+Module 17 generalized resume  = started as review_ready
 ```
 
 ---
@@ -168,13 +229,13 @@ Claim supported only if:
 
 Suite: `qualification-m15`. Model: `gpt-5.6-luna`. Base: `a6b8e5001298`. Invalid trials: none. Contaminated: none.
 
-| Split | Result |
-| --- | --- |
-| T01–T04 | 4/4 expected; first-pass 3/3; T04 escalated |
-| H01 independent grader | 3/3 PASS; escaped 0/3 |
-| H02 independent grader | 3/3 PASS; escaped 0/3 |
-| Calibration | valid |
-| Verdict | **supported** |
+| Split                  | Result                                      |
+| ---------------------- | ------------------------------------------- |
+| T01–T04                | 4/4 expected; first-pass 3/3; T04 escalated |
+| H01 independent grader | 3/3 PASS; escaped 0/3                       |
+| H02 independent grader | 3/3 PASS; escaped 0/3                       |
+| Calibration            | valid                                       |
+| Verdict                | **supported**                               |
 
 H01 efficiency: wall median 41556ms (37431–74635); model calls median 8 (8–11); tool calls median 18 (16–21); tokens in median 27549 (26678–44651); tokens out median 3284 (3075–4799).
 

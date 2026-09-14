@@ -251,7 +251,10 @@ describe("task catalog classification", () => {
       assert.equal(evaluationRoleOf(taskId), "dev");
       assert.equal(taskKindOf(taskId), "capability_regression");
       assert.equal(catalogEntry(taskId)?.inFixedSuite, true);
-      assert.equal(catalogEntry(taskId)?.graderIndependentOfHarnessVerify, false);
+      assert.equal(
+        catalogEntry(taskId)?.graderIndependentOfHarnessVerify,
+        false,
+      );
     }
     assert.equal(isExecutableCapabilityTask("T01"), true);
     assert.equal(isExecutableCapabilityTask("T04"), false);
@@ -272,6 +275,8 @@ describe("task catalog classification", () => {
     assert.equal(catalogEntry("SEC01")?.evaluationRole, "security");
     assert.equal(catalogEntry("DUR01")?.evaluationRole, "probe");
     assert.equal(catalogEntry("DUR01")?.inFixedSuite, false);
+    assert.equal(catalogEntry("CHK01")?.evaluationRole, "probe");
+    assert.equal(catalogEntry("CHK01")?.inFixedSuite, false);
   });
 
   it("documents holdout contamination as a catalog lifecycle change, not a silent role flip", () => {
@@ -538,7 +543,7 @@ describe("hidden grader isolation from normal VERIFY", () => {
         'import { describe, it } from "node:test";',
         'describe("synthetic hidden grader", () => {',
         '  it("fails unless the workspace marker exists", () => {',
-        '    assert.equal(1, 2);',
+        "    assert.equal(1, 2);",
         "  });",
         "});",
         "",
@@ -586,9 +591,9 @@ describe("hidden grader isolation from normal VERIFY", () => {
     );
     assert.equal(leakedWrite.ok, false);
     assert.equal(
-      fs.readFileSync(path.join(graderDir, "synth.grader.test.ts"), "utf8").includes(
-        "pwned",
-      ),
+      fs
+        .readFileSync(path.join(graderDir, "synth.grader.test.ts"), "utf8")
+        .includes("pwned"),
       false,
     );
   });
@@ -602,7 +607,9 @@ describe("grader calibration", () => {
     const defects = report.cases.filter((item) => item.expected === "FAIL");
     assert.ok(correct.length >= 2);
     assert.ok(defects.length >= 4);
-    assert.ok(correct.every((item) => item.grader.passed && item.stableRerunPassed));
+    assert.ok(
+      correct.every((item) => item.grader.passed && item.stableRerunPassed),
+    );
     assert.ok(defects.every((item) => item.grader.passed === false));
   });
 });

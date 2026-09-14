@@ -1,0 +1,55 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure task completion lifecycle updates completedAt consistently: completing a task records a timestamp, and reopening a completed task clears it.",
+    "requirements": [
+      "In TaskService.complete, a successfully completed task must have a non-null timestamp string in completedAt.",
+      "In TaskService.reopen, a successfully reopened task must have completedAt set to null.",
+      "Preserve existing not-found behavior: complete and reopen return undefined for an unknown task, with routes continuing to return HTTP 404/task_not_found.",
+      "Keep the existing Task shape and route response behavior; the updated task must be returned by the complete and reopen endpoints and be observable through subsequent reads/lists."
+    ],
+    "constraints": [
+      "Make the behavior change in the task service lifecycle operations; no route contract changes are required.",
+      "Use the existing completedAt type (string | null). An ISO-formatted string timestamp is an appropriate implementation of the timestamp requirement.",
+      "Do not alter task creation semantics: newly created tasks remain pending with completedAt null.",
+      "Do not change status filtering or other task API behavior."
+    ],
+    "nonGoals": [
+      "No persistence or schema migration.",
+      "No changes to HTTP routes, request validation, identifiers, titles, or status-filter semantics.",
+      "No requirement to introduce a clock abstraction or change the timestamp precision/format beyond providing a valid timestamp string."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns status completed and a non-empty string completedAt timestamp.",
+      "After completion, GET /tasks/:id and task listings expose the same non-null completedAt value.",
+      "Reopening a completed task returns status pending and completedAt null; subsequent reads/listings also expose null.",
+      "Unknown task completion and reopening still return 404 with { error: \"task_not_found\" }.",
+      "Existing task tests continue to pass, including the completion/reopen tests already present in tests/tasks.test.ts."
+    ],
+    "verification": [
+      "Run the repository test script (`npm test`) and confirm all tests pass.",
+      "Confirm the existing tests in tests/tasks.test.ts cover both setting completedAt on completion and clearing it on reopen.",
+      "Optionally add or retain assertions that the completedAt value is a timestamp string and that reopen clears the persisted task value, not only the immediate response."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp representation should completedAt use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use an ISO 8601 string produced by the standard JavaScript Date API, such as new Date().toISOString().",
+        "basis": "Task.completedAt is typed as string | null and the task requires a timestamp; ISO 8601 is the conventional interoperable string representation and introduces no API shape change."
+      },
+      {
+        "question": "What should happen if complete is called on a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "It must remain completed with a valid completedAt timestamp; preserving the existing timestamp on an already-completed task is the least surprising interpretation of 'becomes completed.'",
+        "basis": "The task describes the transition to completed rather than a repeated completion event. The repository has no separate repeat-completion contract, so preserving an existing valid timestamp avoids unnecessarily changing completion history while satisfying the stated invariant."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

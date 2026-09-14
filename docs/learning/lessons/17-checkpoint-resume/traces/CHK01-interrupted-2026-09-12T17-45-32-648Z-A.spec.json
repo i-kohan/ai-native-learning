@@ -1,0 +1,61 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion lifecycle behavior so completed tasks carry a completion timestamp and reopening a completed task clears that timestamp.",
+    "requirements": [
+      "When a task is transitioned to completed through the existing completion flow, set its `completedAt` field to a non-empty timestamp string.",
+      "When a completed task is reopened through the existing reopen flow, set its `completedAt` field to `null`.",
+      "Keep the existing task shape (`completedAt: string | null`), routes, status values, success responses, and not-found behavior unchanged."
+    ],
+    "constraints": [
+      "Make the change in the task service lifecycle operations; the routes already delegate completion and reopening to that service.",
+      "Use the platform/runtime time source to generate the timestamp; the repository does not require a particular timestamp serialization beyond the task contract and existing tests requiring a string.",
+      "Do not alter task creation behavior: newly created tasks remain pending with `completedAt: null`.",
+      "Do not change unrelated listing, filtering, validation, or routing behavior."
+    ],
+    "nonGoals": [
+      "No new endpoint or request/response shape.",
+      "No persistence-layer or schema change; tasks are currently held in an in-memory Map.",
+      "No product decision about timestamp precision, display formatting, or timezone beyond producing a timestamp string.",
+      "No changes to behavior for missing task IDs."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns status 200 with status `completed` and a non-empty string `completedAt`.",
+      "Reopening a completed task returns status 200 with status `pending` and `completedAt: null`.",
+      "A newly created task still has `completedAt: null`.",
+      "The existing task tests, including status filtering and 404 behavior, continue to pass."
+    ],
+    "verification": [
+      "Run the repository test script: `npm test`.",
+      "Confirm the existing `complete and reopen` tests in `tests/tasks.test.ts` pass, especially their assertions that completion returns a string timestamp and reopening returns null.",
+      "Optionally verify the lifecycle through the public routes: POST `/tasks`, POST `/tasks/:id/complete`, then POST `/tasks/:id/reopen`."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp serialization/precision should be used for `completedAt`?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "Produce a timestamp string using the runtime time source; no stricter format is required by the task, the `Task` type, or the existing tests.",
+        "basis": "`src/tasks/types.ts` defines `completedAt` as `string | null`, and `tests/tasks.test.ts` asserts only that completion produces a non-empty string."
+      },
+      {
+        "question": "What should happen if completion is requested for a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Treat the requested behavior as applying to the transition to completed; preserve an existing completion timestamp on an already-completed task rather than inventing a new product rule.",
+        "basis": "The task wording says \"When a task becomes completed\"; the repository has no requirement or test specifying repeated-completion timestamp refresh behavior."
+      },
+      {
+        "question": "Should the HTTP routes be changed to implement this behavior?",
+        "classification": "repository_resolvable",
+        "status": "resolved",
+        "resolution": "No route change is needed; the existing completion and reopen handlers already delegate to `TaskService.complete` and `TaskService.reopen` and return the resulting task.",
+        "basis": "`src/tasks/task-routes.ts` shows both lifecycle endpoints directly call the corresponding service methods."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "paused"
+}

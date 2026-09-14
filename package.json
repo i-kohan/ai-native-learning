@@ -14,6 +14,7 @@
     "benchmark:planning": "npm run benchmark:planning --prefix harness",
     "benchmark:subagents": "npm run benchmark:subagents --prefix harness",
     "benchmark:decomposition": "npm run benchmark:decomposition --prefix harness",
-    "benchmark:dur01": "npm run benchmark:dur01 --prefix harness"
+    "benchmark:dur01": "npm run benchmark:dur01 --prefix harness",
+    "benchmark:chk01": "npm run benchmark:chk01 --prefix harness"
   }
 }

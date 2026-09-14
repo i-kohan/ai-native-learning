@@ -5,7 +5,21 @@ import { WorkflowError } from "./workflow-error.ts";
 
 export const WORKFLOW_STATE_SCHEMA_VERSION = 1;
 
-export type WorkflowPhase = "spec_required" | "implementation_ready" | "terminal";
+export type DurableCheckpoint = "implementation_ready" | "review_ready";
+
+export type WorkflowPhase = "spec_required" | DurableCheckpoint | "terminal";
+
+export type ReviewBaselineRef = {
+  artifactId: string;
+  fingerprint: string;
+};
+
+export type DurableVerificationEvidence = {
+  passed: true;
+  exitCode: number;
+  durationMs: number;
+  attempt: number;
+};
 
 export type DurableWorkspace = WorkspaceResumeEvidence;
 
@@ -34,6 +48,15 @@ export type ImplementationReadyState = WorkflowIdentity & {
   contextMode: "baseline" | "variant";
 };
 
+export type ReviewReadyState = WorkflowIdentity & {
+  phase: "review_ready";
+  spec: Spec;
+  specInspectedPaths: InspectedPaths;
+  contextMode: "baseline" | "variant";
+  reviewBaseline: ReviewBaselineRef;
+  verification: DurableVerificationEvidence;
+};
+
 export type TerminalState = WorkflowIdentity & {
   phase: "terminal";
   outcome: TerminalOutcome;
@@ -42,11 +65,13 @@ export type TerminalState = WorkflowIdentity & {
 export type WorkflowState =
   | SpecRequiredState
   | ImplementationReadyState
+  | ReviewReadyState
   | TerminalState;
 
 export type DurableAction =
   | "run_spec"
   | "continue_implementation"
+  | "continue_review"
   | "reject_terminal";
 
 export function createSpecRequiredState(options: {
@@ -102,6 +127,56 @@ export function admitImplementationReady(options: {
   };
 }
 
+export function admitReviewReady(options: {
+  current: WorkflowState;
+  workspace: DurableWorkspace;
+  reviewBaseline: ReviewBaselineRef;
+  verification: DurableVerificationEvidence;
+  now?: string;
+}): ReviewReadyState {
+  const { current } = options;
+  if (current.phase !== "implementation_ready") {
+    throw new WorkflowError(
+      "illegal_transition",
+      `Cannot admit review_ready from phase ${current.phase}.`,
+    );
+  }
+  if (options.verification.passed !== true) {
+    throw new WorkflowError(
+      "illegal_transition",
+      "review_ready requires harness-admitted pre-review VERIFY PASS.",
+    );
+  }
+  const baseline = parseReviewBaselineRef(options.reviewBaseline);
+  if (!baseline.ok) {
+    throw new WorkflowError("illegal_transition", baseline.error);
+  }
+  const workspace = parseDurableWorkspace(options.workspace);
+  if (!workspace.ok) {
+    throw new WorkflowError("illegal_transition", workspace.error);
+  }
+
+  return {
+    schemaVersion: WORKFLOW_STATE_SCHEMA_VERSION,
+    workflowId: current.workflowId,
+    task: current.task,
+    workspace: workspace.value,
+    createdAt: current.createdAt,
+    updatedAt: options.now ?? nowIso(),
+    phase: "review_ready",
+    spec: current.spec,
+    specInspectedPaths: cloneInspectedPaths(current.specInspectedPaths),
+    contextMode: current.contextMode,
+    reviewBaseline: baseline.value,
+    verification: {
+      passed: true,
+      exitCode: options.verification.exitCode,
+      durationMs: options.verification.durationMs,
+      attempt: options.verification.attempt,
+    },
+  };
+}
+
 export function admitTerminal(options: {
   current: WorkflowState;
   outcome: TerminalOutcome;
@@ -124,7 +199,10 @@ export function admitTerminal(options: {
       `Illegal terminal workflowStatus: ${String(outcome.workflowStatus)}.`,
     );
   }
-  if (current.phase === "spec_required" && outcome.workflowStatus === "success") {
+  if (
+    current.phase === "spec_required" &&
+    outcome.workflowStatus === "success"
+  ) {
     throw new WorkflowError(
       "illegal_transition",
       "Cannot admit terminal success before an executable Spec reached implementation_ready.",
@@ -155,12 +233,17 @@ export function nextDurableAction(state: WorkflowState): DurableAction {
   if (state.phase === "implementation_ready") {
     return "continue_implementation";
   }
+  if (state.phase === "review_ready") {
+    return "continue_review";
+  }
   return "reject_terminal";
 }
 
 export function parseWorkflowState(
   value: unknown,
-): { ok: true; value: WorkflowState } | { ok: false; error: string; code: WorkflowError["code"] } {
+):
+  | { ok: true; value: WorkflowState }
+  | { ok: false; error: string; code: WorkflowError["code"] } {
   if (!isRecord(value)) {
     return {
       ok: false,
@@ -224,7 +307,8 @@ export function parseWorkflowState(
     if (contextMode !== "baseline" && contextMode !== "variant") {
       return {
         ok: false,
-        error: 'implementation_ready.contextMode must be "baseline" or "variant".',
+        error:
+          'implementation_ready.contextMode must be "baseline" or "variant".',
         code: "corrupt_state",
       };
     }
@@ -236,6 +320,45 @@ export function parseWorkflowState(
         spec: spec.value,
         specInspectedPaths: specInspectedPaths.value,
         contextMode,
+      },
+    };
+  }
+
+  if (value.phase === "review_ready") {
+    const spec = parseSpec(value.spec);
+    if (!spec.ok) {
+      return { ok: false, error: spec.error, code: "corrupt_state" };
+    }
+    const specInspectedPaths = parseInspectedPaths(value.specInspectedPaths);
+    if (!specInspectedPaths.ok) {
+      return specInspectedPaths;
+    }
+    const contextMode = value.contextMode;
+    if (contextMode !== "baseline" && contextMode !== "variant") {
+      return {
+        ok: false,
+        error: 'review_ready.contextMode must be "baseline" or "variant".',
+        code: "corrupt_state",
+      };
+    }
+    const reviewBaseline = parseReviewBaselineRef(value.reviewBaseline);
+    if (!reviewBaseline.ok) {
+      return { ok: false, error: reviewBaseline.error, code: "corrupt_state" };
+    }
+    const verification = parseDurableVerification(value.verification);
+    if (!verification.ok) {
+      return verification;
+    }
+    return {
+      ok: true,
+      value: {
+        ...identity,
+        phase: "review_ready",
+        spec: spec.value,
+        specInspectedPaths: specInspectedPaths.value,
+        contextMode,
+        reviewBaseline: reviewBaseline.value,
+        verification: verification.value,
       },
     };
   }
@@ -264,7 +387,9 @@ export function parseWorkflowState(
 
 function parseDurableWorkspace(
   value: unknown,
-): { ok: true; value: DurableWorkspace } | { ok: false; error: string; code: WorkflowError["code"] } {
+):
+  | { ok: true; value: DurableWorkspace }
+  | { ok: false; error: string; code: WorkflowError["code"] } {
   if (!isRecord(value)) {
     return {
       ok: false,
@@ -318,7 +443,9 @@ function parseDurableWorkspace(
 
 function parseInspectedPaths(
   value: unknown,
-): { ok: true; value: InspectedPaths } | { ok: false; error: string; code: WorkflowError["code"] } {
+):
+  | { ok: true; value: InspectedPaths }
+  | { ok: false; error: string; code: WorkflowError["code"] } {
   if (!isRecord(value)) {
     return {
       ok: false,
@@ -326,7 +453,10 @@ function parseInspectedPaths(
       code: "corrupt_state",
     };
   }
-  const readFiles = parseStringArray(value.readFiles, "specInspectedPaths.readFiles");
+  const readFiles = parseStringArray(
+    value.readFiles,
+    "specInspectedPaths.readFiles",
+  );
   if (!readFiles.ok) {
     return { ok: false, error: readFiles.error, code: "corrupt_state" };
   }
@@ -343,9 +473,108 @@ function parseInspectedPaths(
   };
 }
 
+function parseReviewBaselineRef(
+  value: unknown,
+): { ok: true; value: ReviewBaselineRef } | { ok: false; error: string } {
+  if (!isRecord(value)) {
+    return { ok: false, error: "reviewBaseline must be an object." };
+  }
+  const artifactId = parseNonEmptyString(
+    value.artifactId,
+    "reviewBaseline.artifactId",
+  );
+  if (!artifactId.ok) {
+    return artifactId;
+  }
+  const fingerprint = parseNonEmptyString(
+    value.fingerprint,
+    "reviewBaseline.fingerprint",
+  );
+  if (!fingerprint.ok) {
+    return fingerprint;
+  }
+  return {
+    ok: true,
+    value: {
+      artifactId: artifactId.value,
+      fingerprint: fingerprint.value,
+    },
+  };
+}
+
+function parseDurableVerification(
+  value: unknown,
+):
+  | { ok: true; value: DurableVerificationEvidence }
+  | { ok: false; error: string; code: WorkflowError["code"] } {
+  if (!isRecord(value)) {
+    return {
+      ok: false,
+      error: "review_ready.verification must be an object.",
+      code: "corrupt_state",
+    };
+  }
+  if (value.passed !== true) {
+    return {
+      ok: false,
+      error: "review_ready.verification.passed must be true.",
+      code: "corrupt_state",
+    };
+  }
+  const exitCode = parseFiniteNumber(
+    value.exitCode,
+    "review_ready.verification.exitCode",
+  );
+  if (!exitCode.ok) {
+    return { ok: false, error: exitCode.error, code: "corrupt_state" };
+  }
+  const durationMs = parseFiniteNumber(
+    value.durationMs,
+    "review_ready.verification.durationMs",
+  );
+  if (!durationMs.ok) {
+    return { ok: false, error: durationMs.error, code: "corrupt_state" };
+  }
+  const attempt = parseFiniteNumber(
+    value.attempt,
+    "review_ready.verification.attempt",
+  );
+  if (!attempt.ok) {
+    return { ok: false, error: attempt.error, code: "corrupt_state" };
+  }
+  if (!Number.isInteger(attempt.value) || attempt.value < 1) {
+    return {
+      ok: false,
+      error: "review_ready.verification.attempt must be an integer >= 1.",
+      code: "corrupt_state",
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      passed: true,
+      exitCode: exitCode.value,
+      durationMs: durationMs.value,
+      attempt: attempt.value,
+    },
+  };
+}
+
+function parseFiniteNumber(
+  value: unknown,
+  field: string,
+): { ok: true; value: number } | { ok: false; error: string } {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return { ok: false, error: `${field} must be a finite number.` };
+  }
+  return { ok: true, value };
+}
+
 function parseTerminalOutcome(
   value: unknown,
-): { ok: true; value: TerminalOutcome } | { ok: false; error: string; code: WorkflowError["code"] } {
+):
+  | { ok: true; value: TerminalOutcome }
+  | { ok: false; error: string; code: WorkflowError["code"] } {
   if (!isRecord(value)) {
     return {
       ok: false,
@@ -386,7 +615,10 @@ function parseStringArray(
   value: unknown,
   field: string,
 ): { ok: true; value: string[] } | { ok: false; error: string } {
-  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+  if (
+    !Array.isArray(value) ||
+    !value.every((item) => typeof item === "string")
+  ) {
     return { ok: false, error: `${field} must be an array of strings.` };
   }
   return { ok: true, value };

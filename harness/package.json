@@ -19,6 +19,7 @@
     "benchmark:subagents": "tsx src/run-benchmark.ts --subagents",
     "benchmark:decomposition": "tsx src/run-benchmark.ts --decomposition",
     "benchmark:dur01": "tsx src/run-benchmark.ts --durability",
+    "benchmark:chk01": "tsx src/run-benchmark.ts --checkpoint",
     "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },
   "dependencies": {

@@ -87,9 +87,10 @@ Owns:
 When durability is opted in, the outer harness also owns:
 
 - WorkflowState schema and phase;
-- admission of `spec_required → implementation_ready`;
+- admission of `spec_required → implementation_ready → review_ready`;
 - atomic local-file persistence;
-- resume binding to the persisted workspace.
+- resume binding to the persisted workspace;
+- durable pre-Worker review baseline artifact, referenced from `review_ready`.
 
 The model still cannot mutate WorkflowState. Trace JSONL is not authoritative workflow state.
 
@@ -97,22 +98,22 @@ Security-sensitive decisions belong here when the harness can technically enforc
 
 ## 3. Main implementation surfaces
 
-| Responsibility | Main code |
-| --- | --- |
-| Outer workflow | `harness/src/run.ts` |
-| Inner agent/tool loop | `harness/src/loop.ts` |
-| Spec phase | `harness/src/spec-phase.ts`, `harness/src/spec.ts` |
-| Targeted context | `harness/src/context.ts` |
-| Tools / capability boundary | `harness/src/tools.ts`, `harness/src/paths.ts` |
-| Verification | `harness/src/verify.ts`, `harness/src/failure.ts`, `harness/src/repair.ts` |
-| Independent review | `harness/src/review-phase.ts`, `harness/src/review.ts` |
-| Skills | `harness/src/skills.ts`, `skills/evidence-guided-repair/` |
-| Model routing | `harness/src/model-routing.ts`, `harness/src/config.ts` |
-| Workspace isolation | `harness/src/workspace.ts` |
-| Durable workflow state | `harness/src/workflow-state.ts`, `harness/src/workflow-store.ts` |
-| Tracing | `harness/src/trace.ts` |
-| Evals / qualification | `harness/src/eval/` |
-| Benchmark/probe runner | `harness/src/run-benchmark.ts` |
+| Responsibility              | Main code                                                                  |
+| --------------------------- | -------------------------------------------------------------------------- |
+| Outer workflow              | `harness/src/run.ts`                                                       |
+| Inner agent/tool loop       | `harness/src/loop.ts`                                                      |
+| Spec phase                  | `harness/src/spec-phase.ts`, `harness/src/spec.ts`                         |
+| Targeted context            | `harness/src/context.ts`                                                   |
+| Tools / capability boundary | `harness/src/tools.ts`, `harness/src/paths.ts`                             |
+| Verification                | `harness/src/verify.ts`, `harness/src/failure.ts`, `harness/src/repair.ts` |
+| Independent review          | `harness/src/review-phase.ts`, `harness/src/review.ts`                     |
+| Skills                      | `harness/src/skills.ts`, `skills/evidence-guided-repair/`                  |
+| Model routing               | `harness/src/model-routing.ts`, `harness/src/config.ts`                    |
+| Workspace isolation         | `harness/src/workspace.ts`                                                 |
+| Durable workflow state      | `harness/src/workflow-state.ts`, `harness/src/workflow-store.ts`           |
+| Tracing                     | `harness/src/trace.ts`                                                     |
+| Evals / qualification       | `harness/src/eval/`                                                        |
+| Benchmark/probe runner      | `harness/src/run-benchmark.ts`                                             |
 
 ## 4. Normal architecture vs experimental seams
 
@@ -131,22 +132,23 @@ The presence of a mechanism in source code does **not** mean it belongs to the d
 - worktree isolation for benchmark/eval runs;
 - DEV / HOLDOUT / probe separation and independent holdout graders.
 
-### Opt-in: first durable checkpoint
+### Opt-in: durable checkpoints
 
-**Status:** implemented as a mechanism probe; default `runV1Harness()` remains in-memory.
+**Status:** implemented as mechanism probes; default `runV1Harness()` remains in-memory.
 
 Supported:
 
-- harness-owned `spec_required → implementation_ready` admission;
+- harness-owned `spec_required → implementation_ready → review_ready` admission;
 - file-backed WorkflowState with atomic replace;
-- resume in a fresh process without rerunning Spec;
-- fail-closed load and workspace mismatch.
+- resume in a fresh process without rerunning Spec, or without rerunning Worker + pre-review VERIFY;
+- durable pre-Worker `FileSnapshot` baseline stored beside WorkflowState;
+- fail-closed load, workspace mismatch, and baseline integrity mismatch.
 
 Not started:
 
-- mid-Worker crash/idempotency;
-- Temporal / queues / leases;
-- Module 17 generalized checkpoint/resume.
+- mid-Worker / mid-VERIFY crash reconciliation;
+- retry / idempotency / exactly-once;
+- Temporal / queues / leases.
 
 ### Experimental: `previous_response_id`
 
@@ -257,7 +259,7 @@ Worktree isolation and security containment are separate concerns.
 
 `run.ts` is now a gravity center, but extracting pieces only for file-size aesthetics would add churn without improving the model.
 
-Durable Execution introduced the first bounded slice of that architecture: WorkflowState, harness-owned admission, a file persistence adapter, and resume/reconciliation for `implementation_ready`. `run.ts` now has a post-Spec executor reused by both the uninterrupted path and durable resume. It is still not a generic workflow engine.
+Durable Execution introduced bounded WorkflowState, harness-owned admission, a file persistence adapter, and resume dispatch for `implementation_ready` and `review_ready`. `run.ts` reuses post-Spec and post-VERIFY executors. It is still not a generic workflow engine.
 
 ## 8. Known cleanup / production debts entering Phase 4
 
@@ -272,10 +274,10 @@ These are intentional follow-ups, not reasons to reopen completed modules.
 
 ## 9. Remaining Phase 4 question
 
-Module 16 proved one checkpoint:
+Module 16/17 proved two checkpoints:
 
 ```text
-spec_required → implementation_ready → (fresh process) Worker/VERIFY/REVIEW → terminal
+spec_required → implementation_ready → Worker/VERIFY → review_ready → (fresh process) REVIEW → terminal
 ```
 
 Still open:

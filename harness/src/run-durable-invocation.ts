@@ -36,12 +36,17 @@ async function main(): Promise<void> {
     specModelCalls: result.specModelCalls,
     specToolCalls: result.specToolCalls,
     durableCheckpoint: result.durableCheckpoint ?? null,
+    implementationSkipped: result.implementationSkipped === true,
+    preReviewVerifySkipped: result.preReviewVerifySkipped === true,
+    reviewBaselineRestored: result.reviewBaselineRestored === true,
+    reviewAttempts: result.reviewAttempts,
     tracePath: result.tracePath,
     finalVerificationPassed: result.finalVerificationPassed,
     finalReviewerOutcome: result.finalReviewerOutcome,
     workspaceId: result.workspace?.id ?? after.workspace.id,
     workspaceRoot: result.workspace?.root ?? after.workspace.root,
-    baseRevision: result.workspace?.baseRevision ?? after.workspace.baseRevision,
+    baseRevision:
+      result.workspace?.baseRevision ?? after.workspace.baseRevision,
   };
   fs.mkdirSync(args.storeDir, { recursive: true });
   fs.writeFileSync(
@@ -54,7 +59,10 @@ async function main(): Promise<void> {
   }
 }
 
-export function invocationEvidencePath(storeDir: string, runId: string): string {
+export function invocationEvidencePath(
+  storeDir: string,
+  runId: string,
+): string {
   return path.join(storeDir, `${runId}.invocation.json`);
 }
 
@@ -62,7 +70,7 @@ function parseArgs(argv: string[]): {
   workflowId: string;
   storeDir: string;
   runId: string;
-  stopAfter?: "implementation_ready";
+  stopAfter?: "implementation_ready" | "review_ready";
 } {
   const workflowId = flagValue(argv, "--workflow-id");
   const storeDir = flagValue(argv, "--store-dir");
@@ -70,11 +78,13 @@ function parseArgs(argv: string[]): {
   const stopAfterRaw = optionalFlagValue(argv, "--stop-after");
   if (!workflowId || !storeDir || !runId) {
     throw new Error(
-      "Usage: run-durable-invocation --workflow-id ID --store-dir DIR --run-id RUN [--stop-after implementation_ready]",
+      "Usage: run-durable-invocation --workflow-id ID --store-dir DIR --run-id RUN [--stop-after implementation_ready|review_ready]",
     );
   }
   const stopAfter =
-    stopAfterRaw === "implementation_ready" ? "implementation_ready" : undefined;
+    stopAfterRaw === "implementation_ready" || stopAfterRaw === "review_ready"
+      ? stopAfterRaw
+      : undefined;
   if (stopAfterRaw && !stopAfter) {
     throw new Error(`Unsupported --stop-after: ${stopAfterRaw}`);
   }

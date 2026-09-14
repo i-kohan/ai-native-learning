@@ -66,14 +66,25 @@ import {
   runScopedVerification,
   type VerificationResult,
 } from "./verify.ts";
-import { bindResumedWorkspace, type Workspace } from "./workspace.ts";
+import {
+  loadReviewBaseline,
+  persistReviewBaseline,
+} from "./review-baseline.ts";
+import {
+  bindResumedWorkspace,
+  captureWorkspaceResumeEvidence,
+  type Workspace,
+} from "./workspace.ts";
 import { WorkflowError } from "./workflow-error.ts";
 import { loadWorkflowState, saveWorkflowState } from "./workflow-store.ts";
 import {
   admitImplementationReady,
+  admitReviewReady,
   admitTerminal,
   nextDurableAction,
+  type DurableCheckpoint,
   type ImplementationReadyState,
+  type ReviewReadyState,
   type WorkflowState,
 } from "./workflow-state.ts";
 
@@ -87,7 +98,7 @@ export type DurableRunOptions = {
   workflowId: string;
   storeDir: string;
   hostRepoRoot?: string;
-  stopAfter?: "implementation_ready";
+  stopAfter?: DurableCheckpoint;
 };
 
 export type WorkflowFailureReason =
@@ -186,7 +197,10 @@ export type HarnessRunResult = {
   skillLoads: SkillLoadRecord[];
   workspace?: Workspace;
   workflowId?: string;
-  durableCheckpoint?: "implementation_ready";
+  durableCheckpoint?: DurableCheckpoint;
+  implementationSkipped?: boolean;
+  preReviewVerifySkipped?: boolean;
+  reviewBaselineRestored?: boolean;
 };
 
 export async function runV1Harness(options: {
@@ -260,6 +274,21 @@ export async function runV1Harness(options: {
     options.conversationStateMode ?? "manual";
   const startedAt = Date.now();
   const tracer = new Tracer(config.tracesDir, runId);
+
+  if (workflow?.phase === "review_ready") {
+    return continueAfterVerifiedImplementation({
+      config,
+      task,
+      runId,
+      tracer,
+      startedAt,
+      conversationStateMode,
+      architectureConstraints: options.architectureConstraints,
+      workspace,
+      durable,
+      workflow,
+    });
+  }
 
   if (workflow?.phase === "implementation_ready") {
     return continueAfterAdmittedSpec({
@@ -548,10 +577,19 @@ async function continueAfterAdmittedSpec(options: {
   let { repositoryMap } = options;
   let contextPreparation: ContextPreparation | null =
     options.contextPreparation ?? null;
+  let workflow = options.workflow;
   const contextMode = options.contextMode;
   const workspace = options.workspace;
   const beforeSnapshot =
     options.beforeSnapshot ?? snapshotDirectory(config.targetSrcRoot);
+  const reviewBaselineRef =
+    durable && workflow
+      ? persistReviewBaseline(
+          durable.storeDir,
+          workflow.workflowId,
+          beforeSnapshot,
+        )
+      : null;
 
   if (options.specSkipped) {
     tracer.record("spec_phase_skipped", {
@@ -659,14 +697,14 @@ async function continueAfterAdmittedSpec(options: {
         durationMs: Date.now() - startedAt,
         skillLoads: [],
         workspace,
-        workflowId: options.workflow?.workflowId,
+        workflowId: workflow?.workflowId,
       });
       tracer.record("harness_gate", {
         action: "abort",
         reason: plannerPhase.failureReason ?? "plan_phase_failed",
         implementationStarted: false,
       });
-      persistDurableTerminal(durable, options.workflow, {
+      persistDurableTerminal(durable, workflow, {
         workflowStatus: "failure",
         failureReason: "plan_phase_failed",
       });
@@ -715,7 +753,7 @@ async function continueAfterAdmittedSpec(options: {
         durationMs: Date.now() - startedAt,
         skillLoads: [],
         workspace,
-        workflowId: options.workflow?.workflowId,
+        workflowId: workflow?.workflowId,
       });
       tracer.record("harness_gate", {
         action: "abort",
@@ -723,7 +761,7 @@ async function continueAfterAdmittedSpec(options: {
         implementationStarted: false,
         reviewPlanError: bound.error,
       });
-      persistDurableTerminal(durable, options.workflow, {
+      persistDurableTerminal(durable, workflow, {
         workflowStatus: "failure",
         failureReason: "review_plan_invalid",
       });
@@ -825,6 +863,53 @@ async function continueAfterAdmittedSpec(options: {
   const canReview =
     shouldStartReview(verified.finalVerificationPassed) &&
     verified.workflowStatus === "success";
+
+  if (canReview && durable && workflow && reviewBaselineRef) {
+    if (!workspace) {
+      throw new WorkflowError(
+        "workspace_missing",
+        "Durable review_ready requires the bound workflow workspace.",
+      );
+    }
+    loadReviewBaseline(durable.storeDir, reviewBaselineRef);
+    workflow = persistReviewReadyCheckpoint({
+      durable,
+      workflow,
+      workspace,
+      reviewBaseline: reviewBaselineRef,
+      verification: {
+        passed: true,
+        exitCode: verified.finalVerification!.exitCode,
+        durationMs: verified.finalVerification!.durationMs,
+        attempt: verified.verificationAttempts,
+      },
+      tracer,
+    });
+    if (durable.stopAfter === "review_ready") {
+      return pausedAfterReviewReady({
+        task,
+        specPhase,
+        decision,
+        planningEnabled,
+        subagentsEnabled,
+        contextMode,
+        conversationStateMode,
+        contextPreparation,
+        tracer,
+        startedAt,
+        beforeSnapshot,
+        implementation,
+        verifications,
+        repairs,
+        verificationAttempts,
+        repairAttempts,
+        repeatedFailure,
+        finalVerification: verified.finalVerification!,
+        workspace,
+        workflowId: workflow.workflowId,
+      });
+    }
+  }
 
   if (canReview) {
     const reviewed = await runIndependentReviewLoop({
@@ -928,10 +1013,10 @@ async function continueAfterAdmittedSpec(options: {
     durationMs: Date.now() - startedAt,
     skillLoads,
     workspace,
-    workflowId: options.workflow?.workflowId,
+    workflowId: workflow?.workflowId,
   });
   if (result.workflowStatus !== "paused") {
-    persistDurableTerminal(durable, options.workflow, {
+    persistDurableTerminal(durable, workflow, {
       workflowStatus: result.workflowStatus,
       failureReason: result.failureReason,
     });
@@ -2350,6 +2435,216 @@ function assertDurableModeSupported(options: {
   }
 }
 
+async function continueAfterVerifiedImplementation(options: {
+  config: HarnessConfig;
+  task: string;
+  runId: string;
+  tracer: Tracer;
+  startedAt: number;
+  conversationStateMode: ConversationStateMode;
+  architectureConstraints?: ArchitectureConstraint[];
+  workspace?: Workspace;
+  durable?: DurableRunOptions;
+  workflow: ReviewReadyState;
+}): Promise<HarnessRunResult> {
+  const {
+    config,
+    task,
+    runId,
+    tracer,
+    startedAt,
+    conversationStateMode,
+    durable,
+    workflow,
+  } = options;
+  const workspace = options.workspace;
+  const contextMode = workflow.contextMode;
+  const specPhase = resumedSpecPhase(workflow);
+
+  tracer.record("spec_phase_skipped", {
+    reason: "durable_resume_review_ready",
+    workflowId: workflow.workflowId,
+    pid: process.pid,
+    invocationId: runId,
+  });
+  tracer.record("implementation_skipped", {
+    reason: "durable_resume_review_ready",
+    workflowId: workflow.workflowId,
+    pid: process.pid,
+    invocationId: runId,
+  });
+  tracer.record("pre_review_verify_skipped", {
+    reason: "durable_resume_review_ready",
+    workflowId: workflow.workflowId,
+    verification: workflow.verification,
+  });
+  tracer.record("run_started", {
+    version: "v3",
+    task,
+    model: config.model,
+    repairModel: config.repairModel ?? null,
+    maxTurns: config.maxTurns,
+    maxRepairAttempts: config.maxRepairAttempts,
+    maxReviewRepairAttempts: config.maxReviewRepairAttempts,
+    contextMode,
+    conversationStateMode,
+    planningEnabled: false,
+    subagentsEnabled: false,
+    repoRoot: config.repoRoot,
+    targetAppRoot: config.targetAppRoot,
+    targetSrcRoot: config.targetSrcRoot,
+    pid: process.pid,
+    specSkipped: true,
+    implementationSkipped: true,
+    preReviewVerifySkipped: true,
+    workflowId: durable?.workflowId ?? workflow.workflowId,
+    durablePhase: "review_ready",
+    invocationId: runId,
+    ...(workspace
+      ? {
+          workspace: {
+            id: workspace.id,
+            root: workspace.root,
+            baseRevision: workspace.baseRevision,
+            ref: workspace.ref,
+          },
+        }
+      : {}),
+  });
+
+  let contextPreparation: ContextPreparation | null = null;
+  let repositoryMap: ReusableContext["repositoryMap"] | undefined;
+  if (contextMode === "variant") {
+    contextPreparation = buildRepositoryMap(config);
+    repositoryMap = contextPreparation.map;
+    tracer.record("context_prepared", {
+      contextMode,
+      durationMs: contextPreparation.durationMs,
+      pathsScanned: contextPreparation.pathsScanned,
+      mapEntryCount: contextPreparation.map.entries.length,
+      recomputedOnResume: true,
+    });
+  }
+
+  if (!durable) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "review_ready resume requires durable execution options.",
+    );
+  }
+  const beforeSnapshot = loadReviewBaseline(
+    durable.storeDir,
+    workflow.reviewBaseline,
+  );
+  const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
+  const { changedFiles, unifiedDiff } = diffSnapshots(
+    beforeSnapshot,
+    afterSnapshot,
+  );
+  const lastVerification: VerificationResult = {
+    passed: true,
+    exitCode: workflow.verification.exitCode,
+    output: "",
+    durationMs: workflow.verification.durationMs,
+  };
+
+  tracer.record("review_ready_resumed", {
+    workflowId: workflow.workflowId,
+    workspaceValidated: true,
+    reviewBaselineRestored: true,
+    workerSkipped: true,
+    preReviewVerifySkipped: true,
+    baselineFingerprint: workflow.reviewBaseline.fingerprint,
+    workspaceFingerprint: workflow.workspace.workingTreeFingerprint,
+    verification: workflow.verification,
+  });
+  tracer.record("review_input_reconstructed", {
+    workflowId: workflow.workflowId,
+    changedFiles,
+    unifiedDiffBytes: unifiedDiff.length,
+    baselineFingerprint: workflow.reviewBaseline.fingerprint,
+    verification: workflow.verification,
+  });
+
+  const reusableContext: ReusableContext | undefined =
+    contextMode === "variant" && repositoryMap
+      ? {
+          repositoryMap,
+          specInspectedPaths: workflow.specInspectedPaths,
+        }
+      : undefined;
+
+  const implementation = resumedImplementationStub(task, tracer.tracePath);
+  const reviewed = await runIndependentReviewLoop({
+    config,
+    task,
+    spec: workflow.spec,
+    tracer,
+    reusableContext,
+    runId,
+    implementation,
+    beforeSnapshot,
+    architectureConstraints: options.architectureConstraints ?? [],
+    lastVerification,
+    lastVerificationAttempt: workflow.verification.attempt,
+    conversationStateMode,
+  });
+
+  const result = baseResult({
+    task,
+    workflowStatus: reviewed.workflowStatus,
+    failureReason: reviewed.failureReason,
+    specDecision: { status: "executable", spec: workflow.spec },
+    unresolvedQuestions: [],
+    implementationStarted: false,
+    implementation: null,
+    specPhase,
+    plannerPhase: emptyPlannerPhase(),
+    planningEnabled: false,
+    subagentsEnabled: false,
+    contextMode,
+    conversationStateMode,
+    contextPreparation,
+    receivedTerminalResponse:
+      reviewed.reviewState.finalReviewerOutcome === "pass",
+    verificationAttempts:
+      workflow.verification.attempt + reviewed.extraVerificationAttempts,
+    repairAttempts: reviewed.extraRepairAttempts,
+    repeatedFailure: reviewed.repeatedFailure,
+    verifications: [
+      {
+        attempt: workflow.verification.attempt,
+        passed: true,
+        exitCode: workflow.verification.exitCode,
+        durationMs: workflow.verification.durationMs,
+        normalizedFailure: null,
+      },
+      ...reviewed.extraVerifications,
+    ],
+    repairs: reviewed.extraRepairs,
+    review: reviewed.reviewState,
+    finalVerificationPassed: reviewed.finalVerificationPassed,
+    finalVerification: reviewed.finalVerification,
+    modelFinalResponse: reviewed.modelFinalResponse,
+    changedFiles,
+    unifiedDiff,
+    tracePath: tracer.tracePath,
+    durationMs: Date.now() - startedAt,
+    skillLoads: reviewed.skillLoads,
+    workspace,
+    workflowId: workflow.workflowId,
+  });
+  result.implementationSkipped = true;
+  result.preReviewVerifySkipped = true;
+  result.reviewBaselineRestored = true;
+  persistDurableTerminal(durable, workflow, {
+    workflowStatus: result.workflowStatus,
+    failureReason: result.failureReason,
+  });
+  await finishRun(tracer, result);
+  return result;
+}
+
 function persistImplementationReady(options: {
   durable?: DurableRunOptions;
   workflow: WorkflowState;
@@ -2366,6 +2661,31 @@ function persistImplementationReady(options: {
     decision: options.decision,
     specInspectedPaths: options.specInspectedPaths,
     contextMode: options.contextMode,
+  });
+  saveWorkflowState(options.durable.storeDir, next);
+  options.tracer.record("durable_transition", {
+    from: options.workflow.phase,
+    to: next.phase,
+    workflowId: next.workflowId,
+    pid: process.pid,
+    persisted: true,
+  });
+  return next;
+}
+
+function persistReviewReadyCheckpoint(options: {
+  durable: DurableRunOptions;
+  workflow: WorkflowState;
+  workspace: Workspace;
+  reviewBaseline: ReviewReadyState["reviewBaseline"];
+  verification: ReviewReadyState["verification"];
+  tracer: Tracer;
+}): WorkflowState {
+  const next = admitReviewReady({
+    current: options.workflow,
+    workspace: captureWorkspaceResumeEvidence(options.workspace),
+    reviewBaseline: options.reviewBaseline,
+    verification: options.verification,
   });
   saveWorkflowState(options.durable.storeDir, next);
   options.tracer.record("durable_transition", {
@@ -2464,7 +2784,86 @@ async function pausedAfterSpec(options: {
   return result;
 }
 
-function resumedSpecPhase(state: ImplementationReadyState): {
+async function pausedAfterReviewReady(options: {
+  task: string;
+  specPhase: {
+    turns: number;
+    modelCalls: number;
+    toolCalls: number;
+    inspectedPaths: InspectedPaths;
+    discovery: PhaseDiscoveryMetrics;
+    tokenUsage: TokenUsageSummary | null;
+    modelFinalResponse?: string;
+  };
+  decision: Extract<SpecDecision, { status: "executable" }>;
+  planningEnabled: boolean;
+  subagentsEnabled: boolean;
+  contextMode: ContextMode;
+  conversationStateMode: ConversationStateMode;
+  contextPreparation: ContextPreparation | null;
+  tracer: Tracer;
+  startedAt: number;
+  beforeSnapshot: FileSnapshot;
+  implementation: AgentRunResult;
+  verifications: VerificationAttempt[];
+  repairs: RepairAttemptSummary[];
+  verificationAttempts: number;
+  repairAttempts: number;
+  repeatedFailure: boolean;
+  finalVerification: VerificationResult;
+  workspace?: Workspace;
+  workflowId: string;
+}): Promise<HarnessRunResult> {
+  const current = options.workspace
+    ? snapshotDirectory(path.join(options.workspace.root, "target-app", "src"))
+    : options.beforeSnapshot;
+  const { changedFiles, unifiedDiff } = diffSnapshots(
+    options.beforeSnapshot,
+    current,
+  );
+  const result = baseResult({
+    task: options.task,
+    workflowStatus: "paused",
+    specDecision: options.decision,
+    unresolvedQuestions: [],
+    implementationStarted: true,
+    implementation: options.implementation,
+    specPhase: options.specPhase,
+    plannerPhase: emptyPlannerPhase(),
+    planningEnabled: options.planningEnabled,
+    subagentsEnabled: options.subagentsEnabled,
+    contextMode: options.contextMode,
+    conversationStateMode: options.conversationStateMode,
+    contextPreparation: options.contextPreparation,
+    receivedTerminalResponse: options.implementation.receivedTerminalResponse,
+    verificationAttempts: options.verificationAttempts,
+    repairAttempts: options.repairAttempts,
+    repeatedFailure: options.repeatedFailure,
+    verifications: options.verifications,
+    repairs: options.repairs,
+    finalVerificationPassed: true,
+    finalVerification: options.finalVerification,
+    modelFinalResponse: "durable_checkpoint:review_ready",
+    changedFiles,
+    unifiedDiff,
+    tracePath: options.tracer.tracePath,
+    durationMs: Date.now() - options.startedAt,
+    skillLoads: collectedSkillLoads(options.implementation),
+    workspace: options.workspace,
+    workflowId: options.workflowId,
+  });
+  result.durableCheckpoint = "review_ready";
+  options.tracer.record("durable_checkpoint", {
+    phase: "review_ready",
+    workflowId: options.workflowId,
+    pid: process.pid,
+    stopAfter: "review_ready",
+  });
+  await finishRun(options.tracer, result);
+  return result;
+}
+
+function resumedSpecPhase(state: ImplementationReadyState | ReviewReadyState): {
   turns: number;
   modelCalls: number;
   toolCalls: number;
@@ -2484,6 +2883,39 @@ function resumedSpecPhase(state: ImplementationReadyState): {
       listedPaths: state.specInspectedPaths.listedPaths,
     },
     tokenUsage: null,
+  };
+}
+
+function resumedImplementationStub(
+  task: string,
+  tracePath: string,
+): AgentRunResult {
+  return {
+    task,
+    phase: "implementation",
+    status: "success",
+    turns: 0,
+    modelCalls: 0,
+    toolCalls: 0,
+    receivedTerminalResponse: true,
+    modelFinalResponse: "durable_resume_review_ready",
+    changedFiles: [],
+    unifiedDiff: "",
+    tracePath,
+    durationMs: 0,
+    discovery: {
+      listFilesCalls: 0,
+      readFileCalls: 0,
+      readFilePaths: [],
+      listedPaths: [],
+    },
+    implNavCallsBeforeFirstWrite: null,
+    tokenUsage: null,
+    skillLoad: null,
+    conversationStateMode: "manual",
+    clientInputItemsSent: 0,
+    clientInputBytesSent: 0,
+    researchDelegations: [],
   };
 }
 
