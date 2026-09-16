@@ -1,5 +1,7 @@
 # 18 — Retry Semantics
 
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-17 after implementation review, RET01, regression review, and the retry-semantics understanding checks.
+
 ## Mental model
 
 Retry answers a different question than resume or repair:
@@ -106,3 +108,19 @@ It does **not** provide exactly-once semantics.
 4. Retry-safe work may be retried; ambiguous mutation must reconcile or fail closed.
 5. A successful semantic result is required to advance; a lost result is not success.
 6. Unknown model errors fail closed; only known transient provider/execution failures retry.
+
+## Closure
+
+Module 18 is closed at the intended learning frontier:
+
+```text
+harness-owned bounded retry policy       = implemented
+REVIEW durable retry across restart      = demonstrated by RET01
+stable logical operation identity        = demonstrated
+attempt budget survives process restart  = demonstrated
+unsafe Worker blind retry                = explicitly rejected
+retry / resume / repair boundaries       = understood
+exactly-once / Worker reconciliation      = intentionally out of scope
+```
+
+See `closure.md` for the closure record and evidence references.
