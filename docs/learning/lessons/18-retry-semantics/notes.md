@@ -1,8 +1,8 @@
 # 18 — Retry Semantics
 
-Практический журнал Module 18. Формальное закрытие остаётся Topic Chat.
+Практический журнал Module 18.
 
-**Status:** implemented and measured. RET01 **passed**. Not marked complete; Topic Chat owns formal closure.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-17. RET01 **passed**; implementation/evidence review found no remaining blockers.
 
 ## Что построили
 
@@ -74,6 +74,14 @@ Evidence: `docs/learning/lessons/18-retry-semantics/traces/RET01-retry-2026-09-1
 
 Harness unit tests: **221 passed**, including Module 17 checkpoint tests, crash-window budget retention, and Worker `ambiguous_side_effect → needs_reconciliation`.
 
+## Review findings resolved before closure
+
+Three semantic gaps found during Topic Chat review were fixed before closure:
+
+1. retry state is no longer cleared merely because REVIEW returned a valid in-memory result; the durable budget remains until the next semantic transition;
+2. generic `model_error` is no longer assumed transient; only known transient provider/execution failures are retryable;
+3. RET01 explicitly asserts the same logical `operationId` across attempts 1 and 2.
+
 ## Commands
 
 ```bash
@@ -84,3 +92,17 @@ cd harness && npm run benchmark:ret01
 ## Non-goals kept out
 
 No Worker reconciliation, leases, exactly-once, backoff platform, or generic retry for every phase.
+
+## Closure decision
+
+```text
+RET01                              = PASS
+unit/regression suite              = 221 PASS
+harness-owned retry policy         = accepted
+durable attempt budget             = accepted
+stable logical operation identity  = accepted
+unsafe Worker retry                = rejected / needs_reconciliation
+remaining blockers                 = none
+```
+
+Module 18 is closed by Topic Chat. Do not infer that Module 19 has started.
