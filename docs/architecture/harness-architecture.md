@@ -1,6 +1,6 @@
 # Harness Architecture
 
-Last consolidated: 2026-09-11, after Module 16 durable checkpoint probe (module not formally closed).
+Last consolidated: 2026-09-16, after Module 18 bounded REVIEW retry probe.
 
 This document is a compact map of the **current architecture**, not a target-state design. Historical experiment details remain in `docs/learning/lessons/` and `docs/learning/experiments.md`.
 
@@ -90,9 +90,10 @@ When durability is opted in, the outer harness also owns:
 - admission of `spec_required → implementation_ready → review_ready`;
 - atomic local-file persistence;
 - resume binding to the persisted workspace;
-- durable pre-Worker review baseline artifact, referenced from `review_ready`.
+- durable pre-Worker review baseline artifact, referenced from `review_ready`;
+- retry classification, retry budget, and retry admission.
 
-The model still cannot mutate WorkflowState. Trace JSONL is not authoritative workflow state.
+The model still cannot mutate WorkflowState or decide whether another attempt is allowed. Trace JSONL is not authoritative workflow state.
 
 Security-sensitive decisions belong here when the harness can technically enforce them.
 
@@ -111,6 +112,7 @@ Security-sensitive decisions belong here when the harness can technically enforc
 | Model routing               | `harness/src/model-routing.ts`, `harness/src/config.ts`                    |
 | Workspace isolation         | `harness/src/workspace.ts`                                                 |
 | Durable workflow state      | `harness/src/workflow-state.ts`, `harness/src/workflow-store.ts`           |
+| Retry policy                | `harness/src/retry.ts`                                                     |
 | Tracing                     | `harness/src/trace.ts`                                                     |
 | Evals / qualification       | `harness/src/eval/`                                                        |
 | Benchmark/probe runner      | `harness/src/run-benchmark.ts`                                             |
@@ -142,13 +144,16 @@ Supported:
 - file-backed WorkflowState with atomic replace;
 - resume in a fresh process without rerunning Spec, or without rerunning Worker + pre-review VERIFY;
 - durable pre-Worker `FileSnapshot` baseline stored beside WorkflowState;
-- fail-closed load, workspace mismatch, and baseline integrity mismatch.
+- fail-closed load, workspace mismatch, and baseline integrity mismatch;
+- harness-owned retry classification/budget/admission for independent REVIEW.
 
 Not started:
 
 - mid-Worker / mid-VERIFY crash reconciliation;
-- retry / idempotency / exactly-once;
+- exactly-once semantics;
 - Temporal / queues / leases.
+
+Bounded REVIEW retry is implemented as a mechanism probe. It does not make mutating Worker execution retry-safe.
 
 ### Experimental: `previous_response_id`
 
@@ -274,10 +279,11 @@ These are intentional follow-ups, not reasons to reopen completed modules.
 
 ## 9. Remaining Phase 4 question
 
-Module 16/17 proved two checkpoints:
+Module 16/17 proved two checkpoints, and Module 18 added bounded durable retry for independent REVIEW:
 
 ```text
 spec_required → implementation_ready → Worker/VERIFY → review_ready → (fresh process) REVIEW → terminal
+review_ready → transient REVIEW failure → harness-admitted retry → REVIEW → terminal
 ```
 
 Still open:

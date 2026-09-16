@@ -39,7 +39,10 @@ import {
   type ReviewRepairSummary,
   type ReviewRunState,
 } from "./review.ts";
-import { runIndependentReview } from "./review-phase.ts";
+import {
+  runIndependentReview,
+  type ReviewPhaseResult,
+} from "./review-phase.ts";
 import type { SkillLoadRecord } from "./skills.ts";
 import { buildSpec } from "./spec-phase.ts";
 import {
@@ -80,11 +83,20 @@ import {
   captureWorkspaceResumeEvidence,
   type Workspace,
 } from "./workspace.ts";
+import {
+  DEFAULT_MAX_REVIEW_RETRY_ATTEMPTS,
+  executeReviewWithRetry,
+  logicalReviewId,
+  reviewOperationId,
+  type DurableRetryState,
+  type RetryDecision,
+} from "./retry.ts";
 import { WorkflowError } from "./workflow-error.ts";
 import { loadWorkflowState, saveWorkflowState } from "./workflow-store.ts";
 import {
   admitImplementationReady,
   admitReviewReady,
+  admitReviewRetryState,
   admitTerminal,
   nextDurableAction,
   type DurableCheckpoint,
@@ -104,6 +116,10 @@ export type DurableRunOptions = {
   storeDir: string;
   hostRepoRoot?: string;
   stopAfter?: DurableCheckpoint;
+  /** Probe/test only. Inject a retryable REVIEW provider failure on this attempt. */
+  injectReviewTransientFailureOnAttempt?: number;
+  /** Probe/test only. Persist retry admission and exit before the next attempt. */
+  stopAfterRetryAdmission?: boolean;
 };
 
 export type WorkflowFailureReason =
@@ -114,6 +130,8 @@ export type WorkflowFailureReason =
   | "final_verification_failed"
   | "review_parse_failed"
   | "review_unresolved_blocker"
+  | "review_retry_exhausted"
+  | "retry_needs_reconciliation"
   | "unit_verification_failed";
 
 export function shouldVerifyAfterReviewRepair(
@@ -206,6 +224,8 @@ export type HarnessRunResult = {
   implementationSkipped?: boolean;
   preReviewVerifySkipped?: boolean;
   reviewBaselineRestored?: boolean;
+  durableRetry?: DurableRetryState;
+  lastRetryDecision?: RetryDecision;
 };
 
 export async function runV1Harness(options: {
@@ -860,6 +880,7 @@ async function continueAfterAdmittedSpec(options: {
   let finalVerificationPassed = verified.finalVerificationPassed;
   let finalVerification = verified.finalVerification;
   let reviewState = emptyReviewRunState();
+  let lastRetryDecision: RetryDecision | undefined;
   const skillLoads: SkillLoadRecord[] = [
     ...collectedSkillLoads(implementation),
     ...verified.skillLoads,
@@ -930,7 +951,10 @@ async function continueAfterAdmittedSpec(options: {
       lastVerification: verified.finalVerification!,
       lastVerificationAttempt: verified.verificationAttempts,
       conversationStateMode,
+      durable,
+      workflow,
     });
+    workflow = reviewed.workflow;
     workflowStatus = reviewed.workflowStatus;
     failureReason = reviewed.failureReason;
     modelFinalResponse = reviewed.modelFinalResponse;
@@ -944,6 +968,9 @@ async function continueAfterAdmittedSpec(options: {
     finalVerification = reviewed.finalVerification;
     reviewState = reviewed.reviewState;
     skillLoads.push(...reviewed.skillLoads);
+    if (reviewed.lastRetryDecision) {
+      lastRetryDecision = reviewed.lastRetryDecision;
+    }
   } else if (verified.workflowStatus === "success") {
     tracer.record("workflow_outcome", {
       status: "success",
@@ -1019,6 +1046,9 @@ async function continueAfterAdmittedSpec(options: {
     skillLoads,
     workspace,
     workflowId: workflow?.workflowId,
+    durableRetry:
+      workflow?.phase === "review_ready" ? workflow.retry : undefined,
+    lastRetryDecision,
   });
   if (result.workflowStatus !== "paused") {
     persistDurableTerminal(durable, workflow, {
@@ -1712,6 +1742,8 @@ async function runIndependentReviewLoop(options: {
   lastVerification: VerificationResult;
   lastVerificationAttempt: number;
   conversationStateMode: ConversationStateMode;
+  durable?: DurableRunOptions;
+  workflow: WorkflowState | null;
 }): Promise<{
   workflowStatus: WorkflowStatus;
   failureReason?: WorkflowFailureReason;
@@ -1725,6 +1757,8 @@ async function runIndependentReviewLoop(options: {
   finalVerification: VerificationResult;
   reviewState: ReviewRunState;
   skillLoads: SkillLoadRecord[];
+  workflow: WorkflowState | null;
+  lastRetryDecision?: RetryDecision;
 }> {
   const {
     config,
@@ -1736,7 +1770,9 @@ async function runIndependentReviewLoop(options: {
     beforeSnapshot,
     architectureConstraints,
     conversationStateMode,
+    durable,
   } = options;
+  let workflow = options.workflow;
 
   const reviews: ReviewAttemptSummary[] = [];
   const reviewRepairs: ReviewRepairSummary[] = [];
@@ -1751,12 +1787,19 @@ async function runIndependentReviewLoop(options: {
   let lastVerificationAttempt = options.lastVerificationAttempt;
   let modelFinalResponse = options.implementation.modelFinalResponse;
   let repeatedFailure = false;
+  let lastRetryDecision: RetryDecision | undefined;
 
   const runReviewRound = async (
     round: number,
   ): Promise<
     | { ok: true; blockingKeys: string[] }
-    | { ok: false; reason: "review_parse_failed" }
+    | { ok: false; reason: WorkflowFailureReason }
+    | {
+        ok: false;
+        paused: true;
+        retry: DurableRetryState;
+        decision: RetryDecision;
+      }
   > => {
     const current = snapshotDirectory(config.targetSrcRoot);
     const { changedFiles, unifiedDiff } = diffSnapshots(
@@ -1776,13 +1819,18 @@ async function runIndependentReviewLoop(options: {
       },
     };
 
-    const review = await runIndependentReview({
-      config,
-      context,
-      tracer,
-      round,
-    });
+    const runReview = () =>
+      runIndependentReview({
+        config,
+        context,
+        tracer,
+        round,
+      });
 
+    const review = await executeRoundReview(round, context, runReview);
+    if ("paused" in review) {
+      return review;
+    }
     if (!review.result) {
       tracer.record("review_completed", {
         round,
@@ -1791,7 +1839,10 @@ async function runIndependentReviewLoop(options: {
         modelCalls: review.modelCalls,
         durationMs: review.durationMs,
       });
-      return { ok: false, reason: "review_parse_failed" };
+      return {
+        ok: false,
+        reason: review.retryFailureReason ?? "review_parse_failed",
+      };
     }
 
     const decisions = review.result.findings.map((finding) => {
@@ -1848,12 +1899,145 @@ async function runIndependentReviewLoop(options: {
     return { ok: true, blockingKeys };
   };
 
+  const executeRoundReview = async (
+    round: number,
+    context: ReviewContext,
+    runReview: () => Promise<ReviewPhaseResult>,
+  ): Promise<
+    | (ReviewPhaseResult & { retryFailureReason?: WorkflowFailureReason })
+    | {
+        ok: false;
+        paused: true;
+        retry: DurableRetryState;
+        decision: RetryDecision;
+      }
+  > => {
+    if (!durable || workflow?.phase !== "review_ready") {
+      return runReview();
+    }
+
+    const operationId = reviewOperationId(
+      workflow.workflowId,
+      logicalReviewId(workflow.reviewBaseline.artifactId, round),
+    );
+    const executed = await executeReviewWithRetry({
+      operationId,
+      currentRetry: workflow.retry,
+      maxAttempts: DEFAULT_MAX_REVIEW_RETRY_ATTEMPTS,
+      injectTransientOnAttempt: durable.injectReviewTransientFailureOnAttempt,
+      stopAfterRetryAdmission: durable.stopAfterRetryAdmission,
+      persistRetry: (retry) => {
+        if (!durable || workflow?.phase !== "review_ready") {
+          return;
+        }
+        workflow = persistReviewRetryState({
+          durable,
+          workflow,
+          retry,
+          tracer,
+        });
+      },
+      runReview,
+      onAttemptStarted: (retry) => {
+        tracer.record("review_retry_attempt_started", {
+          operationId: retry.operationId,
+          operationKind: retry.operationKind,
+          attemptsStarted: retry.attemptsStarted,
+          maxAttempts: retry.maxAttempts,
+          round,
+          source: "harness_retry_policy",
+        });
+      },
+      onInjectedFailure: (retry) => {
+        tracer.record("review_started", {
+          round,
+          injectedTransientFailure: true,
+          operationId: retry.operationId,
+          attemptsStarted: retry.attemptsStarted,
+          changedFiles: context.changedFiles,
+          constraintIds: context.architectureConstraints.map((item) => item.id),
+          verificationPassed: context.verificationEvidence.passed,
+          promptIncludesSpec: true,
+          promptIncludesDiff: true,
+          promptIncludesConstraints: context.architectureConstraints.length > 0,
+          promptIncludesVerificationEvidence: true,
+        });
+        tracer.record("review_retry_injected_failure", {
+          operationId: retry.operationId,
+          attemptsStarted: retry.attemptsStarted,
+          failureClass: "retryable_transient",
+          source: "harness",
+        });
+      },
+      onClassified: ({ retry, failureClass, decision }) => {
+        lastRetryDecision = decision;
+        tracer.record("review_retry_classified", {
+          operationId: retry.operationId,
+          attemptsStarted: retry.attemptsStarted,
+          failureClass,
+          source: "harness",
+        });
+        tracer.record("review_retry_decision", {
+          operationId: retry.operationId,
+          attemptsStarted: retry.attemptsStarted,
+          maxAttempts: retry.maxAttempts,
+          action: decision.action,
+          reason: "reason" in decision ? decision.reason : null,
+          source: "harness_retry_policy",
+        });
+      },
+      onCleared: (clearedOperationId) => {
+        tracer.record("review_retry_cleared", {
+          operationId: clearedOperationId,
+          round,
+        });
+      },
+    });
+
+    if (executed.status === "paused") {
+      lastRetryDecision = executed.decision;
+      return {
+        ok: false,
+        paused: true,
+        retry: executed.retry,
+        decision: executed.decision,
+      };
+    }
+    if (executed.status === "failed") {
+      lastRetryDecision = executed.decision;
+      return {
+        result: null,
+        parseOk: false,
+        failureReason:
+          executed.review.failureReason ??
+          (executed.decision.action === "stop" &&
+          executed.decision.reason === "semantic_domain"
+            ? "invalid_review"
+            : "model_error"),
+        modelCalls: executed.review.modelCalls ?? 0,
+        toolCalls: executed.review.toolCalls ?? 0,
+        durationMs: executed.review.durationMs ?? 0,
+        tokenUsage: executed.review.tokenUsage ?? null,
+        modelFinalResponse: executed.review.modelFinalResponse ?? "",
+        retryFailureReason:
+          executed.decision.action === "needs_reconciliation"
+            ? "retry_needs_reconciliation"
+            : executed.decision.reason === "retry_budget_exhausted"
+              ? "review_retry_exhausted"
+              : "review_parse_failed",
+      };
+    }
+    return executed.review;
+  };
+
   const finish = (
     workflowStatus: WorkflowStatus,
     finalReviewerOutcome: ReviewRunState["finalReviewerOutcome"],
     extra?: {
       failureReason?: WorkflowFailureReason;
       repeatedFinding?: boolean;
+      pausedForRetry?: boolean;
+      durableRetry?: DurableRetryState;
     },
   ) => {
     const aggregated = aggregateReviewState(reviews);
@@ -1867,16 +2051,27 @@ async function runIndependentReviewLoop(options: {
       finalReviewerOutcome,
       ...aggregated,
     };
-    tracer.record("workflow_outcome", {
-      status: workflowStatus,
-      reason: extra?.failureReason ?? finalReviewerOutcome,
-      reviewAttempts: reviews.length,
-      reviewRepairAttempts,
-      intendedFindingDetected: reviewState.intendedFindingDetected,
-      acceptedBlocking: reviewState.acceptedBlockingFindings.length,
-      blockingFalsePositives: reviewState.blockingFalsePositives.length,
-      repeatedFinding: reviewState.repeatedFinding,
-    });
+    if (extra?.pausedForRetry) {
+      tracer.record("durable_retry_paused", {
+        workflowId: workflow?.workflowId ?? null,
+        operationId: extra.durableRetry?.operationId ?? null,
+        attemptsStarted: extra.durableRetry?.attemptsStarted ?? null,
+        lastFailureClass: extra.durableRetry?.lastFailureClass ?? null,
+        decision: lastRetryDecision ?? null,
+        source: "harness_retry_policy",
+      });
+    } else {
+      tracer.record("workflow_outcome", {
+        status: workflowStatus,
+        reason: extra?.failureReason ?? finalReviewerOutcome,
+        reviewAttempts: reviews.length,
+        reviewRepairAttempts,
+        intendedFindingDetected: reviewState.intendedFindingDetected,
+        acceptedBlocking: reviewState.acceptedBlockingFindings.length,
+        blockingFalsePositives: reviewState.blockingFalsePositives.length,
+        repeatedFinding: reviewState.repeatedFinding,
+      });
+    }
     return {
       workflowStatus,
       failureReason: extra?.failureReason,
@@ -1890,13 +2085,21 @@ async function runIndependentReviewLoop(options: {
       finalVerification: lastVerification,
       reviewState,
       skillLoads,
+      workflow,
+      lastRetryDecision,
     };
   };
 
   const first = await runReviewRound(1);
   if (!first.ok) {
+    if ("paused" in first) {
+      return finish("paused", "skipped", {
+        pausedForRetry: true,
+        durableRetry: first.retry,
+      });
+    }
     return finish("failure", "parse_failed", {
-      failureReason: "review_parse_failed",
+      failureReason: first.reason,
     });
   }
 
@@ -2017,8 +2220,14 @@ async function runIndependentReviewLoop(options: {
 
   const second = await runReviewRound(2);
   if (!second.ok) {
+    if ("paused" in second) {
+      return finish("paused", "skipped", {
+        pausedForRetry: true,
+        durableRetry: second.retry,
+      });
+    }
     return finish("failure", "parse_failed", {
-      failureReason: "review_parse_failed",
+      failureReason: second.reason,
     });
   }
 
@@ -2092,6 +2301,8 @@ function baseResult(fields: {
   skillLoads?: SkillLoadRecord[];
   workspace?: Workspace;
   workflowId?: string;
+  durableRetry?: DurableRetryState;
+  lastRetryDecision?: RetryDecision;
 }): HarnessRunResult {
   const implementation = fields.implementation;
   const implDiscovery = implementation?.discovery ?? null;
@@ -2276,6 +2487,10 @@ function baseResult(fields: {
     skillLoads: fields.skillLoads ?? [],
     ...(fields.workspace ? { workspace: fields.workspace } : {}),
     ...(fields.workflowId ? { workflowId: fields.workflowId } : {}),
+    ...(fields.durableRetry ? { durableRetry: fields.durableRetry } : {}),
+    ...(fields.lastRetryDecision
+      ? { lastRetryDecision: fields.lastRetryDecision }
+      : {}),
   };
 }
 
@@ -2460,8 +2675,8 @@ async function continueAfterVerifiedImplementation(options: {
     startedAt,
     conversationStateMode,
     durable,
-    workflow,
   } = options;
+  let workflow = options.workflow;
   const workspace = options.workspace;
   const contextMode = workflow.contextMode;
   const specPhase = resumedSpecPhase(workflow);
@@ -2595,7 +2810,11 @@ async function continueAfterVerifiedImplementation(options: {
     lastVerification,
     lastVerificationAttempt: workflow.verification.attempt,
     conversationStateMode,
+    durable,
+    workflow,
   });
+  workflow =
+    reviewed.workflow?.phase === "review_ready" ? reviewed.workflow : workflow;
 
   const result = baseResult({
     task,
@@ -2640,14 +2859,18 @@ async function continueAfterVerifiedImplementation(options: {
     skillLoads: reviewed.skillLoads,
     workspace,
     workflowId: workflow.workflowId,
+    durableRetry: workflow.retry,
+    lastRetryDecision: reviewed.lastRetryDecision,
   });
   result.implementationSkipped = true;
   result.preReviewVerifySkipped = true;
   result.reviewBaselineRestored = true;
-  persistDurableTerminal(durable, workflow, {
-    workflowStatus: result.workflowStatus,
-    failureReason: result.failureReason,
-  });
+  if (result.workflowStatus !== "paused") {
+    persistDurableTerminal(durable, workflow, {
+      workflowStatus: result.workflowStatus,
+      failureReason: result.failureReason,
+    });
+  }
   await finishRun(tracer, result);
   return result;
 }
@@ -2699,6 +2922,30 @@ function persistReviewReadyCheckpoint(options: {
     from: options.workflow.phase,
     to: next.phase,
     workflowId: next.workflowId,
+    pid: process.pid,
+    persisted: true,
+  });
+  return next;
+}
+
+function persistReviewRetryState(options: {
+  durable: DurableRunOptions;
+  workflow: ReviewReadyState;
+  retry: DurableRetryState | undefined;
+  tracer: Tracer;
+}): ReviewReadyState {
+  const next = admitReviewRetryState({
+    current: options.workflow,
+    retry: options.retry,
+  });
+  saveWorkflowState(options.durable.storeDir, next);
+  options.tracer.record("durable_retry_state", {
+    workflowId: next.workflowId,
+    operationId: next.retry?.operationId ?? null,
+    attemptsStarted: next.retry?.attemptsStarted ?? 0,
+    maxAttempts: next.retry?.maxAttempts ?? null,
+    lastFailureClass: next.retry?.lastFailureClass ?? null,
+    cleared: !next.retry,
     pid: process.pid,
     persisted: true,
   });

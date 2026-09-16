@@ -19,6 +19,9 @@ async function main(): Promise<void> {
       workflowId: args.workflowId,
       storeDir: args.storeDir,
       stopAfter: args.stopAfter,
+      injectReviewTransientFailureOnAttempt:
+        args.injectReviewTransientFailureOnAttempt,
+      stopAfterRetryAdmission: args.stopAfterRetryAdmission,
     },
   });
 
@@ -48,6 +51,8 @@ async function main(): Promise<void> {
     workspaceRoot: result.workspace?.root ?? after.workspace.root,
     baseRevision:
       result.workspace?.baseRevision ?? after.workspace.baseRevision,
+    retry: after.phase === "review_ready" ? (after.retry ?? null) : null,
+    lastRetryDecision: result.lastRetryDecision ?? null,
     ...reviewDeltaIdentity(result.changedFiles, result.unifiedDiff),
   };
   fs.mkdirSync(args.storeDir, { recursive: true });
@@ -73,14 +78,20 @@ function parseArgs(argv: string[]): {
   storeDir: string;
   runId: string;
   stopAfter?: "implementation_ready" | "review_ready";
+  injectReviewTransientFailureOnAttempt?: number;
+  stopAfterRetryAdmission?: boolean;
 } {
   const workflowId = flagValue(argv, "--workflow-id");
   const storeDir = flagValue(argv, "--store-dir");
   const runId = flagValue(argv, "--run-id");
   const stopAfterRaw = optionalFlagValue(argv, "--stop-after");
+  const injectRaw = optionalFlagValue(
+    argv,
+    "--inject-review-transient-failure-on-attempt",
+  );
   if (!workflowId || !storeDir || !runId) {
     throw new Error(
-      "Usage: run-durable-invocation --workflow-id ID --store-dir DIR --run-id RUN [--stop-after implementation_ready|review_ready]",
+      "Usage: run-durable-invocation --workflow-id ID --store-dir DIR --run-id RUN [--stop-after implementation_ready|review_ready] [--inject-review-transient-failure-on-attempt N] [--stop-after-retry-admission]",
     );
   }
   const stopAfter =
@@ -90,7 +101,27 @@ function parseArgs(argv: string[]): {
   if (stopAfterRaw && !stopAfter) {
     throw new Error(`Unsupported --stop-after: ${stopAfterRaw}`);
   }
-  return { workflowId, storeDir, runId, stopAfter };
+  const injectReviewTransientFailureOnAttempt = injectRaw
+    ? Number(injectRaw)
+    : undefined;
+  if (
+    injectRaw &&
+    (injectReviewTransientFailureOnAttempt === undefined ||
+      !Number.isInteger(injectReviewTransientFailureOnAttempt) ||
+      injectReviewTransientFailureOnAttempt < 1)
+  ) {
+    throw new Error(
+      `Unsupported --inject-review-transient-failure-on-attempt: ${injectRaw}`,
+    );
+  }
+  return {
+    workflowId,
+    storeDir,
+    runId,
+    stopAfter,
+    injectReviewTransientFailureOnAttempt,
+    stopAfterRetryAdmission: argv.includes("--stop-after-retry-admission"),
+  };
 }
 
 function flagValue(argv: string[], name: string): string | undefined {

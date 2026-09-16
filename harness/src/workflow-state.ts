@@ -1,4 +1,5 @@
 import type { InspectedPaths } from "./context.ts";
+import { parseDurableRetryState, type DurableRetryState } from "./retry.ts";
 import { parseSpec, type Spec, type SpecDecision } from "./spec.ts";
 import type { WorkspaceResumeEvidence } from "./workspace.ts";
 import { WorkflowError } from "./workflow-error.ts";
@@ -55,6 +56,7 @@ export type ReviewReadyState = WorkflowIdentity & {
   contextMode: "baseline" | "variant";
   reviewBaseline: ReviewBaselineRef;
   verification: DurableVerificationEvidence;
+  retry?: DurableRetryState;
 };
 
 export type TerminalState = WorkflowIdentity & {
@@ -174,6 +176,43 @@ export function admitReviewReady(options: {
       durationMs: options.verification.durationMs,
       attempt: options.verification.attempt,
     },
+  };
+}
+
+export function admitReviewRetryState(options: {
+  current: WorkflowState;
+  retry: DurableRetryState | undefined;
+  now?: string;
+}): ReviewReadyState {
+  const { current } = options;
+  if (current.phase !== "review_ready") {
+    throw new WorkflowError(
+      "illegal_transition",
+      `Cannot persist REVIEW retry state from phase ${current.phase}.`,
+    );
+  }
+  if (options.retry === undefined) {
+    const next: ReviewReadyState = {
+      ...current,
+      updatedAt: options.now ?? nowIso(),
+    };
+    delete next.retry;
+    return next;
+  }
+  const parsed = parseDurableRetryState(options.retry);
+  if (!parsed.ok) {
+    throw new WorkflowError("corrupt_state", parsed.error);
+  }
+  if (parsed.value.operationKind !== "review") {
+    throw new WorkflowError(
+      "illegal_transition",
+      `review_ready retry.operationKind must be review, got ${parsed.value.operationKind}.`,
+    );
+  }
+  return {
+    ...current,
+    updatedAt: options.now ?? nowIso(),
+    retry: parsed.value,
   };
 }
 
@@ -349,6 +388,25 @@ export function parseWorkflowState(
     if (!verification.ok) {
       return verification;
     }
+    let retry: DurableRetryState | undefined;
+    if (value.retry !== undefined) {
+      const parsedRetry = parseDurableRetryState(value.retry);
+      if (!parsedRetry.ok) {
+        return {
+          ok: false,
+          error: parsedRetry.error,
+          code: "corrupt_state",
+        };
+      }
+      if (parsedRetry.value.operationKind !== "review") {
+        return {
+          ok: false,
+          error: 'review_ready.retry.operationKind must be "review".',
+          code: "corrupt_state",
+        };
+      }
+      retry = parsedRetry.value;
+    }
     return {
       ok: true,
       value: {
@@ -359,6 +417,7 @@ export function parseWorkflowState(
         contextMode,
         reviewBaseline: reviewBaseline.value,
         verification: verification.value,
+        ...(retry ? { retry } : {}),
       },
     };
   }

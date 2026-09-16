@@ -29,6 +29,11 @@ import {
   runCheckpointProbe,
 } from "./checkpoint-probe.ts";
 import {
+  isExpectedRET01Outcome,
+  printRetryProbeSummary,
+  runRetryProbe,
+} from "./retry-probe.ts";
+import {
   isExpectedDUR01Outcome,
   printDurabilityProbeSummary,
   runDurabilityProbe,
@@ -842,6 +847,12 @@ export async function runCheckpointMechanismProbe() {
   });
 }
 
+export async function runRetryMechanismProbe() {
+  return runRetryProbe({
+    prepare: (config) => prepareBenchmark("T02", config),
+  });
+}
+
 export async function runReviewProbe(
   conversationStateMode: ConversationStateMode = "manual",
 ): Promise<HarnessRunResult> {
@@ -1132,6 +1143,7 @@ type CliOptions = {
   decompositionExperiment?: boolean;
   durabilityProbe?: boolean;
   checkpointProbe?: boolean;
+  retryProbe?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
@@ -1261,6 +1273,21 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       contextMode,
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--retry") || argv.includes("RET01")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      retryProbe: true,
+      contextMode: "variant",
       conversationStateMode,
     };
   }
@@ -1413,10 +1440,18 @@ async function main(): Promise<void> {
     decompositionExperiment,
     durabilityProbe,
     checkpointProbe,
+    retryProbe,
     taskId,
     contextMode,
     conversationStateMode,
   } = parseArgs(process.argv.slice(2));
+
+  if (retryProbe) {
+    const result = await runRetryMechanismProbe();
+    printRetryProbeSummary(result);
+    process.exit(isExpectedRET01Outcome(result) ? 0 : 1);
+    return;
+  }
 
   if (checkpointProbe) {
     const result = await runCheckpointMechanismProbe();

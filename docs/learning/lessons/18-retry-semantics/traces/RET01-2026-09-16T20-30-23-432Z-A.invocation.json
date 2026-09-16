@@ -1,0 +1,31 @@
+{
+  "workflowId": "RET01-2026-09-16T20-30-23-432Z",
+  "invocationId": "RET01-2026-09-16T20-30-23-432Z-A",
+  "pid": 46323,
+  "ppid": 46322,
+  "phaseOnStart": "spec_required",
+  "phaseOnExit": "review_ready",
+  "stopAfter": "review_ready",
+  "workflowStatus": "paused",
+  "specDecision": "executable",
+  "implementationStarted": true,
+  "specModelCalls": 2,
+  "specToolCalls": 7,
+  "durableCheckpoint": "review_ready",
+  "implementationSkipped": false,
+  "preReviewVerifySkipped": false,
+  "reviewBaselineRestored": false,
+  "reviewAttempts": 0,
+  "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/RET01-2026-09-16T20-30-23-432Z-A.jsonl",
+  "finalVerificationPassed": true,
+  "finalReviewerOutcome": "skipped",
+  "workspaceId": "RET01-2026-09-16T20-30-23-432Z",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/RET01-2026-09-16T20-30-23-432Z",
+  "baseRevision": "abb6e51a944c5ddbafeb8984eaf62f57423b9a92",
+  "retry": null,
+  "lastRetryDecision": null,
+  "changedFiles": [
+    "tasks/task-service.ts"
+  ],
+  "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+}
