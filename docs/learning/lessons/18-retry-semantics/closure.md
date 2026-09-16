@@ -1,6 +1,6 @@
 # Module 18 — Retry Semantics — Closure
 
-**Status:** ✅ FORMALLY CLOSED BY TOPIC CHAT on 2026-09-17.
+**Status:** ✅ FORMALLY CLOSED BY TOPIC CHAT on 2026-09-17 and accepted by Master.
 
 ## Closure basis
 
@@ -86,4 +86,17 @@ permanent/policy failure                 → stop
 unknown mutating side effects            → reconcile or fail closed
 ```
 
-**Module 18 is complete. Do not start Module 19 automatically; the Master/Roadmap chat selects the next module.**
+## Master acceptance
+
+Master accepts the module because the executable mechanism matches the learned semantics:
+
+- retry admission is outside the model;
+- retry state survives process boundaries;
+- budget is consumed before execution, preventing restart-based budget reset;
+- the probe demonstrates the same logical operation across attempts;
+- semantic/domain failure is not mislabeled as retry;
+- unsafe mutating work remains explicitly unresolved instead of being made retryable by assumption.
+
+The result is intentionally narrow: **bounded durable retry for a retry-safe REVIEW operation**, not a generic retry platform.
+
+**Module 18 is complete. Next roadmap module: 19 — Orchestration as Distributed Systems.**
