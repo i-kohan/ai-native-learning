@@ -49,7 +49,23 @@ Attempts of one logical REVIEW share one `operationId`:
 <workflow-id>:review:<baseline-artifact-id>:round-<n>
 ```
 
-`attemptsStarted` is persisted **before** the attempt begins. A crash after persist still consumed the budget. Success or a later independent REVIEW of a repaired artifact clears or replaces that retry state.
+`attemptsStarted` is persisted **before** the attempt begins. A crash after persist still consumed the budget.
+
+Retry state stays on `review_ready` until the next durable semantic boundary:
+
+```text
+terminal persisted
+→ retry field gone with the phase
+
+or
+
+new logical REVIEW round
+→ new operationId replaces the old retry record
+```
+
+A valid in-memory REVIEW result does **not** clear the durable budget by itself. Otherwise a crash before terminal would reset `attemptsStarted` to a fresh attempt 1.
+
+Unknown `model_error` is not automatically transient. Only an explicit `transient_model_error` (timeout, 503, connection reset, and similar) is `retryable_transient`.
 
 This is a bounded durable budget. It is not exactly-once delivery or exactly-once execution.
 
@@ -89,3 +105,4 @@ It does **not** provide exactly-once semantics.
 3. Count attempts before execution so a crash cannot reset the budget.
 4. Retry-safe work may be retried; ambiguous mutation must reconcile or fail closed.
 5. A successful semantic result is required to advance; a lost result is not success.
+6. Unknown model errors fail closed; only known transient provider/execution failures retry.

@@ -1,0 +1,54 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure task completion state maintains the `completedAt` lifecycle field: completion records a timestamp and reopening clears it.",
+    "requirements": [
+      "When `TaskService.complete(id)` successfully completes a task, the returned and stored task must have `status: \"completed\"` and a non-empty timestamp string in `completedAt`.",
+      "When `TaskService.reopen(id)` successfully reopens a task, the returned and stored task must have `status: \"pending\"` and `completedAt: null`.",
+      "Preserve the existing not-found behavior for both operations: an unknown task returns `undefined`, and the routes continue returning HTTP 404 with `{ error: \"task_not_found\" }`.",
+      "The behavior must be observable through the existing POST `/tasks/:id/complete` and POST `/tasks/:id/reopen` routes, including subsequent reads/listing because the service stores the updated task."
+    ],
+    "constraints": [
+      "Use the existing `Task` shape, where `completedAt` is `string | null`; no schema or route changes are required.",
+      "A timestamp string may be generated with the platform's standard ISO timestamp representation (`new Date().toISOString()`), consistent with the TypeScript model and current tests' string/non-empty contract.",
+      "Do not change unrelated task creation, listing, filtering, or routing behavior."
+    ],
+    "nonGoals": [
+      "No requirement to add persistence beyond the service's existing in-memory map.",
+      "No requirement to change the timestamp format beyond it being a timestamp string.",
+      "No requirement to alter behavior for invalid requests or unknown task IDs."
+    ],
+    "acceptance": [
+      "A newly created task still has `completedAt: null`.",
+      "Completing an existing task returns HTTP 200, status `completed`, and a non-empty string `completedAt`.",
+      "Reopening that completed task returns HTTP 200, status `pending`, and `completedAt: null`.",
+      "The completed/reopened values remain correct when the task is fetched or listed afterward.",
+      "Existing task tests continue to pass, including 404 behavior and status filtering."
+    ],
+    "verification": [
+      "Run the repository test script: `npm test`.",
+      "Confirm the existing `complete and reopen` tests pass; they directly assert the required timestamp and clearing behavior.",
+      "Optionally add or retain service-level/API assertions that a task fetched after completion has the timestamp and after reopening has `null`, then rerun `npm test`."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp representation should be used?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a non-empty ISO 8601 timestamp string generated at completion, such as `new Date().toISOString()`.",
+        "basis": "The task requires a timestamp, `Task.completedAt` is typed as `string | null`, and the existing tests require only a non-empty string; ISO 8601 is the standard low-risk representation."
+      },
+      {
+        "question": "Should repeated completion of an already completed task preserve or replace its timestamp?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "The required contract applies when completion is performed; assigning a fresh timestamp on each successful complete operation is acceptable unless the implementation chooses to preserve an existing timestamp. No test or repository contract specifies repeated-completion timestamp identity.",
+        "basis": "The task and tests specify the transition to completed and reopening, but provide no repeated-completion identity requirement; this is a local implementation detail outside the requested behavior."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": false,
+  "workflowStatus": "success"
+}

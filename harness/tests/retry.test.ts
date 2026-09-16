@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  classifyCaughtReviewError,
   classifyReviewExecutionFailure,
   decideRetry,
   DEFAULT_MAX_REVIEW_RETRY_ATTEMPTS,
@@ -122,11 +123,55 @@ describe("RetryPolicy", () => {
     );
   });
 
-  it("classifies REVIEW provider/execution failure as retryable_transient", () => {
+  it("classifies known transient REVIEW execution failure as retryable_transient", () => {
     assert.equal(
-      classifyReviewExecutionFailure("model_error"),
+      classifyReviewExecutionFailure("transient_model_error"),
       "retryable_transient",
     );
+    assert.equal(
+      classifyCaughtReviewError({ status: 503, message: "overloaded" }),
+      "transient_model_error",
+    );
+    assert.equal(
+      classifyCaughtReviewError(new Error("ECONNRESET")),
+      "transient_model_error",
+    );
+    assert.deepEqual(
+      decideRetry({
+        operationKind: "review",
+        failureClass: classifyReviewExecutionFailure("transient_model_error"),
+        attemptsStarted: 1,
+        maxAttempts: 2,
+      }),
+      { action: "retry" },
+    );
+  });
+
+  it("does not treat generic/unknown model failure as retryable_transient", () => {
+    assert.equal(
+      classifyReviewExecutionFailure("model_error"),
+      "permanent_policy",
+    );
+    assert.equal(
+      classifyCaughtReviewError(new Error("Incorrect API key provided")),
+      "model_error",
+    );
+    assert.equal(
+      classifyCaughtReviewError({ status: 401, message: "Unauthorized" }),
+      "model_error",
+    );
+    assert.deepEqual(
+      decideRetry({
+        operationKind: "review",
+        failureClass: classifyReviewExecutionFailure("model_error"),
+        attemptsStarted: 1,
+        maxAttempts: 2,
+      }),
+      { action: "stop", reason: "permanent_policy" },
+    );
+  });
+
+  it("classifies invalid review payload as semantic_domain", () => {
     assert.equal(
       classifyReviewExecutionFailure("invalid_review"),
       "semantic_domain",
@@ -172,7 +217,7 @@ describe("durable REVIEW retry state", () => {
       },
     });
     assert.equal(result.status, "completed");
-    assert.deepEqual(events, ["persist:1", "run", "persist:0"]);
+    assert.deepEqual(events, ["persist:1", "run"]);
   });
 
   it("injects a transient first failure then admits a second attempt", async () => {
@@ -195,7 +240,60 @@ describe("durable REVIEW retry state", () => {
     assert.equal(persisted[0]?.attemptsStarted, 1);
     assert.equal(persisted[1]?.lastFailureClass, "retryable_transient");
     assert.equal(persisted[2]?.attemptsStarted, 2);
-    assert.equal(persisted[3], undefined);
+    assert.equal(persisted.at(-1)?.attemptsStarted, 2);
+  });
+
+  it("does not reset the durable retry budget if REVIEW succeeds before the next checkpoint", async () => {
+    let durable: DurableRetryState | undefined;
+    const first = await executeReviewWithRetry({
+      operationId: "wf-1:review:round-1",
+      currentRetry: undefined,
+      injectTransientOnAttempt: 1,
+      persistRetry: (retry) => {
+        durable = retry;
+      },
+      runReview: async () => ({ result: { status: "pass" } }),
+    });
+    assert.equal(first.status, "completed");
+    assert.equal(durable?.attemptsStarted, 2);
+    assert.equal(durable?.operationId, "wf-1:review:round-1");
+
+    let restartedRuns = 0;
+    const restart = await executeReviewWithRetry({
+      operationId: "wf-1:review:round-1",
+      currentRetry: durable,
+      persistRetry: (retry) => {
+        durable = retry;
+      },
+      runReview: async () => {
+        restartedRuns += 1;
+        return { result: { status: "pass" } };
+      },
+    });
+    if (restart.status !== "failed") {
+      throw new Error(`expected failed restart, got ${restart.status}`);
+    }
+    assert.equal(restart.decision.action, "stop");
+    assert.equal(restart.decision.reason, "retry_budget_exhausted");
+    assert.equal(restartedRuns, 0);
+    assert.equal(durable?.attemptsStarted, 2);
+  });
+
+  it("stops on generic model_error instead of retrying", async () => {
+    const result = await executeReviewWithRetry({
+      operationId: "wf-1:review:round-1",
+      currentRetry: undefined,
+      persistRetry: () => {},
+      runReview: async () => ({
+        result: null,
+        failureReason: "model_error",
+      }),
+    });
+    if (result.status !== "failed") {
+      throw new Error(`expected failed review, got ${result.status}`);
+    }
+    assert.equal(result.decision.action, "stop");
+    assert.equal(result.decision.reason, "permanent_policy");
   });
 
   it("can pause after retry admission so a fresh process owns the next attempt", async () => {
@@ -279,7 +377,15 @@ describe("RET01 decision rule", () => {
     assert.equal(assertions.retryDecisionFromHarness, true);
     assert.equal(assertions.workerNotRerun, true);
     assert.equal(assertions.preReviewVerifyNotRerun, true);
+    assert.equal(assertions.sameLogicalOperationId, true);
     assert.equal(Object.values(assertions).every(Boolean), true);
+  });
+
+  it("fails if attempt 2 uses a different logical operationId", () => {
+    const arm = passingRetryArm();
+    arm.invocations[2].reviewOperationId = "RET01:review:other:round-1";
+    const assertions = evaluateRetryAssertions(arm);
+    assert.equal(assertions.sameLogicalOperationId, false);
   });
 
   it("fails if Worker would have been retried blindly", () => {
@@ -332,6 +438,7 @@ function passingRetryArm(): RetryArmEvidence {
         preReviewVerifySkipped: true,
         reviewAttempts: 0,
         retry,
+        reviewOperationId: retry.operationId,
         lastRetryDecision: { action: "retry" },
         finalReviewerOutcome: "skipped",
       }),
@@ -346,6 +453,7 @@ function passingRetryArm(): RetryArmEvidence {
         preReviewVerifySkipped: true,
         reviewAttempts: 1,
         retry: null,
+        reviewOperationId: "RET01:review:baseline:round-1",
         finalReviewerOutcome: "pass",
       }),
     ],
@@ -389,6 +497,7 @@ function invocation(
     workspaceRoot: "/tmp/ws",
     baseRevision: "abc",
     retry: null,
+    reviewOperationId: null,
     lastRetryDecision: null,
     changedFiles: ["tasks/task-service.ts"],
     diffFingerprint: "aaaaaaaaaaaaaaaa",

@@ -15,12 +15,17 @@ import {
   type ReviewContext,
   type ReviewResult,
 } from "./review.ts";
+import { classifyCaughtReviewError } from "./retry.ts";
 import type { Tracer } from "./trace.ts";
 
 export type ReviewPhaseResult = {
   result: ReviewResult | null;
   parseOk: boolean;
-  failureReason?: "max_turns_exceeded" | "model_error" | "invalid_review";
+  failureReason?:
+    | "max_turns_exceeded"
+    | "model_error"
+    | "transient_model_error"
+    | "invalid_review";
   modelCalls: number;
   toolCalls: number;
   durationMs: number;
@@ -217,11 +222,11 @@ export async function runIndependentReview(options: {
         modelFinalResponse || "Review stopped: max_turns_exceeded";
     }
   } catch (error) {
-    failureReason = "model_error";
+    failureReason = classifyCaughtReviewError(error);
     modelFinalResponse = error instanceof Error ? error.message : String(error);
     tracer.record(
       "review_model_error",
-      { round, message: modelFinalResponse },
+      { round, message: modelFinalResponse, failureReason },
       turns || undefined,
     );
   }

@@ -1986,12 +1986,6 @@ async function runIndependentReviewLoop(options: {
           source: "harness_retry_policy",
         });
       },
-      onCleared: (clearedOperationId) => {
-        tracer.record("review_retry_cleared", {
-          operationId: clearedOperationId,
-          round,
-        });
-      },
     });
 
     if (executed.status === "paused") {

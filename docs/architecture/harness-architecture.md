@@ -153,7 +153,7 @@ Not started:
 - exactly-once semantics;
 - Temporal / queues / leases.
 
-Bounded REVIEW retry is implemented as a mechanism probe. It does not make mutating Worker execution retry-safe.
+Bounded REVIEW retry is implemented as a mechanism probe. It does not make mutating Worker execution retry-safe. REVIEW retry state stays on `review_ready` until the next durable semantic boundary (terminal, or a new logical `operationId`); a successful in-memory REVIEW result does not clear the budget by itself. Unknown `model_error` is not automatically transient.
 
 ### Experimental: `previous_response_id`
 

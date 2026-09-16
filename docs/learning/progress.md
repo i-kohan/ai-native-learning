@@ -21,7 +21,9 @@ Completed modules:
 15. ✅ 15 — Stronger Eval Methodology (closed by Master; see phase-3 consolidation)
 16. ✅ 16 — Durable Execution (closed by Topic Chat)
 
-Current module: **17 — Checkpoint / Resume** (mechanism implemented and measured; pending Topic Chat review). Not marked complete.
+Current module: **18 — Retry Semantics** (mechanism implemented and measured; pending Topic Chat review). Not marked complete.
+
+Module 17 remains implemented/measured; Topic Chat still owns its formal closure.
 
 ---
 
@@ -41,7 +43,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. Module 13 mechanism probe, not a change to the normal lifecycle;
 - optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker;
 - eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
-- opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path.
+- opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17) plus harness-owned bounded REVIEW retry on `review_ready` (Module 18). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path.
 
 Conceptual default flow:
 
@@ -60,6 +62,43 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 18 — Retry Semantics
+
+**Status:** implemented and measured. Mechanism probe RET01 **passed**. Topic Chat owns formal closure. Not marked complete.
+
+Theory draft:
+
+`docs/learning/lessons/18-retry-semantics/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/18-retry-semantics/notes.md`
+
+## What was implemented
+
+Harness-owned `RetryPolicy` and durable REVIEW retry on `review_ready`:
+
+- `attemptsStarted` persisted before execution;
+- known `transient_model_error` → `retryable_transient`; unknown `model_error` fail-closed;
+- retry state stays until the next durable semantic boundary (terminal or new `operationId`);
+- Worker `ambiguous_side_effect` → `needs_reconciliation`, never blind retry.
+
+## Important design decisions
+
+Retry ≠ resume ≠ repair. Budget is harness-owned. REVIEW is retry-safe; Worker mutation is not. No exactly-once claim. No generic transaction framework.
+
+## Current result
+
+RET01 passed (2026-09-16). Fresh A/B/C processes. Same `operationId` across attempt 1 and 2. Harness unit tests: **221 passed**, including Module 17 checkpoint tests.
+
+Evidence: `docs/learning/lessons/18-retry-semantics/traces/RET01-retry-2026-09-16T21-16-22-470Z.txt`
+
+## Failures / open questions
+
+Topic Chat owns formal closure. Worker reconciliation, leases, and exactly-once remain out of scope.
 
 ---
 

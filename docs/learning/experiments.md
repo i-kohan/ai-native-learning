@@ -1906,4 +1906,51 @@ Hardened identity rerun (2026-09-14): expected/A/B review delta identity matched
 
 Hypothesis supported for this second checkpoint. Default `runV1Harness()` stays in-memory unless `durable` is opted in. Crash-before-`review_ready` remains `implementation_ready` and fail-closed on dirty workspace. Retry/idempotency/reconciliation stay out of scope.
 
-Module 17 experiment recorded; Topic Chat owns formal closure. Do not start Module 18.
+Module 17 experiment recorded; Topic Chat owns formal closure.
+
+---
+
+## Module 18 — Retry semantics (RET01 mechanism probe)
+
+### Hypothesis
+
+A harness-owned durable REVIEW retry can survive a genuine process restart: attempt 1 of one logical REVIEW hits a known transient execution failure, the budget is persisted before execution, and a fresh process starts attempt 2 of the same `operationId` without rerunning Worker or pre-review VERIFY.
+
+### What this experiment is
+
+A **bounded REVIEW retry probe**. Not Worker reconciliation, not exactly-once, not a generic workflow engine.
+
+```text
+A: persist review_ready → exit
+B: REVIEW attempt 1 → inject transient_model_error → harness retry admission → pause
+C: fresh process → REVIEW attempt 2 PASS → terminal
+```
+
+Task: T02 (DEV). Holdout unused.
+
+### Decision rule
+
+Pass only if the 13 RET01 criteria hold, including `sameLogicalOperationId` across attempt 1 and 2.
+
+### Results (2026-09-16)
+
+Command: `npm run benchmark:ret01`
+
+Evidence: `docs/learning/lessons/18-retry-semantics/traces/RET01-retry-2026-09-16T21-16-22-470Z.txt`
+
+Harness unit tests: **221 passed**, including Module 17 checkpoint tests.
+
+| Arm | pid | start → exit | Worker | pre-review VERIFY | REVIEW |
+| --- | ---: | --- | --- | --- | --- |
+| A | 43624 | spec_required → review_ready | yes | PASS | skipped |
+| B | 45299 | review_ready → review_ready | skipped | skipped | attempt 1 injected transient |
+| C | 45311 | review_ready → terminal | skipped | skipped | attempt 2 pass |
+
+Same `operationId` across B and C. Retry state is not cleared merely because REVIEW returned a result; it disappears when terminal (or a new logical round) is persisted.
+
+### Conclusion
+
+Hypothesis supported for bounded REVIEW retry. Unknown `model_error` is not automatically transient. Worker `ambiguous_side_effect` remains `needs_reconciliation`. Default `runV1Harness()` stays in-memory unless `durable` is opted in.
+
+Module 18 experiment recorded; Topic Chat owns formal closure.
+

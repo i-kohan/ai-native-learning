@@ -1,0 +1,32 @@
+{
+  "workflowId": "CHK01-control-2026-09-16T21-16-43-968Z",
+  "invocationId": "CHK01-control-2026-09-16T21-16-43-968Z-control",
+  "pid": 46478,
+  "ppid": 46477,
+  "phaseOnStart": "spec_required",
+  "phaseOnExit": "terminal",
+  "stopAfter": null,
+  "workflowStatus": "success",
+  "specDecision": "executable",
+  "implementationStarted": true,
+  "specModelCalls": 2,
+  "specToolCalls": 7,
+  "durableCheckpoint": null,
+  "implementationSkipped": false,
+  "preReviewVerifySkipped": false,
+  "reviewBaselineRestored": false,
+  "reviewAttempts": 1,
+  "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/CHK01-control-2026-09-16T21-16-43-968Z-control.jsonl",
+  "finalVerificationPassed": true,
+  "finalReviewerOutcome": "pass",
+  "workspaceId": "CHK01-control-2026-09-16T21-16-43-968Z",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/CHK01-control-2026-09-16T21-16-43-968Z",
+  "baseRevision": "3e10b5b4c3fa167a1fb4e02a6715cb9795c4ff45",
+  "retry": null,
+  "reviewOperationId": "CHK01-control-2026-09-16T21-16-43-968Z:review:CHK01-control-2026-09-16T21-16-43-968Z.review-baseline:round-1",
+  "lastRetryDecision": null,
+  "changedFiles": [
+    "tasks/task-service.ts"
+  ],
+  "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+}

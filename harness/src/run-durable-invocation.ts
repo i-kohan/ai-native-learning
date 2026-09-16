@@ -52,6 +52,9 @@ async function main(): Promise<void> {
     baseRevision:
       result.workspace?.baseRevision ?? after.workspace.baseRevision,
     retry: after.phase === "review_ready" ? (after.retry ?? null) : null,
+    reviewOperationId:
+      result.durableRetry?.operationId ??
+      (after.phase === "review_ready" ? (after.retry?.operationId ?? null) : null),
     lastRetryDecision: result.lastRetryDecision ?? null,
     ...reviewDeltaIdentity(result.changedFiles, result.unifiedDiff),
   };

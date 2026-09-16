@@ -42,6 +42,7 @@ export type RetryInvocationEvidence = {
   workspaceRoot: string | null;
   baseRevision: string | null;
   retry: DurableRetryState | null;
+  reviewOperationId: string | null;
   lastRetryDecision: RetryDecision | null;
   changedFiles: string[];
   diffFingerprint: string;
@@ -90,7 +91,8 @@ const DECISION_RULE = [
   "9. Worker is not rerun in B or C.",
   "10. pre-review VERIFY is not rerun in B or C.",
   "11. independent REVIEW still runs and a successful REVIEW result is required.",
-  "12. final workflow state is terminal.",
+  "12. attempt 1 and attempt 2 share one logical operationId.",
+  "13. final workflow state is terminal.",
 ].join("\n");
 
 export async function runRetryProbe(options: {
@@ -215,6 +217,19 @@ export function evaluateRetryAssertions(
       processC.workflowStatus === "success" &&
       processC.finalReviewerOutcome === "pass" &&
       (!hasCTrace || arm.reviewCompletedPassCount >= 1),
+    sameLogicalOperationId:
+      Boolean(processB?.reviewOperationId) &&
+      processB.reviewOperationId === processC?.reviewOperationId &&
+      (!hasBTrace ||
+        (bTrace.operationIds.length > 0 &&
+          bTrace.operationIds.every(
+            (id) => id === processB.reviewOperationId,
+          ))) &&
+      (!hasCTrace ||
+        (cTrace.operationIds.length > 0 &&
+          cTrace.operationIds.every(
+            (id) => id === processC.reviewOperationId,
+          ))),
     terminalPersisted:
       processC?.phaseOnExit === "terminal" && arm.terminalPhase === "terminal",
   };
@@ -421,6 +436,7 @@ function inspectTrace(tracePath: string): {
   reviewRetryAttemptsStarted: number[];
   durableAttemptsStarted: number[];
   reviewCompletedPassCount: number;
+  operationIds: string[];
 } {
   const empty = {
     workerStarted: 0,
@@ -435,6 +451,7 @@ function inspectTrace(tracePath: string): {
     reviewRetryAttemptsStarted: [] as number[],
     durableAttemptsStarted: [] as number[],
     reviewCompletedPassCount: 0,
+    operationIds: [] as string[],
   };
   if (!tracePath || !fs.existsSync(tracePath)) {
     return empty;
@@ -501,6 +518,10 @@ function inspectTrace(tracePath: string): {
     reviewCompletedPassCount: events.filter(
       (item) => item.event === "review_completed" && item.status === "pass",
     ).length,
+    operationIds: events
+      .filter((item) => item.event === "review_retry_attempt_started")
+      .map((item) => item.operationId)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
   };
 }
 
@@ -561,7 +582,7 @@ function formatRetryReport(result: RetryProbeResult): string {
     `terminal_phase: ${result.arm.terminalPhase ?? "(none)"}`,
     ...result.arm.invocations.map(
       (item) =>
-        `  ${item.invocationId} pid=${item.pid} start=${item.phaseOnStart} exit=${item.phaseOnExit} skippedWorker=${item.implementationSkipped ? "yes" : "no"} skippedVerify=${item.preReviewVerifySkipped ? "yes" : "no"} reviews=${item.reviewAttempts} retryAttempts=${item.retry?.attemptsStarted ?? 0} lastClass=${item.retry?.lastFailureClass ?? "(none)"} decision=${item.lastRetryDecision?.action ?? "(none)"} status=${item.workflowStatus}`,
+        `  ${item.invocationId} pid=${item.pid} start=${item.phaseOnStart} exit=${item.phaseOnExit} skippedWorker=${item.implementationSkipped ? "yes" : "no"} skippedVerify=${item.preReviewVerifySkipped ? "yes" : "no"} reviews=${item.reviewAttempts} retryAttempts=${item.retry?.attemptsStarted ?? 0} operationId=${item.reviewOperationId ?? item.retry?.operationId ?? "(none)"} lastClass=${item.retry?.lastFailureClass ?? "(none)"} decision=${item.lastRetryDecision?.action ?? "(none)"} status=${item.workflowStatus}`,
     ),
     "",
     "Assertions",

@@ -23,7 +23,11 @@ export type DurableRetryState = {
 
 export type ReviewRetryExecutorResult = {
   result: unknown | null;
-  failureReason?: "max_turns_exceeded" | "model_error" | "invalid_review";
+  failureReason?:
+    | "max_turns_exceeded"
+    | "model_error"
+    | "transient_model_error"
+    | "invalid_review";
 };
 
 export type ReviewRetryOutcome<T extends ReviewRetryExecutorResult> =
@@ -90,7 +94,7 @@ export function logicalReviewId(
 export function classifyReviewExecutionFailure(
   failureReason: ReviewRetryExecutorResult["failureReason"],
 ): RetryFailureClass {
-  if (failureReason === "model_error") {
+  if (failureReason === "transient_model_error") {
     return "retryable_transient";
   }
   if (
@@ -99,7 +103,31 @@ export function classifyReviewExecutionFailure(
   ) {
     return "semantic_domain";
   }
-  return "retryable_transient";
+  return "permanent_policy";
+}
+
+export function classifyCaughtReviewError(
+  error: unknown,
+): "transient_model_error" | "model_error" {
+  const status = errorStatus(error);
+  if (
+    status === 429 ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  ) {
+    return "transient_model_error";
+  }
+  const message = errorMessage(error).toLowerCase();
+  if (
+    /econnreset|etimedout|econnrefused|enotfound|socket hang up|timeout|429|503|502|504|rate limit|overloaded|temporarily unavailable|connection reset/.test(
+      message,
+    )
+  ) {
+    return "transient_model_error";
+  }
+  return "model_error";
 }
 
 export function startRetryAttempt(options: {
@@ -208,7 +236,7 @@ export async function executeReviewWithRetry<
   maxAttempts?: number;
   injectTransientOnAttempt?: number;
   stopAfterRetryAdmission?: boolean;
-  persistRetry: (retry: DurableRetryState | undefined) => void;
+  persistRetry: (retry: DurableRetryState) => void;
   runReview: () => Promise<T>;
   onAttemptStarted?: (retry: DurableRetryState) => void;
   onInjectedFailure?: (retry: DurableRetryState) => void;
@@ -217,7 +245,6 @@ export async function executeReviewWithRetry<
     failureClass: RetryFailureClass;
     decision: RetryDecision;
   }) => void;
-  onCleared?: (operationId: string) => void;
 }): Promise<ReviewRetryOutcome<T>> {
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_REVIEW_RETRY_ATTEMPTS;
   let retry = sameRetryOperation(options.currentRetry, options.operationId);
@@ -254,15 +281,13 @@ export async function executeReviewWithRetry<
       options.onInjectedFailure?.(started);
       review = {
         result: null,
-        failureReason: "model_error",
+        failureReason: "transient_model_error",
       } as T;
     } else {
       review = await options.runReview();
     }
 
     if (review.result) {
-      options.persistRetry(undefined);
-      options.onCleared?.(options.operationId);
       return {
         status: "completed",
         review,
@@ -336,8 +361,33 @@ function failedReviewStub<T extends ReviewRetryExecutorResult>(
   return {
     result: null,
     failureReason:
-      failureClass === "retryable_transient" ? "model_error" : "invalid_review",
+      failureClass === "retryable_transient"
+        ? "transient_model_error"
+        : "invalid_review",
   } as T;
+}
+
+function errorStatus(error: unknown): number | undefined {
+  if (!isRecord(error)) {
+    return undefined;
+  }
+  if (typeof error.status === "number") {
+    return error.status;
+  }
+  if (typeof error.statusCode === "number") {
+    return error.statusCode;
+  }
+  if (isRecord(error.cause)) {
+    return errorStatus(error.cause);
+  }
+  return undefined;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
 }
 
 function isRetryOperationKind(value: unknown): value is RetryOperationKind {

@@ -1,0 +1,55 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion lifecycle behavior so completed tasks expose a completion timestamp and reopened tasks clear it.",
+    "requirements": [
+      "In `TaskService.complete`, when an existing task is completed, set `completedAt` to a generated timestamp string while setting status to `completed`.",
+      "In `TaskService.reopen`, when an existing task is reopened, set status to `pending` and `completedAt` to `null`.",
+      "Preserve existing not-found behavior and route response shapes for complete and reopen operations.",
+      "Keep newly created tasks pending with `completedAt: null`."
+    ],
+    "constraints": [
+      "`Task.completedAt` is typed as `string | null`; use a serialized timestamp string compatible with that type (an ISO 8601 string is the repository-consistent implementation choice).",
+      "Changes should be limited to the task lifecycle behavior; no API routing or unrelated task behavior changes are needed.",
+      "Do not alter the existing 404 responses for unknown task IDs."
+    ],
+    "nonGoals": [
+      "Changing task creation, listing, filtering, title validation, or ID generation.",
+      "Changing the HTTP methods, paths, status codes, or response envelopes.",
+      "Defining persistence beyond the in-memory `TaskService` already used by the app."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns status `200`, status `completed`, and a non-empty timestamp string in `completedAt`.",
+      "The completed task retains that `completedAt` value when read through the service/API until it is reopened.",
+      "Reopening a completed task returns status `200`, status `pending`, and `completedAt: null`.",
+      "The reopened task also has `completedAt: null` when subsequently read or listed.",
+      "Unknown task IDs continue to return `404` with `{ error: \"task_not_found\" }`.",
+      "Existing task tests pass, including the completion and reopen cases in `tests/tasks.test.ts`."
+    ],
+    "verification": [
+      "Run the repository test script: `npm test`.",
+      "Confirm the existing `complete and reopen` tests pass.",
+      "If adding or extending tests, cover completion timestamp presence, reopening clearing the field, and persistence of both resulting values through subsequent reads/listing."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp serialization should be used for `completedAt`?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use `new Date().toISOString()` (or equivalent ISO 8601 serialization), yielding the required string timestamp while matching the existing `string | null` type.",
+        "basis": "The task requires a timestamp, `Task.completedAt` is typed as `string | null`, and the existing tests require a non-empty string but impose no more specific format; ISO 8601 is the standard low-risk representation."
+      },
+      {
+        "question": "What should happen if the complete endpoint is called for a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "The required behavior is the pending-to-completed transition; no additional product rule is needed for repeated completion calls. Implement the stated transition and do not change unrelated lifecycle semantics.",
+        "basis": "The task wording specifies behavior when a task becomes completed, and the repository only tests the pending-to-completed transition; this change request does not define repeated-completion semantics."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": false,
+  "workflowStatus": "paused"
+}
