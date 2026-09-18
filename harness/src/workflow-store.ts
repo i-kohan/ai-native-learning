@@ -82,7 +82,8 @@ export function saveWorkflowStateOwned(options: {
   });
 }
 
-export function saveWorkflowState(
+/** Fixture/bootstrap only. Durable transitions must use saveWorkflowStateOwned. */
+export function saveWorkflowStateUnfenced(
   storeDir: string,
   state: WorkflowState,
 ): void {

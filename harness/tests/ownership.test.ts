@@ -19,13 +19,17 @@ import {
   releaseWorkflowLease,
   renewWorkflowLease,
 } from "../src/workflow-lease-store.ts";
-import { WorkflowError } from "../src/workflow-error.ts";
+import {
+  acquireWorkflowMutex,
+  releaseWorkflowMutex,
+} from "../src/workflow-lock.ts";
 import {
   initializeWorkflow,
   loadWorkflowState,
   saveWorkflowStateOwned,
 } from "../src/workflow-store.ts";
 import { admitTerminal } from "../src/workflow-state.ts";
+import { WorkflowError } from "../src/workflow-error.ts";
 
 function tmpStore(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "own01-"));
@@ -402,6 +406,175 @@ describe("fenced WorkflowState save", () => {
   });
 });
 
+describe("short mutex does not steal a live holder", () => {
+  it("releases a mutex so a later acquire can proceed", () => {
+    const storeDir = tmpStore();
+    const workflowId = "wf-mutex-reuse";
+    const first = acquireWorkflowMutex({ storeDir, workflowId });
+    releaseWorkflowMutex(first);
+    const second = acquireWorkflowMutex({
+      storeDir,
+      workflowId,
+      timeoutMs: 500,
+    });
+    releaseWorkflowMutex(second);
+  });
+
+  it("does not let a previous holder delete a newer mutex in-process", () => {
+    const storeDir = tmpStore();
+    const workflowId = "wf-mutex-stale-inprocess";
+    const first = acquireWorkflowMutex({ storeDir, workflowId });
+    releaseWorkflowMutex(first);
+    const second = acquireWorkflowMutex({
+      storeDir,
+      workflowId,
+      timeoutMs: 500,
+    });
+    first.released = false;
+    releaseWorkflowMutex(first);
+    assert.throws(
+      () =>
+        acquireWorkflowMutex({
+          storeDir,
+          workflowId,
+          timeoutMs: 200,
+        }),
+      /Timed out waiting for workflow mutex/,
+    );
+    releaseWorkflowMutex(second);
+  });
+
+  it("does not let elapsed time bypass a paused mutex holder", async () => {
+    const storeDir = tmpStore();
+    const workflowId = "wf-mutex-pause";
+    const readyPath = path.join(storeDir, "a-ready.json");
+    const stillHeldPath = path.join(storeDir, "a-still-held.json");
+    const donePath = path.join(storeDir, "a-done.json");
+    const resultPath = path.join(storeDir, "b-result.json");
+    const holder = spawnMutexChild([
+      "--role",
+      "hold-sleep",
+      "--store-dir",
+      storeDir,
+      "--workflow-id",
+      workflowId,
+      "--hold-ms",
+      "6200",
+      "--ready-path",
+      readyPath,
+      "--still-held-path",
+      stillHeldPath,
+      "--done-path",
+      donePath,
+    ]);
+    await waitForFileAsync(readyPath);
+    const challenger = spawnMutexChild([
+      "--role",
+      "try-lock",
+      "--store-dir",
+      storeDir,
+      "--workflow-id",
+      workflowId,
+      "--wait-path",
+      readyPath,
+      "--timeout-ms",
+      "5500",
+      "--result-path",
+      resultPath,
+    ]);
+    await Promise.all([holder.done, challenger.done]);
+    const result = JSON.parse(fs.readFileSync(resultPath, "utf8")) as {
+      entered: boolean;
+      timedOut: boolean;
+    };
+    assert.equal(result.entered, false);
+    assert.equal(result.timedOut, true);
+    assert.equal(fs.existsSync(stillHeldPath), true);
+  });
+
+  it("does not let a previous holder delete a newer mutex", async () => {
+    const storeDir = tmpStore();
+    const workflowId = "wf-mutex-stale-release";
+    const aReady = path.join(storeDir, "a-ready.json");
+    const goRelease = path.join(storeDir, "go-release");
+    const aReleased = path.join(storeDir, "a-released.json");
+    const goStale = path.join(storeDir, "go-stale");
+    const aStaleDone = path.join(storeDir, "a-stale-done.json");
+    const bReady = path.join(storeDir, "b-ready.json");
+    const bDone = path.join(storeDir, "b-done");
+    const bStillHeld = path.join(storeDir, "b-still-held.json");
+    const cResult = path.join(storeDir, "c-result.json");
+
+    const processA = spawnMutexChild([
+      "--role",
+      "stale-release",
+      "--store-dir",
+      storeDir,
+      "--workflow-id",
+      workflowId,
+      "--ready-path",
+      aReady,
+      "--wait-release-path",
+      goRelease,
+      "--released-path",
+      aReleased,
+      "--wait-stale-path",
+      goStale,
+      "--stale-done-path",
+      aStaleDone,
+    ]);
+    await waitForFileAsync(aReady);
+    fs.writeFileSync(goRelease, "go\n");
+    await waitForFileAsync(aReleased);
+
+    const processB = spawnMutexChild([
+      "--role",
+      "hold-until",
+      "--store-dir",
+      storeDir,
+      "--workflow-id",
+      workflowId,
+      "--wait-path",
+      aReleased,
+      "--ready-path",
+      bReady,
+      "--wait-done-path",
+      bDone,
+      "--still-held-path",
+      bStillHeld,
+    ]);
+    await waitForFileAsync(bReady);
+    fs.writeFileSync(goStale, "go\n");
+    await waitForFileAsync(aStaleDone);
+
+    const processC = spawnMutexChild([
+      "--role",
+      "try-lock",
+      "--store-dir",
+      storeDir,
+      "--workflow-id",
+      workflowId,
+      "--wait-path",
+      aStaleDone,
+      "--timeout-ms",
+      "400",
+      "--result-path",
+      cResult,
+    ]);
+    await processC.done;
+    fs.writeFileSync(bDone, "done\n");
+    await Promise.all([processA.done, processB.done]);
+
+    const c = JSON.parse(fs.readFileSync(cResult, "utf8")) as {
+      entered: boolean;
+      timedOut: boolean;
+    };
+    assert.equal(c.entered, false);
+    assert.equal(c.timedOut, true);
+    assert.equal(fs.existsSync(bStillHeld), true);
+  });
+});
+
 describe("cross-process acquire mutex", () => {
   it("allows only one of two racing processes to acquire", async () => {
     const storeDir = tmpStore();
@@ -566,6 +739,36 @@ function sampleProcess(
   };
 }
 
+function spawnMutexChild(args: string[]) {
+  const harnessDir = path.dirname(fileURLToPath(import.meta.url));
+  const script = path.join(harnessDir, "mutex-child.ts");
+  const tsxCli = path.join(REPO_ROOT, "harness/node_modules/tsx/dist/cli.mjs");
+  const child = spawn(process.execPath, [tsxCli, script, ...args], {
+    cwd: path.join(REPO_ROOT, "harness"),
+    env: process.env,
+    stdio: "inherit",
+  });
+  return { child, done: waitChild(child) };
+}
+
+function waitForFileAsync(filePath: string, timeoutMs = 20_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve, reject) => {
+    const poll = (): void => {
+      if (fs.existsSync(filePath)) {
+        resolve();
+        return;
+      }
+      if (Date.now() >= deadline) {
+        reject(new Error(`Timed out waiting for ${filePath}`));
+        return;
+      }
+      setTimeout(poll, 20);
+    };
+    poll();
+  });
+}
+
 function spawnTryAcquire(
   storeDir: string,
   workflowId: string,
@@ -617,6 +820,10 @@ function waitSpawned(child: ReturnType<typeof spawn>): Promise<void> {
 
 function waitChild(child: ReturnType<typeof spawn>): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      resolve();
+      return;
+    }
     child.once("error", reject);
     child.once("exit", () => resolve());
   });

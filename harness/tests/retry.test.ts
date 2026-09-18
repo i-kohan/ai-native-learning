@@ -23,7 +23,7 @@ import {
 import {
   initializeWorkflow,
   loadWorkflowState,
-  saveWorkflowState,
+  saveWorkflowStateUnfenced,
 } from "../src/workflow-store.ts";
 import {
   admitImplementationReady,
@@ -341,7 +341,7 @@ describe("durable REVIEW retry state", () => {
         attempt: 1,
       },
     });
-    saveWorkflowState(storeDir, ready);
+    saveWorkflowStateUnfenced(storeDir, ready);
     const withRetry = admitReviewRetryState({
       current: ready,
       retry: startRetryAttempt({
@@ -354,7 +354,7 @@ describe("durable REVIEW retry state", () => {
         maxAttempts: 2,
       }),
     });
-    saveWorkflowState(storeDir, withRetry);
+    saveWorkflowStateUnfenced(storeDir, withRetry);
     const loaded = loadWorkflowState(storeDir, "wf-retry");
     assert.equal(loaded.phase, "review_ready");
     if (loaded.phase !== "review_ready") {

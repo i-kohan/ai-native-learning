@@ -1,16 +1,23 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { sanitizeWorkflowId } from "./workflow-id.ts";
 
-const MUTEX_STALE_MS = 5_000;
+export const DEFAULT_WORKFLOW_MUTEX_TIMEOUT_MS = 5_000;
+
 const MUTEX_WAIT_MS = 5;
-const MUTEX_TIMEOUT_MS = 5_000;
+
+export type WorkflowMutexHandle = {
+  lockPath: string;
+  token: string;
+  released: boolean;
+};
 
 export function workflowMutexPath(
   storeDir: string,
   workflowId: string,
 ): string {
-  return path.join(storeDir, `${sanitizeWorkflowId(workflowId)}.mutex`);
+  return path.join(storeDir, `${sanitizeWorkflowId(workflowId)}.mutex.lock`);
 }
 
 export function withWorkflowLock<T>(
@@ -18,60 +25,78 @@ export function withWorkflowLock<T>(
   workflowId: string,
   fn: () => T,
 ): T {
-  const lockDir = workflowMutexPath(storeDir, workflowId);
-  acquireMutex(lockDir);
+  const handle = acquireWorkflowMutex({ storeDir, workflowId });
   try {
     return fn();
   } finally {
-    releaseMutex(lockDir);
+    releaseWorkflowMutex(handle);
   }
 }
 
-function acquireMutex(lockDir: string): void {
-  fs.mkdirSync(path.dirname(lockDir), { recursive: true });
-  const deadline = Date.now() + MUTEX_TIMEOUT_MS;
+export function acquireWorkflowMutex(options: {
+  storeDir: string;
+  workflowId: string;
+  timeoutMs?: number;
+}): WorkflowMutexHandle {
+  const lockPath = workflowMutexPath(options.storeDir, options.workflowId);
+  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+  const timeoutMs = options.timeoutMs ?? DEFAULT_WORKFLOW_MUTEX_TIMEOUT_MS;
+  const flags =
+    fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_RDWR;
+  const deadline = Date.now() + timeoutMs;
   while (true) {
     try {
-      fs.mkdirSync(lockDir);
-      return;
+      const token = randomUUID();
+      const fd = fs.openSync(lockPath, flags);
+      try {
+        fs.writeFileSync(fd, `${token}\n`);
+      } catch (error) {
+        try {
+          fs.unlinkSync(lockPath);
+        } catch {
+          // This process created the file; fail closed if cleanup also fails.
+        }
+        throw error;
+      } finally {
+        fs.closeSync(fd);
+      }
+      return { lockPath, token, released: false };
     } catch (error) {
       if (!isAlreadyExists(error)) {
         throw error;
       }
       if (Date.now() >= deadline) {
-        throw new Error(`Timed out waiting for workflow mutex: ${lockDir}`);
-      }
-      if (isMutexStale(lockDir)) {
-        try {
-          fs.rmSync(lockDir, { recursive: true, force: true });
-        } catch {
-          // Another process may have recovered the stale mutex first.
-        }
-        continue;
+        throw new Error(`Timed out waiting for workflow mutex: ${lockPath}`);
       }
       sleepSync(MUTEX_WAIT_MS);
     }
   }
 }
 
-function releaseMutex(lockDir: string): void {
+export function releaseWorkflowMutex(handle: WorkflowMutexHandle): void {
+  if (handle.released) {
+    return;
+  }
+  handle.released = true;
+  const current = readHolderToken(handle.lockPath);
+  if (current !== handle.token) {
+    return;
+  }
+  // Safe under this protocol: a replacement lock cannot be created while this
+  // file exists. Not a general compare-and-delete. External unlink is unsupported.
   try {
-    fs.rmdirSync(lockDir);
+    fs.unlinkSync(handle.lockPath);
   } catch {
-    try {
-      fs.rmSync(lockDir, { recursive: true, force: true });
-    } catch {
-      // Best-effort unlock; a later stale timeout can recover.
-    }
+    // Already gone; do not delete a replacement lock.
   }
 }
 
-function isMutexStale(lockDir: string): boolean {
+function readHolderToken(lockPath: string): string | null {
   try {
-    const stat = fs.statSync(lockDir);
-    return Date.now() - stat.mtimeMs > MUTEX_STALE_MS;
+    const raw = fs.readFileSync(lockPath, "utf8").trim();
+    return raw.length > 0 ? raw : null;
   } catch {
-    return false;
+    return null;
   }
 }
 

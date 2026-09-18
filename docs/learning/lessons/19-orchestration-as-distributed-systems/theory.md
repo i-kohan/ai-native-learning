@@ -60,7 +60,7 @@ This is **not**:
 - workspace/tool fencing;
 - exactly-once execution.
 
-`saveWorkflowState` remains a fixture/bootstrap writer (mutex only). Durable `run.ts` transitions go through `saveWorkflowStateOwned`.
+`saveWorkflowStateUnfenced` is fixture/bootstrap-only. Durable `run.ts` transitions go through `saveWorkflowStateOwned`. Low-level atomic JSON replace is private.
 
 ## Practical observations
 
@@ -68,6 +68,7 @@ This is **not**:
 2. Same `ownerId` after expiry must start a new epoch. Silent renew would hide a fencing gap.
 3. Distinguishing A’s and B’s commits (`commit-from-A` vs `commit-from-B`) is what makes final-state evidence meaningful.
 4. Production durable runs use a 30-minute TTL because this module implements `renew()` but not a background heartbeat.
+5. Time-based mutex steal is unsafe: a paused holder is not dead. Prefer a wedged lock after crash over two processes in one critical section.
 
 ## Failures / trade-offs
 

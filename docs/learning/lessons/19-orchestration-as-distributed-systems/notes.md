@@ -20,7 +20,7 @@ Expiry does not kill process A. A can wake later. Authoritative writes still fai
 ## Learning-critical files
 
 1. `harness/src/workflow-lease.ts` — lease types, parse, file clock.
-2. `harness/src/workflow-lock.ts` — short per-workflow `mkdir` mutex (not the lease).
+2. `harness/src/workflow-lock.ts` — short per-workflow exclusive file lock (not the lease).
 3. `harness/src/workflow-lease-store.ts` — acquire / renew / release.
 4. `harness/src/workflow-store.ts` — `saveWorkflowStateOwned` under the same mutex.
 5. `harness/src/run.ts` — durable invocations generate `ownerId`, acquire, fenced persist, release.
@@ -35,7 +35,31 @@ mutex  = milliseconds; serializes read → decide → persist
 lease  = ownership liveness + fencing epoch
 ```
 
-`mkdir` is the atomic lock primitive. The mutex has a 5s stale recovery on system time so a crashed critical section cannot wedge the control plane. That recovery is **not** takeover of the workflow lease.
+The short mutex is `O_CREAT | O_EXCL` plus a unique holder token, with a bounded wait timeout and **no** stale-time deletion.
+
+Acquire:
+
+```text
+prepare holder token
+→ atomic exclusive create
+→ write that token through the same fd
+→ close fd
+→ mutex acquired
+```
+
+If the token write fails after this process created the file, the fd is closed and the just-created file is unlinked when we still know we created it. Otherwise fail closed. No mtime/PID steal.
+
+Release:
+
+```text
+read current token
+if current != handle token → do nothing
+otherwise unlink the lock file
+```
+
+That unlink is safe **under this protocol** because a replacement holder cannot be created while the lock file exists. It is not a general atomic compare-and-delete. Manual/external removal of the mutex file while a process still owns it is outside the supported protocol.
+
+A paused holder keeps the file, so elapsed time cannot let another process in. If a process dies while holding the short mutex, the mutex file may remain and future callers time out. This learning implementation intentionally fails closed rather than guessing that a holder is dead. That is not workflow-lease takeover.
 
 ## Semantics
 
@@ -81,7 +105,12 @@ final WorkflowState = B
 
 Evidence: `traces/OWN01-ownership-2026-09-18T07-34-27-366Z.txt`
 
-Harness unit tests: **235 passed**, including a two-process acquire race (exactly one winner).
+Harness unit tests: **239 passed**, including:
+
+- paused holder > old 5s stale threshold is not bypassed (challenger times out);
+- normal release then later acquire succeeds;
+- previous holder cannot unlink a newer mutex;
+- two-process acquire race has exactly one winner.
 
 ## Regression
 
@@ -106,6 +135,8 @@ cd harness && npm run benchmark:ret01
 Fencing protects WorkflowState/lease writes that check the token.
 
 It does **not** prove a stale worker cannot already have done `fs.writeFile`, worktree mutation, `git push`, network/API, or DB writes.
+
+Mutex crash behavior: if a process dies while holding the short mutex, the mutex file may remain and future callers time out. This learning implementation intentionally fails closed rather than guessing that a holder is dead. A live/paused holder cannot be bypassed because time elapsed.
 
 ## Closure decision
 

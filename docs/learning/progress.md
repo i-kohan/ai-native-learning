@@ -90,11 +90,13 @@ Single-machine durable workflow ownership:
 
 ## Important design decisions
 
-Lease ≠ mutex. Expiry does not stop the old process. Authoritative writes reject a stale fencing token. Renew does not increment the token. Release does not reset the token. No scheduler, queue, heartbeat loop, or workspace fencing.
+Lease ≠ mutex. The short mutex is an `O_EXCL` lock file with a holder token, not a 5s stale-delete. Expiry does not stop the old process. Authoritative writes reject a stale fencing token. Renew does not increment the token. Release does not reset the token. No scheduler, queue, heartbeat loop, or workspace fencing.
+
+`saveWorkflowState()` is no longer a public unfenced durable API; fixtures use `saveWorkflowStateUnfenced`.
 
 ## Current result
 
-OWN01 passed (2026-09-18). Separate OS processes. Virtual file clock (no 30s sleeps). A token=1; B blocked while valid; after expiry B token=2; stale A commit/renew/release rejected; B commit `commit-from-B` is the final WorkflowState. Harness unit tests: **235 passed**.
+OWN01 passed (2026-09-18). Separate OS processes. Virtual file clock (no 30s sleeps). A token=1; B blocked while valid; after expiry B token=2; stale A commit/renew/release rejected; B commit `commit-from-B` is the final WorkflowState. Harness unit tests: **239 passed**.
 
 Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/OWN01-ownership-2026-09-18T07-34-27-366Z.txt`
 

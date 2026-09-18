@@ -24,7 +24,7 @@ import { WorkflowError } from "../src/workflow-error.ts";
 import {
   initializeWorkflow,
   loadWorkflowState,
-  saveWorkflowState,
+  saveWorkflowStateUnfenced,
 } from "../src/workflow-store.ts";
 import {
   admitImplementationReady,
@@ -199,13 +199,13 @@ describe("review_ready admission", () => {
       specInspectedPaths: { readFiles: [], listedPaths: [] },
       contextMode: "variant",
     });
-    saveWorkflowState(storeDir, impl);
+    saveWorkflowStateUnfenced(storeDir, impl);
     const next = reviewReady(impl);
     assert.equal(
       loadWorkflowState(storeDir, "commit-review").phase,
       "implementation_ready",
     );
-    saveWorkflowState(storeDir, next);
+    saveWorkflowStateUnfenced(storeDir, next);
     assert.equal(
       loadWorkflowState(storeDir, "commit-review").phase,
       "review_ready",
@@ -290,7 +290,7 @@ describe("review_ready workspace mismatch", () => {
       );
       fs.appendFileSync(mutated, "\n// verified artifact B\n");
       const evidenceB = captureWorkspaceResumeEvidence(workspace);
-      saveWorkflowState(
+      saveWorkflowStateUnfenced(
         storeDir,
         admitReviewReady({
           current: impl,

@@ -1988,7 +1988,7 @@ Command: `npm run benchmark:own01`
 
 Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/OWN01-ownership-2026-09-18T07-34-27-366Z.txt`
 
-Harness unit tests: **235 passed**, including cross-process acquire race.
+Harness unit tests: **239 passed**, including cross-process acquire race and mutex stale-steal regressions.
 
 | Process | pid | result |
 | --- | ---: | --- |

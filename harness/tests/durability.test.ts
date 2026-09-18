@@ -15,7 +15,7 @@ import { WorkflowError } from "../src/workflow-error.ts";
 import {
   initializeWorkflow,
   loadWorkflowState,
-  saveWorkflowState,
+  saveWorkflowStateUnfenced,
   workflowStatePath,
 } from "../src/workflow-store.ts";
 import {
@@ -198,7 +198,7 @@ describe("WorkflowState persistence", () => {
       "crash before durable commit keeps spec_required",
     );
 
-    saveWorkflowState(storeDir, next);
+    saveWorkflowStateUnfenced(storeDir, next);
     const loaded = loadWorkflowState(storeDir, "commit");
     assert.equal(loaded.phase, "implementation_ready");
     assert.equal(nextDurableAction(loaded), "continue_implementation");
@@ -212,7 +212,7 @@ describe("WorkflowState persistence", () => {
       task: "task",
       workspace: dummyWorkspaceEvidence("/tmp/ws"),
     });
-    saveWorkflowState(
+    saveWorkflowStateUnfenced(
       storeDir,
       admitImplementationReady({
         current: initial,
@@ -260,7 +260,7 @@ describe("durable resume workspace binding", () => {
           id: "missing-ws",
         },
       });
-      saveWorkflowState(storeDir, missing);
+      saveWorkflowStateUnfenced(storeDir, missing);
       await assert.rejects(
         () =>
           runV1Harness({
@@ -278,7 +278,7 @@ describe("durable resume workspace binding", () => {
         task: "task",
         workspace: { ...evidence, workingTreeFingerprint: "not-the-tree" },
       });
-      saveWorkflowState(storeDir, mismatch);
+      saveWorkflowStateUnfenced(storeDir, mismatch);
       await assert.rejects(
         () =>
           runV1Harness({
@@ -305,7 +305,7 @@ describe("durable run.ts gates", () => {
       task: "task",
       workspace: dummyWorkspaceEvidence("/tmp/ws"),
     });
-    saveWorkflowState(
+    saveWorkflowStateUnfenced(
       storeDir,
       admitTerminal({
         current: admitImplementationReady({
@@ -356,7 +356,7 @@ describe("durable process boundary", () => {
       task: "task",
       workspace: dummyWorkspaceEvidence("/tmp/ws"),
     });
-    saveWorkflowState(
+    saveWorkflowStateUnfenced(
       storeDir,
       admitImplementationReady({
         current: initial,

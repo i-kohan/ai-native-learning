@@ -159,7 +159,7 @@ Not started:
 
 Bounded REVIEW retry is implemented as a mechanism probe. It does not make mutating Worker execution retry-safe. REVIEW retry state stays on `review_ready` until the next durable semantic boundary (terminal, or a new logical `operationId`); a successful in-memory REVIEW result does not clear the budget by itself. Unknown `model_error` is not automatically transient.
 
-A workflow lease is not a scheduler. Expiry does not stop the old process. Authoritative WorkflowState writes reject a stale fencing token. The short filesystem mutex only serializes metadata changes; it is not the lease.
+A workflow lease is not a scheduler. Expiry does not stop the old process. Authoritative WorkflowState writes reject a stale fencing token. The short mutex is an `O_EXCL` lock file with a holder token (not a time-based mkdir steal) and is not the lease.
 
 ### Experimental: `previous_response_id`
 
