@@ -1,0 +1,52 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion lifecycle behavior so completed tasks carry a completion timestamp and reopening clears that timestamp.",
+    "requirements": [
+      "When a task is completed through the existing completion flow, set its `completedAt` field to a non-empty timestamp string.",
+      "When a completed task is reopened through the existing reopen flow, set its `completedAt` field to `null`.",
+      "Preserve the existing task status transitions, response shapes, not-found behavior, and `completedAt: null` initialization for newly created pending tasks."
+    ],
+    "constraints": [
+      "Make the change within the existing TaskService lifecycle used by the task routes; no API shape or route changes are needed.",
+      "Use the existing `Task.completedAt: string | null` type.",
+      "Do not alter unrelated task listing, creation, or routing behavior."
+    ],
+    "nonGoals": [
+      "No new endpoint or request field is required.",
+      "No persistence, timestamp display formatting, or broader task model changes are requested.",
+      "No change to behavior for missing task IDs beyond preserving the current 404 response."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns status `completed` and a non-empty string `completedAt`.",
+      "Reopening a completed task returns status `pending` and `completedAt: null`.",
+      "Newly created tasks continue to have `status: \"pending\"` and `completedAt: null`.",
+      "The existing task test suite passes."
+    ],
+    "verification": [
+      "Run the repository test script (`npm test`).",
+      "The existing `complete and reopen` tests in `tests/tasks.test.ts` directly verify the required completion timestamp and reopen clearing behavior.",
+      "Optionally verify the returned task through GET/listing after each lifecycle transition to ensure the in-memory task state is updated, not only the immediate response."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp representation should be used for `completedAt`?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a runtime-generated timestamp string, conventionally an ISO-8601 string from `new Date().toISOString()`.",
+        "basis": "The task requires a timestamp, the model types the field as `string | null`, and the existing tests require a non-empty string but impose no more specific format."
+      },
+      {
+        "question": "What should repeated completion of an already completed task do to its existing timestamp?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Preserve the requested lifecycle behavior without adding a new externally visible rule; the required behavior is covered for a task becoming completed from pending and for reopening a completed task.",
+        "basis": "The task specifies transitions into completed and back to pending, while the repository contains no test or contract defining repeated completion semantics. Avoiding an additional product rule keeps the change scoped to the requested behavior."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": false,
+  "workflowStatus": "paused"
+}

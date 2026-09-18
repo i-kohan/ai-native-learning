@@ -1,0 +1,48 @@
+=== RET01 Retry Semantics Probe ===
+RET01 passes only if all are true:
+1. A, B, and C share one workflow identity.
+2. A persists the authoritative review_ready checkpoint/artifact.
+3. B and C resume that same review_ready artifact.
+4. B starts REVIEW attempt 1.
+5. B's first failure is classified retryable_transient by the harness.
+6. retry admission comes from harness RetryPolicy, not the model.
+7. attemptsStarted is persisted before the next attempt and the budget is respected.
+8. C starts REVIEW attempt 2 in a fresh process.
+9. Worker is not rerun in B or C.
+10. pre-review VERIFY is not rerun in B or C.
+11. independent REVIEW still runs and a successful REVIEW result is required.
+12. attempt 1 and attempt 2 share one logical operationId.
+13. final workflow state is terminal.
+
+passed: yes
+workflowId: RET01-2026-09-18T17-33-43-116Z
+workspace: RET01-2026-09-18T17-33-43-116Z @ 5d7ef9ae49dd
+review_ready_fingerprint: 805096d53ed5ff56ba2a68b0727c33f4df5dfc2daead602d769ba583f8210fd9
+worker_started: 1
+worker_skipped: 2
+pre_review_verify_skipped: 2
+review_started: 2
+injected_failure: 1
+classified_transient: 1
+harness_retry_decisions: 1
+review_pass: 1
+terminal_phase: terminal
+  RET01-2026-09-18T17-33-43-116Z-A pid=51582 start=spec_required exit=review_ready skippedWorker=no skippedVerify=no reviews=0 retryAttempts=0 operationId=(none) lastClass=(none) decision=(none) status=paused
+  RET01-2026-09-18T17-33-43-116Z-B pid=52668 start=review_ready exit=review_ready skippedWorker=yes skippedVerify=yes reviews=0 retryAttempts=1 operationId=RET01-2026-09-18T17-33-43-116Z:review:RET01-2026-09-18T17-33-43-116Z.review-baseline:round-1 lastClass=retryable_transient decision=retry status=paused
+  RET01-2026-09-18T17-33-43-116Z-C pid=52686 start=review_ready exit=terminal skippedWorker=yes skippedVerify=yes reviews=1 retryAttempts=0 operationId=RET01-2026-09-18T17-33-43-116Z:review:RET01-2026-09-18T17-33-43-116Z.review-baseline:round-1 lastClass=(none) decision=(none) status=success
+
+Assertions
+- sameWorkflowId: yes
+- sameReviewReadyArtifact: yes
+- firstReviewAttemptHappened: yes
+- firstFailureClassifiedTransient: yes
+- retryDecisionFromHarness: yes
+- retryBudgetRespected: yes
+- attemptsStartedAdvancedDurably: yes
+- secondReviewAttemptHappened: yes
+- workerNotRerun: yes
+- preReviewVerifyNotRerun: yes
+- independentReviewNotBypassed: yes
+- successfulReviewRequired: yes
+- sameLogicalOperationId: yes
+- terminalPersisted: yes

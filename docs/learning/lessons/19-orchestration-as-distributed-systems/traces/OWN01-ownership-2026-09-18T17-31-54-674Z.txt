@@ -1,0 +1,37 @@
+=== OWN01 Ownership / Fencing Probe ===
+OWN01 passes only if all are true:
+1. Process A acquires the workflow with fencing token N.
+2. While A's lease is valid, Process B cannot acquire the workflow.
+3. After expiry, B acquires with fencing token strictly greater than N.
+4. Stale A cannot authoritatively commit WorkflowState.
+5. Stale A cannot renew the old ownership epoch.
+6. Stale A cannot release B's ownership.
+7. B remains current owner after A's stale release attempt.
+8. Current B can authoritatively commit a distinguishable WorkflowState transition.
+9. Final WorkflowState contains only B's committed result.
+10. Ownership is decided by harness/store logic, never by the model.
+
+passed: yes
+workflowId: OWN01-2026-09-18T17-31-54-290Z
+tokenN: 1
+tokenB: 2
+lease_owner_after_stale_release: owner-47405-da99ea75-9e29-43a3-8754-0140e05a90a5
+final_commit_marker: commit-from-B
+  A pid=47401 acquired=yes blocked=no token=1 commit=false renew=false release=false
+  B-busy pid=47403 acquired=no blocked=yes token=(none) commit=(n/a) renew=(n/a) release=(n/a)
+  B pid=47405 acquired=yes blocked=no token=2 commit=true renew=(n/a) release=(n/a)
+
+Limitation: fencing protects authoritative WorkflowState/lease writes only.
+It does not prove a stale worker cannot already have performed external side effects.
+
+Assertions
+- aAcquiredTokenN: yes
+- bBlockedWhileAValid: yes
+- bAcquiredNewerTokenAfterExpiry: yes
+- staleACommitRejected: yes
+- staleARenewRejected: yes
+- staleAReleaseRejected: yes
+- bRemainedOwnerAfterStaleRelease: yes
+- bCommitSucceeded: yes
+- finalStateIsB: yes
+- ownershipNotModelDecided: yes

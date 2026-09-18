@@ -1,0 +1,54 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion state transitions so completed tasks receive a timestamp in `completedAt`, and reopening a completed task clears `completedAt` to `null`.",
+    "requirements": [
+      "In `TaskService.complete`, when an existing task is transitioned to `completed`, assign `completedAt` a non-empty timestamp string (an ISO 8601 string via `new Date().toISOString()` is an appropriate implementation).",
+      "In `TaskService.reopen`, when an existing task is transitioned to `pending`, assign `completedAt` to `null`.",
+      "Preserve the existing not-found behavior: completing or reopening an unknown task returns `undefined`, which the routes expose as HTTP 404.",
+      "Keep the existing task shape and route response behavior; the updated task returned by the complete/reopen endpoints must expose the updated `completedAt` value."
+    ],
+    "constraints": [
+      "Implement the behavior in the existing task service rather than changing the HTTP contract.",
+      "New tasks must continue to start with status `pending` and `completedAt: null`.",
+      "No changes are needed to status filtering, task creation validation, or error responses."
+    ],
+    "nonGoals": [
+      "Changing task IDs, titles, ordering, or status-filter semantics.",
+      "Changing endpoint paths, HTTP methods, or response status codes.",
+      "Adding persistence or changing the timestamp format beyond requiring a timestamp string."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns status 200, status `completed`, and a non-empty string `completedAt`.",
+      "Reopening an existing completed task returns status 200, status `pending`, and `completedAt: null`.",
+      "The state observed through subsequent GET/list operations reflects those updated values.",
+      "Unknown-task complete and reopen requests still return 404 with `{ error: \"task_not_found\" }`.",
+      "The existing test suite passes, including the completion/reopen tests in `tests/tasks.test.ts`."
+    ],
+    "verification": [
+      "Run `npm test` using the repository's configured test script (`tsx --test tests/**/*.test.ts`).",
+      "Inspect the complete and reopen endpoint responses and, if needed, follow them with GET requests to verify the stored task state.",
+      "Optionally run TypeScript checking if a suitable no-emit check is configured or invoke the project TypeScript compiler without modifying files."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp representation should be used for `completedAt`?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use `new Date().toISOString()`, which satisfies the explicit requirement for a timestamp and matches the declared `string | null` type without adding a new API contract.",
+        "basis": "`Task.completedAt` is typed as `string | null`, and the existing tests require a non-empty string but do not mandate a more specific representation."
+      },
+      {
+        "question": "What should happen if complete is called on a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Maintain the completed state and ensure `completedAt` remains a timestamp; the task specifically governs the transition to completed, while no separate repeated-completion behavior is specified.",
+        "basis": "The requested behavior is about becoming completed, and the repository has no distinct repeated-completion contract or test. This is a low-risk service-level implementation detail."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "paused"
+}

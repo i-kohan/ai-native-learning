@@ -1,0 +1,72 @@
+=== CHK01 Checkpoint / Resume Probe ===
+CHK01 passes only if all are true:
+1. control succeeds end-to-end.
+2. interrupted A/B use the same workflow ID.
+3. A and B are separate process/invocation executions.
+4. A durably persists review_ready.
+5. B loads/resumes from review_ready.
+6. B validates the exact verified workspace artifact.
+7. B reconstructs the intended review baseline/diff.
+8. Worker is not rerun in B.
+9. pre-review VERIFY is not rerun in B merely for reconstruction.
+10. independent REVIEW runs in B.
+11. REVIEW receives verification evidence for the accepted artifact.
+12. expected T02 task behavior remains correct.
+13. terminal state is durably persisted.
+14. control and interrupted paths preserve the intended semantic outcome.
+
+passed: yes
+
+Control (uninterrupted)
+workflowId: CHK01-control-2026-09-18T17-32-52-450Z
+workspace: CHK01-control-2026-09-18T17-32-52-450Z @ 5d7ef9ae49dd
+spec_phase_started: 1
+spec_phase_skipped: 0
+worker_started: 1
+worker_skipped: 0
+pre_review_verify_skipped: 0
+verify_before_review: PASS
+verify_before_review_B: PASS
+verify_after_review: (none)
+review: pass
+expected_delta: (none)
+terminal_phase: terminal
+expected: yes
+  CHK01-control-2026-09-18T17-32-52-450Z-control pid=49917 start=spec_required exit=terminal impl=yes skippedWorker=no skippedVerify=no reviews=1 files=tasks/task-service.ts fp=f4eb436e1d5b status=success
+
+Interrupted / resumed
+workflowId: CHK01-interrupted-2026-09-18T17-32-52-450Z
+workspace: CHK01-interrupted-2026-09-18T17-32-52-450Z @ 5d7ef9ae49dd
+spec_phase_started: 0
+spec_phase_skipped: 2
+worker_started: 1
+worker_skipped: 1
+pre_review_verify_skipped: 1
+verify_before_review: PASS
+verify_before_review_B: (none)
+verify_after_review: (none)
+review: pass
+expected_delta: tasks/task-service.ts f4eb436e1d5b
+terminal_phase: terminal
+expected: yes
+  CHK01-interrupted-2026-09-18T17-32-52-450Z-A pid=51008 start=implementation_ready exit=review_ready impl=yes skippedWorker=no skippedVerify=no reviews=0 files=tasks/task-service.ts fp=f4eb436e1d5b status=paused
+  CHK01-interrupted-2026-09-18T17-32-52-450Z-B pid=51367 start=review_ready exit=terminal impl=no skippedWorker=yes skippedVerify=yes reviews=1 files=tasks/task-service.ts fp=f4eb436e1d5b status=success
+
+Assertions
+- controlExpected: yes
+- controlTerminalPersisted: yes
+- sameWorkflowId: yes
+- processBFresh: yes
+- processAPersistedReviewReady: yes
+- processBResumedFromReviewReady: yes
+- processBValidatedWorkspace: yes
+- processBReconstructedBaseline: yes
+- processBReconstructedDiffIdentity: yes
+- processBDidNotRerunWorker: yes
+- processBDidNotRerunPreReviewVerify: yes
+- processBRanIndependentReview: yes
+- processBReviewHadVerificationEvidence: yes
+- interruptedExpected: yes
+- interruptedTerminalPersisted: yes
+- semanticOutcomePreserved: yes
+- distinctFromControlWorkflow: yes

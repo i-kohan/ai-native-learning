@@ -1,0 +1,32 @@
+{
+  "workflowId": "DUR01-interrupted-2026-09-18T17-31-54-910Z",
+  "invocationId": "DUR01-interrupted-2026-09-18T17-31-54-910Z-B",
+  "pid": 49313,
+  "ppid": 49312,
+  "phaseOnStart": "implementation_ready",
+  "phaseOnExit": "terminal",
+  "stopAfter": null,
+  "workflowStatus": "success",
+  "specDecision": "executable",
+  "implementationStarted": true,
+  "specModelCalls": 0,
+  "specToolCalls": 0,
+  "durableCheckpoint": null,
+  "implementationSkipped": false,
+  "preReviewVerifySkipped": false,
+  "reviewBaselineRestored": false,
+  "reviewAttempts": 1,
+  "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/DUR01-interrupted-2026-09-18T17-31-54-910Z-B.jsonl",
+  "finalVerificationPassed": true,
+  "finalReviewerOutcome": "pass",
+  "workspaceId": "DUR01-interrupted-2026-09-18T17-31-54-910Z",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-interrupted-2026-09-18T17-31-54-910Z",
+  "baseRevision": "5d7ef9ae49ddc34ac1292488a500fedffeaf59ca",
+  "retry": null,
+  "reviewOperationId": "DUR01-interrupted-2026-09-18T17-31-54-910Z:review:DUR01-interrupted-2026-09-18T17-31-54-910Z.review-baseline:round-1",
+  "lastRetryDecision": null,
+  "changedFiles": [
+    "tasks/task-service.ts"
+  ],
+  "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+}

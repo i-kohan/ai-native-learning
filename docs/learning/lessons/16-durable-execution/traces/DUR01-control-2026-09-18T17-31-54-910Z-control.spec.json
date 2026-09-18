@@ -1,0 +1,51 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion state handling so completed tasks receive a completion timestamp and reopened tasks clear it.",
+    "requirements": [
+      "When TaskService.complete successfully completes a task, set its completedAt field to a current timestamp string while setting status to \"completed\".",
+      "When TaskService.reopen successfully reopens a task, set its completedAt field to null while setting status to \"pending\".",
+      "Preserve existing not-found behavior and route response behavior for complete and reopen endpoints."
+    ],
+    "constraints": [
+      "Implement the behavior in the existing task service model; the Task type already defines completedAt as string | null.",
+      "Use the existing complete and reopen routes and response shapes; no API redesign is needed.",
+      "Do not alter task creation semantics: newly created tasks remain pending with completedAt null."
+    ],
+    "nonGoals": [
+      "Changing task status values or endpoint paths.",
+      "Changing timestamp persistence, storage, or response serialization beyond updating the existing completedAt field.",
+      "Changing validation, list filtering, or not-found responses."
+    ],
+    "acceptance": [
+      "POST /tasks/:id/complete returns status 200 with status \"completed\" and a non-empty timestamp string in completedAt.",
+      "POST /tasks/:id/reopen after completion returns status 200 with status \"pending\" and completedAt equal to null.",
+      "The existing complete/reopen tests pass, along with the rest of the test suite.",
+      "Completing or reopening a missing task continues to return 404 with the existing task_not_found body."
+    ],
+    "verification": [
+      "Run the repository test script: npm test.",
+      "Confirm the complete/reopen tests assert the completedAt timestamp and null-clearing behavior, and confirm all existing tests pass."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp representation should be used for completedAt?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use a current serialized timestamp string, conventionally Date.toISOString().",
+        "basis": "The Task type requires string | null, and the existing tests require a non-empty string but impose no more specific format; ISO serialization is a standard low-risk representation."
+      },
+      {
+        "question": "Should reopening clear completedAt even if the task is already pending?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "The reopen operation should set completedAt to null whenever it succeeds, matching the requested reopened-state invariant.",
+        "basis": "The requested behavior defines reopened tasks as having completedAt null, and the existing service returns the task for any existing ID."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "success"
+}

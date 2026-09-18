@@ -98,9 +98,9 @@ Lease ≠ mutex. The short mutex is an `O_EXCL` lock file with a holder token, n
 
 OWN01 passed (2026-09-18). Separate OS processes. Virtual file clock (no 30s sleeps). A token=1; B blocked while valid; after expiry B token=2; stale A commit/renew/release rejected; B commit `commit-from-B` is the final WorkflowState. Harness unit tests: **239 passed**.
 
-Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/OWN01-ownership-2026-09-18T07-34-27-366Z.txt`
+Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/OWN01-ownership-2026-09-18T17-31-54-674Z.txt`
 
-Regression: DUR01, CHK01, RET01 all passed after the fencing path.
+Regression: DUR01, CHK01, RET01 all passed after the mutex fail-closed rewrite.
 
 ## Failures / open questions
 

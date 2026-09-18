@@ -1940,11 +1940,11 @@ Evidence: `docs/learning/lessons/18-retry-semantics/traces/RET01-retry-2026-09-1
 
 Harness unit tests: **221 passed**, including Module 17 checkpoint tests.
 
-| Arm | pid | start → exit | Worker | pre-review VERIFY | REVIEW |
-| --- | ---: | --- | --- | --- | --- |
-| A | 43624 | spec_required → review_ready | yes | PASS | skipped |
-| B | 45299 | review_ready → review_ready | skipped | skipped | attempt 1 injected transient |
-| C | 45311 | review_ready → terminal | skipped | skipped | attempt 2 pass |
+| Arm |   pid | start → exit                 | Worker  | pre-review VERIFY | REVIEW                       |
+| --- | ----: | ---------------------------- | ------- | ----------------- | ---------------------------- |
+| A   | 43624 | spec_required → review_ready | yes     | PASS              | skipped                      |
+| B   | 45299 | review_ready → review_ready  | skipped | skipped           | attempt 1 injected transient |
+| C   | 45311 | review_ready → terminal      | skipped | skipped           | attempt 2 pass               |
 
 Same `operationId` across B and C. Retry state is not cleared merely because REVIEW returned a result; it disappears when terminal (or a new logical round) is persisted.
 
@@ -1986,19 +1986,19 @@ Pass only if the 10 OWN01 criteria hold, including distinguishable A/B commits a
 
 Command: `npm run benchmark:own01`
 
-Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/OWN01-ownership-2026-09-18T07-34-27-366Z.txt`
+Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/OWN01-ownership-2026-09-18T17-31-54-674Z.txt`
 
 Harness unit tests: **239 passed**, including cross-process acquire race and mutex stale-steal regressions.
 
-| Process | pid | result |
-| --- | ---: | --- |
-| A | 98031 | acquired token 1; later stale commit/renew/release rejected |
-| B-busy | 98033 | blocked while A's lease was valid |
-| B | 98053 | acquired token 2; committed `commit-from-B` |
+| Process |   pid | result                                                      |
+| ------- | ----: | ----------------------------------------------------------- |
+| A       | 47401 | acquired token 1; later stale commit/renew/release rejected |
+| B-busy  | 47403 | blocked while A's lease was valid                           |
+| B       | 47405 | acquired token 2; committed `commit-from-B`                 |
 
 Final marker: `commit-from-B`. After A's stale release, lease owner was still B.
 
-Regression after fencing path: DUR01 PASS, CHK01 PASS, RET01 PASS.
+Regression after mutex fail-closed rewrite: DUR01 PASS, CHK01 PASS, RET01 PASS.
 
 ### Conclusion
 
@@ -2007,5 +2007,3 @@ Hypothesis supported for single-machine WorkflowState ownership. Fencing does **
 Default `runV1Harness()` stays in-memory unless `durable` is opted in. No automatic heartbeat loop.
 
 Module 19 experiment recorded; Topic Chat owns formal closure.
-
-

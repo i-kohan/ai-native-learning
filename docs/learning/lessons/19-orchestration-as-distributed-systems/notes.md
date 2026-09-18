@@ -63,16 +63,16 @@ A paused holder keeps the file, so elapsed time cannot let another process in. I
 
 ## Semantics
 
-| Operation | Token | Owner |
-| --- | --- | --- |
-| acquire free/released | last+1 | new |
-| acquire while held | reject `lease_held` | unchanged |
-| takeover expired | last+1 | new |
-| acquire(same owner) while valid | reject, not silent renew | unchanged |
-| renew current unexpired | unchanged | unchanged, `expiresAt` extended |
-| renew expired / stale | reject | unchanged |
-| release current owner | unchanged | `null`, `expiresAt=null` |
-| stale release | reject | newer owner remains |
+| Operation                       | Token                    | Owner                           |
+| ------------------------------- | ------------------------ | ------------------------------- |
+| acquire free/released           | last+1                   | new                             |
+| acquire while held              | reject `lease_held`      | unchanged                       |
+| takeover expired                | last+1                   | new                             |
+| acquire(same owner) while valid | reject, not silent renew | unchanged                       |
+| renew current unexpired         | unchanged                | unchanged, `expiresAt` extended |
+| renew expired / stale           | reject                   | unchanged                       |
+| release current owner           | unchanged                | `null`, `expiresAt=null`        |
+| stale release                   | reject                   | newer owner remains             |
 
 ## Clock
 
@@ -97,13 +97,13 @@ B commits commit-from-B
 final WorkflowState = B
 ```
 
-| Process | pid | token | result |
-| --- | ---: | ---: | --- |
-| A | 98031 | 1 | later stale ops rejected |
-| B-busy | 98033 | — | blocked |
-| B | 98053 | 2 | committed `commit-from-B` |
+| Process |   pid | token | result                    |
+| ------- | ----: | ----: | ------------------------- |
+| A       | 47401 |     1 | later stale ops rejected  |
+| B-busy  | 47403 |     — | blocked                   |
+| B       | 47405 |     2 | committed `commit-from-B` |
 
-Evidence: `traces/OWN01-ownership-2026-09-18T07-34-27-366Z.txt`
+Evidence: `traces/OWN01-ownership-2026-09-18T17-31-54-674Z.txt`
 
 Harness unit tests: **239 passed**, including:
 

@@ -1,0 +1,32 @@
+{
+  "workflowId": "DUR01-control-2026-09-18T17-31-54-910Z",
+  "invocationId": "DUR01-control-2026-09-18T17-31-54-910Z-control",
+  "pid": 47581,
+  "ppid": 47580,
+  "phaseOnStart": "spec_required",
+  "phaseOnExit": "terminal",
+  "stopAfter": null,
+  "workflowStatus": "success",
+  "specDecision": "executable",
+  "implementationStarted": true,
+  "specModelCalls": 2,
+  "specToolCalls": 7,
+  "durableCheckpoint": null,
+  "implementationSkipped": false,
+  "preReviewVerifySkipped": false,
+  "reviewBaselineRestored": false,
+  "reviewAttempts": 1,
+  "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/DUR01-control-2026-09-18T17-31-54-910Z-control.jsonl",
+  "finalVerificationPassed": true,
+  "finalReviewerOutcome": "pass",
+  "workspaceId": "DUR01-control-2026-09-18T17-31-54-910Z",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/DUR01-control-2026-09-18T17-31-54-910Z",
+  "baseRevision": "9054d52057ef64181d7510ff65a533af4c68fd6c",
+  "retry": null,
+  "reviewOperationId": "DUR01-control-2026-09-18T17-31-54-910Z:review:DUR01-control-2026-09-18T17-31-54-910Z.review-baseline:round-1",
+  "lastRetryDecision": null,
+  "changedFiles": [
+    "tasks/task-service.ts"
+  ],
+  "diffFingerprint": "f4eb436e1d5b33225d3e9bc7f85bc621db1269be797aabadcd5ccfff43a9f906"
+}
