@@ -1666,45 +1666,41 @@ This turns the month into a reproducible engineering project, not a collection o
 
 # 15. Suggested Learning Order
 
-This is the recommended dependency order, not yet the exact daily schedule.
+This is the recommended dependency order and now uses the **same module numbering as `docs/learning/progress.md`**. The exact daily schedule may still vary, but module numbers must not drift between Master and Progress.
 
 ## Phase 1 — Foundations
 
-1. Agent loop
-2. Harness engineering
-3. Basic tracing
-4. Basic evals
-5. Spec-driven development
-6. Context engineering
-7. Tool / capability design
+1. Agent Loop & Harness
+2. Spec-Driven Development
+3. Context Engineering
 
 Why first:
-Everything else depends on understanding execution, truth, and context.
+Everything else depends on understanding execution, authority, specification, and context.
 
 ---
 
 ## Phase 2 — Reliable Autonomy
 
-8. Verification
-9. Test/fix loops
-10. Independent review/repair
-11. Skills
-12. Worktrees / isolation
-13. Security fundamentals
+4. Verification + bounded Repair
+5. Independent Review + bounded Review Repair
+6. Tracing & Evals
+7. Skills
+8. Worktrees / Isolation
+9. Security Fundamentals
 
 Why now:
-We move from “agent can code” to “agent can operate safely and correct itself”.
+We move from “agent can code” to “agent can operate safely, produce evidence, and correct itself”.
 
 ---
 
 ## Phase 3 — System Optimization
 
-14. Model routing
-15. Modern model-native inner orchestration
-16. Planner / worker / reviewer
-17. Subagents
-18. Human-reviewable decomposition
-19. Stronger eval methodology
+10. Model Routing
+11. Modern Model-Native Orchestration / Inner vs Outer Loop
+12. Planner / Worker / Reviewer
+13. Subagents
+14. Human-Reviewable Decomposition
+15. Stronger Eval Methodology
 
 Why now:
 We already have a measurable working harness, so optimization is evidence-based.
@@ -1713,13 +1709,13 @@ We already have a measurable working harness, so optimization is evidence-based.
 
 ## Phase 4 — Long-Running / Production Thinking
 
-20. Durable execution
-21. Checkpoint / resume
-22. Retry semantics
-23. Orchestration as distributed systems
-24. GitHub / CI integration
-25. Optional browser QA
-26. Bounded parallel fan-out
+16. Durable Execution
+17. Checkpoint / Resume
+18. Retry Semantics
+19. Orchestration as Distributed Systems
+20. GitHub / CI Integration
+21. Optional Browser QA
+22. Bounded Parallel Fan-Out
 
 Why now:
 These solve lifecycle and scale problems that only become real once the harness already works.
@@ -1728,13 +1724,13 @@ These solve lifecycle and scale problems that only become real once the harness 
 
 ## Phase 5 — Landscape Completion / Advanced Exposure
 
-27. MCP deeper dive
-28. Memory architectures
-29. A2A / interoperability
-30. Large multi-agent systems / swarms
-31. Deep agent hierarchies
-32. Production-grade distributed orchestration
-33. Self-modifying / self-improving systems
+23. MCP Deeper Dive
+24. Memory Architectures
+25. A2A / Interoperability
+26. Large Multi-Agent Systems / Swarms
+27. Deep Agent Hierarchies
+28. Production-Grade Distributed Orchestration
+29. Self-Modifying / Self-Improving Systems
 
 Why last:
 These are either:

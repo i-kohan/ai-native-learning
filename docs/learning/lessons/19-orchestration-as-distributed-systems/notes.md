@@ -2,7 +2,7 @@
 
 Практический журнал Module 19.
 
-**Status:** implemented and measured. OWN01 **passed**. Topic Chat owns formal closure.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-18. OWN01 **passed**.
 
 ## Что построили
 
@@ -27,6 +27,20 @@ Expiry does not kill process A. A can wake later. Authoritative writes still fai
 6. `harness/src/ownership-probe.ts` + `run-ownership-invocation.ts` — OWN01 across real OS processes.
 
 Deviation: `workflow-id.ts` holds shared `sanitizeWorkflowId` so store/lock/lease do not import each other in a cycle.
+
+## Key correction discovered during review
+
+The first mutex draft used a 5-second stale timeout and deleted an old `.mutex` directory. That was rejected because it recreated the same distributed-systems mistake the module is about:
+
+```text
+time elapsed
+≠
+old process is dead
+```
+
+A paused process could still be inside the critical section while another process deleted its mutex and entered. The final design therefore removed time-based stealing entirely and chose fail-closed `O_EXCL` acquisition.
+
+This correction is part of the learning outcome, not just implementation cleanup.
 
 ## Lease vs mutex
 
@@ -78,7 +92,7 @@ A paused holder keeps the file, so elapsed time cannot let another process in. I
 
 Production: `Date.now()`. OWN01: `clock.json` `{ now }`. Probe advances the clock; it does not rewrite lease files to fake expiry.
 
-Default durable TTL is 30 minutes because this module has `renew()` but no background heartbeat. Probe TTL is 1000 virtual ms.
+Current non-probe durable TTL defaults to 30 minutes because this module has `renew()` but no automatic heartbeat. This is a pragmatic harness setting, not a production recommendation. Probe TTL is 1000 virtual ms.
 
 ## OWN01 recorded run (2026-09-18)
 
@@ -130,6 +144,16 @@ cd harness && npm run benchmark:chk01
 cd harness && npm run benchmark:ret01
 ```
 
+## Operational failure matrix
+
+| Situation | Current behavior |
+| --- | --- |
+| owner dies during normal workflow work | lease may expire and a later invocation may take over |
+| owner wakes after takeover | authoritative WorkflowState commit/renew/release is rejected |
+| live operation exceeds TTL without renewal | result may be wasted because the later authoritative save is rejected |
+| process dies inside short mutex | mutex file may remain; callers fail closed / time out |
+| stale worker already changed workspace or external system | not prevented or rolled back by WorkflowState fencing |
+
 ## Limitation
 
 Fencing protects WorkflowState/lease writes that check the token.
@@ -140,4 +164,16 @@ Mutex crash behavior: if a process dies while holding the short mutex, the mutex
 
 ## Closure decision
 
-Pending Topic Chat. Do not mark complete from this implementation alone.
+**Topic Chat closure: PASS — 2026-09-18.**
+
+Closure basis:
+
+- understanding check passed;
+- lease/ownership implementation reviewed;
+- unsafe time-based mutex stealing found during review and removed;
+- mutex regression tests cover paused-holder and stale-release cases;
+- OWN01 PASS with real separate processes;
+- DUR01 / CHK01 / RET01 regression PASS;
+- documented boundaries do not overclaim workspace/external-side-effect safety.
+
+No further implementation is required for Module 19. Remaining production-grade ownership, heartbeat, side-effect fencing, distributed coordination, and recovery belong to later modules.

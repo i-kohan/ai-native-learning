@@ -159,7 +159,13 @@ Not started:
 
 Bounded REVIEW retry is implemented as a mechanism probe. It does not make mutating Worker execution retry-safe. REVIEW retry state stays on `review_ready` until the next durable semantic boundary (terminal, or a new logical `operationId`); a successful in-memory REVIEW result does not clear the budget by itself. Unknown `model_error` is not automatically transient.
 
-A workflow lease is not a scheduler. Expiry does not stop the old process. Authoritative WorkflowState writes reject a stale fencing token. The short mutex is an `O_EXCL` lock file with a holder token (not a time-based mkdir steal) and is not the lease.
+A workflow lease is not a scheduler. Expiry does not stop the old process. Authoritative WorkflowState writes reject a stale fencing token. The short mutex is an `O_EXCL` lock file with a holder token (not a time-based stale steal) and is not the lease.
+
+The current non-probe durable TTL defaults to 30 minutes only because there is no automatic heartbeat loop; this is a pragmatic harness setting, not a production recommendation. A live operation that outlasts the TTL can lose authority and have its later state commit rejected.
+
+The short mutex intentionally fails closed: if a process dies inside the critical section, the lock file may remain and later callers time out until manual recovery. This is a single-machine/local-filesystem learning mechanism, not a distributed-lock claim.
+
+No `stateVersion`/CAS is implemented. Fencing protects against stale ownership epochs; CAS would address stale state snapshots within an ownership epoch and is deferred because the current durable runner is sequential within one invocation.
 
 ### Experimental: `previous_response_id`
 

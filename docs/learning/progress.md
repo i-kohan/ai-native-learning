@@ -22,8 +22,9 @@ Completed modules:
 16. ✅ 16 — Durable Execution (closed by Topic Chat)
 17. ✅ 17 — Checkpoint / Resume (closed by Master)
 18. ✅ 18 — Retry Semantics (closed by Topic Chat)
+19. ✅ 19 — Orchestration as Distributed Systems (closed by Topic Chat on 2026-09-18)
 
-Current module: **19 — Orchestration as Distributed Systems** (mechanism implemented and measured; pending Topic Chat review). Not marked complete.
+Next module: **20 — GitHub / CI Integration** (pending Master start).
 
 ---
 
@@ -68,7 +69,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 19 — Orchestration as Distributed Systems
 
-**Status:** implemented and measured. Mechanism probe OWN01 **passed**. Topic Chat owns formal closure. Not marked complete.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-18. Mechanism probe OWN01 **passed**.
 
 Theory draft:
 
@@ -102,9 +103,11 @@ Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/
 
 Regression: DUR01, CHK01, RET01 all passed after the mutex fail-closed rewrite.
 
-## Failures / open questions
+## Closure / remaining boundaries
 
-Topic Chat owns formal closure. Fencing does not cover workspace/tool/git/network side effects. No exactly-once. No cross-machine consensus.
+Topic Chat closure: **PASS** on 2026-09-18.
+
+Fencing does not cover workspace/tool/git/network side effects. No automatic heartbeat, no stateVersion/CAS, no exactly-once semantics, and no cross-machine consensus. The short `O_EXCL` mutex is intentionally fail-closed after a crash inside its critical section and is a local-filesystem learning mechanism, not a distributed lock.
 
 ---
 

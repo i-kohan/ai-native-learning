@@ -2006,4 +2006,6 @@ Hypothesis supported for single-machine WorkflowState ownership. Fencing does **
 
 Default `runV1Harness()` stays in-memory unless `durable` is opted in. No automatic heartbeat loop.
 
-Module 19 experiment recorded; Topic Chat owns formal closure.
+Initial review found the first time-based stale-mutex recovery unsafe: elapsed time does not prove the holder is dead. The mutex was replaced with fail-closed `O_CREAT | O_EXCL` acquisition plus a holder token, and regression tests cover a paused holder beyond the old stale threshold and stale-release safety.
+
+Module 19 experiment recorded; formally closed by Topic Chat on 2026-09-18.
