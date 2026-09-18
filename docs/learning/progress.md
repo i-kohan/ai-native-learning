@@ -71,7 +71,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 **Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-18. Mechanism probe OWN01 **passed**.
 
-Theory draft:
+Theory:
 
 `docs/learning/lessons/19-orchestration-as-distributed-systems/theory.md`
 

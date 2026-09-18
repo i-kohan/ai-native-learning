@@ -90,7 +90,7 @@ A paused holder keeps the file, so elapsed time cannot let another process in. I
 
 ## Clock
 
-Production: `Date.now()`. OWN01: `clock.json` `{ now }`. Probe advances the clock; it does not rewrite lease files to fake expiry.
+Non-probe runtime: `Date.now()`. OWN01: `clock.json` `{ now }`. Probe advances the clock; it does not rewrite lease files to fake expiry.
 
 Current non-probe durable TTL defaults to 30 minutes because this module has `renew()` but no automatic heartbeat. This is a pragmatic harness setting, not a production recommendation. Probe TTL is 1000 virtual ms.
 
