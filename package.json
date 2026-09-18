@@ -16,6 +16,7 @@
     "benchmark:decomposition": "npm run benchmark:decomposition --prefix harness",
     "benchmark:dur01": "npm run benchmark:dur01 --prefix harness",
     "benchmark:chk01": "npm run benchmark:chk01 --prefix harness",
-    "benchmark:ret01": "npm run benchmark:ret01 --prefix harness"
+    "benchmark:ret01": "npm run benchmark:ret01 --prefix harness",
+    "benchmark:own01": "npm run benchmark:own01 --prefix harness"
   }
 }

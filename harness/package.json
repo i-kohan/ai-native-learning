@@ -21,6 +21,7 @@
     "benchmark:dur01": "tsx src/run-benchmark.ts --durability",
     "benchmark:chk01": "tsx src/run-benchmark.ts --checkpoint",
     "benchmark:ret01": "tsx src/run-benchmark.ts --retry",
+    "benchmark:own01": "tsx src/run-benchmark.ts --ownership",
     "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },
   "dependencies": {

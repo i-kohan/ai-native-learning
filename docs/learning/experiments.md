@@ -1952,5 +1952,60 @@ Same `operationId` across B and C. Retry state is not cleared merely because REV
 
 Hypothesis supported for bounded REVIEW retry. Unknown `model_error` is not automatically transient. Worker `ambiguous_side_effect` remains `needs_reconciliation`. Default `runV1Harness()` stays in-memory unless `durable` is opted in.
 
-Module 18 experiment recorded; Topic Chat owns formal closure.
+Module 18 experiment recorded; formally closed by Topic Chat on 2026-09-17.
+
+---
+
+## Module 19 — Orchestration as distributed systems (OWN01 mechanism probe)
+
+### Hypothesis
+
+A single-machine workflow lease plus fencing token can prevent two OS processes from making overlapping authoritative WorkflowState transitions for the same `workflowId`. After lease expiry, a new owner can take over with a strictly larger token, and the stale owner cannot commit, renew, or release.
+
+### What this experiment is
+
+A **workflow ownership/fencing probe**. Not a scheduler, queue, Temporal, Redis, or workspace-side-effect fence.
+
+```text
+A acquires token N and waits
+B acquire before expiry → blocked
+virtual clock advances past expiry
+B acquires token > N
+stale A commit/renew/release → rejected
+B commits distinguishable terminal marker
+final WorkflowState = B only
+```
+
+No model participates. Time is a file clock (`clock.json`); lease files are not mutated to fake expiry.
+
+### Decision rule
+
+Pass only if the 10 OWN01 criteria hold, including distinguishable A/B commits and final state equal to B.
+
+### Results (2026-09-18)
+
+Command: `npm run benchmark:own01`
+
+Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/OWN01-ownership-2026-09-18T07-34-27-366Z.txt`
+
+Harness unit tests: **235 passed**, including cross-process acquire race.
+
+| Process | pid | result |
+| --- | ---: | --- |
+| A | 98031 | acquired token 1; later stale commit/renew/release rejected |
+| B-busy | 98033 | blocked while A's lease was valid |
+| B | 98053 | acquired token 2; committed `commit-from-B` |
+
+Final marker: `commit-from-B`. After A's stale release, lease owner was still B.
+
+Regression after fencing path: DUR01 PASS, CHK01 PASS, RET01 PASS.
+
+### Conclusion
+
+Hypothesis supported for single-machine WorkflowState ownership. Fencing does **not** prove a stale worker cannot already have written files, mutated a worktree, pushed git, or called an API.
+
+Default `runV1Harness()` stays in-memory unless `durable` is opted in. No automatic heartbeat loop.
+
+Module 19 experiment recorded; Topic Chat owns formal closure.
+
 

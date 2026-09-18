@@ -1,6 +1,6 @@
 # Harness Architecture
 
-Last consolidated: 2026-09-16, after Module 18 bounded REVIEW retry probe.
+Last consolidated: 2026-09-18, after Module 19 single-machine workflow ownership/fencing.
 
 This document is a compact map of the **current architecture**, not a target-state design. Historical experiment details remain in `docs/learning/lessons/` and `docs/learning/experiments.md`.
 
@@ -91,7 +91,8 @@ When durability is opted in, the outer harness also owns:
 - atomic local-file persistence;
 - resume binding to the persisted workspace;
 - durable pre-Worker review baseline artifact, referenced from `review_ready`;
-- retry classification, retry budget, and retry admission.
+- retry classification, retry budget, and retry admission;
+- workflow lease ownership, fencing token, and fenced authoritative WorkflowState writes.
 
 The model still cannot mutate WorkflowState or decide whether another attempt is allowed. Trace JSONL is not authoritative workflow state.
 
@@ -112,6 +113,7 @@ Security-sensitive decisions belong here when the harness can technically enforc
 | Model routing               | `harness/src/model-routing.ts`, `harness/src/config.ts`                    |
 | Workspace isolation         | `harness/src/workspace.ts`                                                 |
 | Durable workflow state      | `harness/src/workflow-state.ts`, `harness/src/workflow-store.ts`           |
+| Workflow ownership/fencing  | `harness/src/workflow-lease.ts`, `harness/src/workflow-lock.ts`, `harness/src/workflow-lease-store.ts` |
 | Retry policy                | `harness/src/retry.ts`                                                     |
 | Tracing                     | `harness/src/trace.ts`                                                     |
 | Evals / qualification       | `harness/src/eval/`                                                        |
@@ -145,15 +147,19 @@ Supported:
 - resume in a fresh process without rerunning Spec, or without rerunning Worker + pre-review VERIFY;
 - durable pre-Worker `FileSnapshot` baseline stored beside WorkflowState;
 - fail-closed load, workspace mismatch, and baseline integrity mismatch;
-- harness-owned retry classification/budget/admission for independent REVIEW.
+- harness-owned retry classification/budget/admission for independent REVIEW;
+- single-machine workflow lease, fencing token, and fenced WorkflowState saves.
 
 Not started:
 
 - mid-Worker / mid-VERIFY crash reconciliation;
 - exactly-once semantics;
-- Temporal / queues / leases.
+- Temporal / queues / cross-machine leader election;
+- workspace/tool fencing or stale side-effect reconciliation.
 
 Bounded REVIEW retry is implemented as a mechanism probe. It does not make mutating Worker execution retry-safe. REVIEW retry state stays on `review_ready` until the next durable semantic boundary (terminal, or a new logical `operationId`); a successful in-memory REVIEW result does not clear the budget by itself. Unknown `model_error` is not automatically transient.
+
+A workflow lease is not a scheduler. Expiry does not stop the old process. Authoritative WorkflowState writes reject a stale fencing token. The short filesystem mutex only serializes metadata changes; it is not the lease.
 
 ### Experimental: `previous_response_id`
 
@@ -279,15 +285,16 @@ These are intentional follow-ups, not reasons to reopen completed modules.
 
 ## 9. Remaining Phase 4 question
 
-Module 16/17 proved two checkpoints, and Module 18 added bounded durable retry for independent REVIEW:
+Module 16/17 proved two checkpoints, Module 18 added bounded durable retry for independent REVIEW, and Module 19 added single-machine WorkflowState ownership:
 
 ```text
 spec_required → implementation_ready → Worker/VERIFY → review_ready → (fresh process) REVIEW → terminal
 review_ready → transient REVIEW failure → harness-admitted retry → REVIEW → terminal
+durable invocation → acquire lease → fenced WorkflowState writes → release if still owner
 ```
 
 Still open:
 
-> What happens if the process dies mid-Worker, mid-VERIFY, or while ownership is contested?
+> What happens if the process dies mid-Worker or mid-VERIFY, or a stale worker already mutated the workspace / external systems?
 
-That is later durable/distributed work, not a reason to reopen this first checkpoint.
+Ownership fencing protects only resources that actually enforce the fencing token. WorkflowState is fenced. Workspace files, git, network, and other side effects are not.

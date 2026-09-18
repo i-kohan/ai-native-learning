@@ -1,0 +1,55 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Ensure task completion state transitions maintain the `completedAt` field: assign a timestamp when a pending task is completed and clear it when a completed task is reopened.",
+    "requirements": [
+      "In `TaskService.complete`, a successfully completed task must have `status: \"completed\"` and a non-empty timestamp string in `completedAt`.",
+      "In `TaskService.reopen`, a successfully reopened task must have `status: \"pending\"` and `completedAt: null`.",
+      "Preserve existing not-found behavior and route/API response shapes.",
+      "Use a current timestamp string for completion; an ISO-8601 string is an appropriate implementation representation consistent with the `string | null` type.",
+      "Keep newly created tasks initialized with `completedAt: null`."
+    ],
+    "constraints": [
+      "Changes should be limited to the completion/reopen behavior and associated tests if needed.",
+      "Do not alter task IDs, titles, status filtering, routing, or error responses.",
+      "The existing TypeScript types require `completedAt` to remain `string | null`."
+    ],
+    "nonGoals": [
+      "No persistence or schema changes.",
+      "No changes to timestamp display, timezone handling beyond the timestamp string representation, or task listing semantics.",
+      "No new behavior for nonexistent task IDs.",
+      "No requirement to change behavior unrelated to completion and reopening."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns HTTP 200 with status `completed` and a non-empty string `completedAt`.",
+      "Reopening a completed task returns HTTP 200 with status `pending` and `completedAt` equal to `null`.",
+      "A newly created task still has `completedAt: null`.",
+      "Existing task route tests and status-filter behavior continue to pass."
+    ],
+    "verification": [
+      "Run `npm test` (the package script invokes the TypeScript Node test suite).",
+      "Confirm the existing `complete and reopen` tests pass, including their assertions for a non-empty completion timestamp and a cleared reopen timestamp.",
+      "Confirm the full test suite passes without regressions."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp format should `completedAt` use?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use an ISO-8601 timestamp string generated from the current time, such as `new Date().toISOString()`.",
+        "basis": "The model type requires a string or null and the task only requires a timestamp; ISO-8601 is the standard interoperable representation and does not change the requested behavior."
+      },
+      {
+        "question": "What should happen if complete is called on a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "The required behavior applies to the transition from pending to completed; no separate idempotency or repeated-completion contract is introduced.",
+        "basis": "The task wording says 'when a task becomes completed,' while the repository contains no contract or test specifying repeated completion behavior. The requested and existing tests cover the pending-to-completed transition and completed-to-pending reopen transition."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": true,
+  "workflowStatus": "paused"
+}

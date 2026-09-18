@@ -8,7 +8,11 @@ export type WorkflowErrorCode =
   | "workspace_missing"
   | "workspace_mismatch"
   | "unsupported_mode"
-  | "workflow_exists";
+  | "workflow_exists"
+  | "lease_held"
+  | "stale_fencing_token"
+  | "lease_expired"
+  | "not_owner";
 
 export class WorkflowError extends Error {
   readonly code: WorkflowErrorCode;

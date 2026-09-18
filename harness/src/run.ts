@@ -92,7 +92,15 @@ import {
   type RetryDecision,
 } from "./retry.ts";
 import { WorkflowError } from "./workflow-error.ts";
-import { loadWorkflowState, saveWorkflowState } from "./workflow-store.ts";
+import {
+  createWorkflowOwnerId,
+  acquireWorkflowLease,
+  releaseWorkflowLease,
+  DEFAULT_WORKFLOW_LEASE_TTL_MS,
+} from "./workflow-lease-store.ts";
+import type { WorkflowLease } from "./workflow-lease.ts";
+import { systemNowMs } from "./workflow-lease.ts";
+import { loadWorkflowState, saveWorkflowStateOwned } from "./workflow-store.ts";
 import {
   admitImplementationReady,
   admitReviewReady,
@@ -120,6 +128,12 @@ export type DurableRunOptions = {
   injectReviewTransientFailureOnAttempt?: number;
   /** Probe/test only. Persist retry admission and exit before the next attempt. */
   stopAfterRetryAdmission?: boolean;
+  /** Test/probe clock. Production uses system time. */
+  nowMs?: () => number;
+  /** Test/probe TTL. Production uses DEFAULT_WORKFLOW_LEASE_TTL_MS. */
+  leaseTtlMs?: number;
+  /** Harness-owned after acquire. Callers must not set this. */
+  lease?: WorkflowLease;
 };
 
 export type WorkflowFailureReason =
@@ -252,6 +266,57 @@ export async function runV1Harness(options: {
   /** Opt-in Module 16 durability. Absent = current in-memory workflow. */
   durable?: DurableRunOptions;
 }): Promise<HarnessRunResult> {
+  const durable: DurableRunOptions | undefined = options.durable
+    ? { ...options.durable, lease: undefined }
+    : undefined;
+  let lease: WorkflowLease | undefined;
+  if (durable) {
+    assertDurableModeSupported(options);
+    const acquired = acquireWorkflowLease({
+      storeDir: durable.storeDir,
+      workflowId: durable.workflowId,
+      ownerId: createWorkflowOwnerId(),
+      ttlMs: durable.leaseTtlMs ?? DEFAULT_WORKFLOW_LEASE_TTL_MS,
+      now: durableNowMs(durable),
+    });
+    if (!acquired.ok) {
+      throw new WorkflowError(
+        "lease_held",
+        `Workflow ${durable.workflowId} is already owned by another invocation.`,
+      );
+    }
+    lease = acquired.lease;
+    durable.lease = lease;
+  }
+
+  try {
+    return await executeV1Harness({ ...options, durable });
+  } finally {
+    if (durable && lease) {
+      releaseWorkflowLease({
+        storeDir: durable.storeDir,
+        lease,
+      });
+    }
+  }
+}
+
+async function executeV1Harness(options: {
+  config: HarnessConfig;
+  task: string;
+  runId: string;
+  beforeSnapshot?: FileSnapshot;
+  contextMode?: ContextMode;
+  conversationStateMode?: ConversationStateMode;
+  planningEnabled?: boolean;
+  subagentsEnabled?: boolean;
+  bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
+  reviewUnitTemplates?: ChangeUnitTemplate[];
+  afterImplementationEpisode?: () => void;
+  workspace?: Workspace;
+  architectureConstraints?: ArchitectureConstraint[];
+  durable?: DurableRunOptions;
+}): Promise<HarnessRunResult> {
   const durable = options.durable;
   if (durable) {
     assertDurableModeSupported(options);
@@ -299,6 +364,15 @@ export async function runV1Harness(options: {
     options.conversationStateMode ?? "manual";
   const startedAt = Date.now();
   const tracer = new Tracer(config.tracesDir, runId);
+  if (durable?.lease) {
+    tracer.record("workflow_lease_acquired", {
+      workflowId: durable.lease.workflowId,
+      ownerId: durable.lease.ownerId,
+      fencingToken: durable.lease.fencingToken,
+      pid: process.pid,
+      source: "harness",
+    });
+  }
 
   if (workflow?.phase === "review_ready") {
     return continueAfterVerifiedImplementation({
@@ -2886,7 +2960,7 @@ function persistImplementationReady(options: {
     specInspectedPaths: options.specInspectedPaths,
     contextMode: options.contextMode,
   });
-  saveWorkflowState(options.durable.storeDir, next);
+  persistOwnedState(options.durable, next);
   options.tracer.record("durable_transition", {
     from: options.workflow.phase,
     to: next.phase,
@@ -2911,7 +2985,7 @@ function persistReviewReadyCheckpoint(options: {
     reviewBaseline: options.reviewBaseline,
     verification: options.verification,
   });
-  saveWorkflowState(options.durable.storeDir, next);
+  persistOwnedState(options.durable, next);
   options.tracer.record("durable_transition", {
     from: options.workflow.phase,
     to: next.phase,
@@ -2932,7 +3006,7 @@ function persistReviewRetryState(options: {
     current: options.workflow,
     retry: options.retry,
   });
-  saveWorkflowState(options.durable.storeDir, next);
+  persistOwnedState(options.durable, next);
   options.tracer.record("durable_retry_state", {
     workflowId: next.workflowId,
     operationId: next.retry?.operationId ?? null,
@@ -2958,7 +3032,27 @@ function persistDurableTerminal(
     return;
   }
   const next = admitTerminal({ current: workflow, outcome });
-  saveWorkflowState(durable.storeDir, next);
+  persistOwnedState(durable, next);
+}
+
+function persistOwnedState(
+  durable: DurableRunOptions,
+  state: WorkflowState,
+): void {
+  const lease = durable.lease;
+  if (!lease) {
+    throw new Error("Harness bug: durable persist without acquired lease.");
+  }
+  saveWorkflowStateOwned({
+    storeDir: durable.storeDir,
+    state,
+    lease,
+    now: durableNowMs(durable),
+  });
+}
+
+function durableNowMs(durable: DurableRunOptions): number {
+  return durable.nowMs?.() ?? systemNowMs();
 }
 
 async function pausedAfterSpec(options: {

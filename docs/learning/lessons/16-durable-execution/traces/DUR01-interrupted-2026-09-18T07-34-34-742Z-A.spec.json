@@ -1,0 +1,53 @@
+{
+  "task": "# T02 — completedAt on complete/reopen\n\nWhen a task becomes completed, `completedAt` must contain a timestamp.\n\nWhen a completed task is reopened, `completedAt` must become `null`.\n\nInspect the relevant source files, fix the behavior, and verify with tests.",
+  "decision": "executable",
+  "spec": {
+    "goal": "Update task completion state so completed tasks receive a completion timestamp and reopened tasks clear that timestamp, while preserving the existing task API and routing behavior.",
+    "requirements": [
+      "In `TaskService.complete`, when an existing task is completed, set `completedAt` to a newly generated non-empty timestamp string before returning the task.",
+      "In `TaskService.reopen`, when an existing task is reopened, set `completedAt` to `null` before returning the task.",
+      "Do not change the existing not-found behavior or HTTP response statuses and shapes for the complete and reopen routes.",
+      "Keep newly created tasks initialized with status `pending` and `completedAt: null`."
+    ],
+    "constraints": [
+      "Implement the behavior in the task service, which is the layer currently responsible for mutating task status and where the existing bug comments identify the missing updates.",
+      "Use a runtime-generated timestamp representation compatible with the declared `completedAt: string | null` type; the exact timestamp format is not specified by the task or repository.",
+      "Do not alter unrelated task listing, creation, retrieval, or status-filter behavior."
+    ],
+    "nonGoals": [
+      "No change to task title validation, identifiers, routing, or HTTP error handling.",
+      "No persistence or schema changes; tasks remain in the in-memory map.",
+      "No additional product rule for how repeated completion of an already-completed task should behave beyond ensuring the returned completed task has a timestamp."
+    ],
+    "acceptance": [
+      "Completing an existing pending task returns HTTP 200 with status `completed` and a non-empty string `completedAt`.",
+      "Reopening a completed task returns HTTP 200 with status `pending` and `completedAt` equal to `null`.",
+      "A task created through the existing API still starts with `completedAt: null`.",
+      "Existing not-found complete/reopen behavior remains HTTP 404 with `{ error: \"task_not_found\" }`.",
+      "The task test suite passes, including the existing complete/reopen timestamp assertions."
+    ],
+    "verification": [
+      "Run the repository test script (`npm test`).",
+      "Confirm the complete/reopen tests exercise both timestamp assignment and clearing, and that all existing tests pass without regressions."
+    ],
+    "ambiguities": [
+      {
+        "question": "What timestamp string format should be used for `completedAt`?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "Use any runtime-generated timestamp string, preferably an ISO-8601 string such as `new Date().toISOString()`.",
+        "basis": "The task requires a timestamp and `Task.completedAt` is typed as `string | null`; existing tests require only a non-empty string and provide no stricter format contract."
+      },
+      {
+        "question": "What should happen if completion is requested for a task that is already completed?",
+        "classification": "safe_inference",
+        "status": "resolved",
+        "resolution": "This task only requires that a completed task have a timestamp; preserve the existing endpoint behavior and ensure the returned completed task remains timestamped. The exact refresh-versus-preserve policy is outside the stated scope.",
+        "basis": "The task specifies the pending-to-completed and completed-to-reopened transitions. Existing service behavior is idempotent with respect to status, and no repository contract specifies repeated-completion timestamp refresh semantics."
+      }
+    ]
+  },
+  "unresolvedQuestions": [],
+  "implementationStarted": false,
+  "workflowStatus": "paused"
+}

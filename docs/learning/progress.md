@@ -20,10 +20,10 @@ Completed modules:
 14. ✅ 14 — Human-Reviewable Decomposition
 15. ✅ 15 — Stronger Eval Methodology (closed by Master; see phase-3 consolidation)
 16. ✅ 16 — Durable Execution (closed by Topic Chat)
+17. ✅ 17 — Checkpoint / Resume (closed by Master)
+18. ✅ 18 — Retry Semantics (closed by Topic Chat)
 
-Current module: **18 — Retry Semantics** (mechanism implemented and measured; pending Topic Chat review). Not marked complete.
-
-Module 17 remains implemented/measured; Topic Chat still owns its formal closure.
+Current module: **19 — Orchestration as Distributed Systems** (mechanism implemented and measured; pending Topic Chat review). Not marked complete.
 
 ---
 
@@ -43,7 +43,8 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional Worker `delegate_research` exists behind `subagentsEnabled`, default `false`. Module 13 mechanism probe, not a change to the normal lifecycle;
 - optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker;
 - eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
-- opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17) plus harness-owned bounded REVIEW retry on `review_ready` (Module 18). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path.
+- opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17) plus harness-owned bounded REVIEW retry on `review_ready` (Module 18);
+- opt-in single-machine workflow lease + fencing token for authoritative WorkflowState writes (Module 19). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path.
 
 Conceptual default flow:
 
@@ -65,9 +66,49 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 ---
 
+# Module 19 — Orchestration as Distributed Systems
+
+**Status:** implemented and measured. Mechanism probe OWN01 **passed**. Topic Chat owns formal closure. Not marked complete.
+
+Theory draft:
+
+`docs/learning/lessons/19-orchestration-as-distributed-systems/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/19-orchestration-as-distributed-systems/notes.md`
+
+## What was implemented
+
+Single-machine durable workflow ownership:
+
+- lease record: `workflowId`, `ownerId`, `fencingToken`, `expiresAt`;
+- short per-workflow filesystem mutex only serializes metadata changes;
+- acquire / takeover / renew / release;
+- fenced `saveWorkflowStateOwned` under the same mutex;
+- durable `runV1Harness()` acquires a harness-owned lease before phase work and releases it if it still owns that epoch.
+
+## Important design decisions
+
+Lease ≠ mutex. Expiry does not stop the old process. Authoritative writes reject a stale fencing token. Renew does not increment the token. Release does not reset the token. No scheduler, queue, heartbeat loop, or workspace fencing.
+
+## Current result
+
+OWN01 passed (2026-09-18). Separate OS processes. Virtual file clock (no 30s sleeps). A token=1; B blocked while valid; after expiry B token=2; stale A commit/renew/release rejected; B commit `commit-from-B` is the final WorkflowState. Harness unit tests: **235 passed**.
+
+Evidence: `docs/learning/lessons/19-orchestration-as-distributed-systems/traces/OWN01-ownership-2026-09-18T07-34-27-366Z.txt`
+
+Regression: DUR01, CHK01, RET01 all passed after the fencing path.
+
+## Failures / open questions
+
+Topic Chat owns formal closure. Fencing does not cover workspace/tool/git/network side effects. No exactly-once. No cross-machine consensus.
+
+---
+
 # Module 18 — Retry Semantics
 
-**Status:** implemented and measured. Mechanism probe RET01 **passed**. Topic Chat owns formal closure. Not marked complete.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-17. Mechanism probe RET01 **passed**.
 
 Theory draft:
 
@@ -98,7 +139,7 @@ Evidence: `docs/learning/lessons/18-retry-semantics/traces/RET01-retry-2026-09-1
 
 ## Failures / open questions
 
-Topic Chat owns formal closure. Worker reconciliation, leases, and exactly-once remain out of scope.
+Topic Chat closed Module 18. Worker reconciliation and exactly-once remain out of scope.
 
 ---
 

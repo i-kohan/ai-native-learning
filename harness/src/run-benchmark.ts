@@ -39,6 +39,11 @@ import {
   runDurabilityProbe,
 } from "./durability-probe.ts";
 import {
+  isExpectedOWN01Outcome,
+  printOwnershipProbeSummary,
+  runOwnershipProbe,
+} from "./ownership-probe.ts";
+import {
   isExpectedISO01Outcome,
   printIsolationProbeSummary,
   runIsolationProbe,
@@ -1144,6 +1149,7 @@ type CliOptions = {
   durabilityProbe?: boolean;
   checkpointProbe?: boolean;
   retryProbe?: boolean;
+  ownershipProbe?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
@@ -1287,6 +1293,21 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       retryProbe: true,
+      contextMode: "variant",
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--ownership") || argv.includes("OWN01")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      ownershipProbe: true,
       contextMode: "variant",
       conversationStateMode,
     };
@@ -1441,6 +1462,7 @@ async function main(): Promise<void> {
     durabilityProbe,
     checkpointProbe,
     retryProbe,
+    ownershipProbe,
     taskId,
     contextMode,
     conversationStateMode,
@@ -1450,6 +1472,13 @@ async function main(): Promise<void> {
     const result = await runRetryMechanismProbe();
     printRetryProbeSummary(result);
     process.exit(isExpectedRET01Outcome(result) ? 0 : 1);
+    return;
+  }
+
+  if (ownershipProbe) {
+    const result = await runOwnershipProbe();
+    printOwnershipProbeSummary(result);
+    process.exit(isExpectedOWN01Outcome(result) ? 0 : 1);
     return;
   }
 
@@ -1606,6 +1635,8 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark -- REV01");
     console.error("   or: npm run benchmark -- DUR01");
     console.error("   or: npm run benchmark -- CHK01");
+    console.error("   or: npm run benchmark -- RET01");
+    console.error("   or: npm run benchmark -- OWN01");
     process.exit(1);
   }
 
