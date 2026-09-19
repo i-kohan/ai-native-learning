@@ -1,6 +1,6 @@
 # Harness Architecture
 
-Last consolidated: 2026-09-18, after Module 19 single-machine workflow ownership/fencing.
+Last consolidated: 2026-09-19, after Module 20 post-terminal GitHub/CI delivery.
 
 This document is a compact map of the **current architecture**, not a target-state design. Historical experiment details remain in `docs/learning/lessons/` and `docs/learning/experiments.md`.
 
@@ -100,24 +100,25 @@ Security-sensitive decisions belong here when the harness can technically enforc
 
 ## 3. Main implementation surfaces
 
-| Responsibility              | Main code                                                                  |
-| --------------------------- | -------------------------------------------------------------------------- |
-| Outer workflow              | `harness/src/run.ts`                                                       |
-| Inner agent/tool loop       | `harness/src/loop.ts`                                                      |
-| Spec phase                  | `harness/src/spec-phase.ts`, `harness/src/spec.ts`                         |
-| Targeted context            | `harness/src/context.ts`                                                   |
-| Tools / capability boundary | `harness/src/tools.ts`, `harness/src/paths.ts`                             |
-| Verification                | `harness/src/verify.ts`, `harness/src/failure.ts`, `harness/src/repair.ts` |
-| Independent review          | `harness/src/review-phase.ts`, `harness/src/review.ts`                     |
-| Skills                      | `harness/src/skills.ts`, `skills/evidence-guided-repair/`                  |
-| Model routing               | `harness/src/model-routing.ts`, `harness/src/config.ts`                    |
-| Workspace isolation         | `harness/src/workspace.ts`                                                 |
-| Durable workflow state      | `harness/src/workflow-state.ts`, `harness/src/workflow-store.ts`           |
-| Workflow ownership/fencing  | `harness/src/workflow-lease.ts`, `harness/src/workflow-lock.ts`, `harness/src/workflow-lease-store.ts` |
-| Retry policy                | `harness/src/retry.ts`                                                     |
-| Tracing                     | `harness/src/trace.ts`                                                     |
-| Evals / qualification       | `harness/src/eval/`                                                        |
-| Benchmark/probe runner      | `harness/src/run-benchmark.ts`                                             |
+| Responsibility              | Main code                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Outer workflow              | `harness/src/run.ts`                                                                                                            |
+| Inner agent/tool loop       | `harness/src/loop.ts`                                                                                                           |
+| Spec phase                  | `harness/src/spec-phase.ts`, `harness/src/spec.ts`                                                                              |
+| Targeted context            | `harness/src/context.ts`                                                                                                        |
+| Tools / capability boundary | `harness/src/tools.ts`, `harness/src/paths.ts`                                                                                  |
+| Verification                | `harness/src/verify.ts`, `harness/src/failure.ts`, `harness/src/repair.ts`                                                      |
+| Independent review          | `harness/src/review-phase.ts`, `harness/src/review.ts`                                                                          |
+| Skills                      | `harness/src/skills.ts`, `skills/evidence-guided-repair/`                                                                       |
+| Model routing               | `harness/src/model-routing.ts`, `harness/src/config.ts`                                                                         |
+| Workspace isolation         | `harness/src/workspace.ts`                                                                                                      |
+| Durable workflow state      | `harness/src/workflow-state.ts`, `harness/src/workflow-store.ts`                                                                |
+| Workflow ownership/fencing  | `harness/src/workflow-lease.ts`, `harness/src/workflow-lock.ts`, `harness/src/workflow-lease-store.ts`                          |
+| GitHub / CI delivery        | `harness/src/delivery-state.ts`, `harness/src/delivery-store.ts`, `harness/src/delivery-run.ts`, `harness/src/github-client.ts` |
+| Retry policy                | `harness/src/retry.ts`                                                                                                          |
+| Tracing                     | `harness/src/trace.ts`                                                                                                          |
+| Evals / qualification       | `harness/src/eval/`                                                                                                             |
+| Benchmark/probe runner      | `harness/src/run-benchmark.ts`                                                                                                  |
 
 ## 4. Normal architecture vs experimental seams
 
@@ -158,6 +159,19 @@ Not started:
 - workspace/tool fencing or stale side-effect reconciliation.
 
 Bounded REVIEW retry is implemented as a mechanism probe. It does not make mutating Worker execution retry-safe. REVIEW retry state stays on `review_ready` until the next durable semantic boundary (terminal, or a new logical `operationId`); a successful in-memory REVIEW result does not clear the budget by itself. Unknown `model_error` is not automatically transient.
+
+### Opt-in: post-terminal GitHub delivery
+
+**Status:** implemented as a Module 20 mechanism; default `runV1Harness()` is unchanged and still rejects terminal resume.
+
+Supported:
+
+- separate `DeliveryState` linked by `workflowId`;
+- deterministic `agent/<workflowId>` branch, draft PR, no force push, no merge;
+- exact-head CI admission;
+- at most one semantic CI repair with fresh local VERIFY + REVIEW.
+
+`WorkflowState` fencing does not fence GitHub. Intended `expectedHeadSha` is not a cached remote head.
 
 A workflow lease is not a scheduler. Expiry does not stop the old process. Authoritative WorkflowState writes reject a stale fencing token. The short mutex is an `O_EXCL` lock file with a holder token (not a time-based stale steal) and is not the lease.
 
@@ -299,8 +313,10 @@ review_ready → transient REVIEW failure → harness-admitted retry → REVIEW 
 durable invocation → acquire lease → fenced WorkflowState writes → release if still owner
 ```
 
+Module 20 added a linked post-terminal delivery lifecycle. It does not make GitHub a fenced resource.
+
 Still open:
 
 > What happens if the process dies mid-Worker or mid-VERIFY, or a stale worker already mutated the workspace / external systems?
 
-Ownership fencing protects only resources that actually enforce the fencing token. WorkflowState is fenced. Workspace files, git, network, and other side effects are not.
+Ownership fencing protects only resources that actually enforce the fencing token. WorkflowState and DeliveryState are fenced locally. Workspace files, git, GitHub, and other side effects are not.

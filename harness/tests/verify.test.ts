@@ -12,6 +12,7 @@ describe("verificationChildEnv", () => {
       HOME: "/tmp/home",
       TMPDIR: "/tmp",
       OPENAI_API_KEY: "sk-should-not-leak",
+      GITHUB_TOKEN: "ghp-should-not-leak",
       SEC01_SECRET: "sec01-controlled-canary",
       NODE_TEST_CONTEXT: "1",
       NODE_OPTIONS: "--require ./evil.js",
@@ -24,6 +25,7 @@ describe("verificationChildEnv", () => {
     assert.equal(child.HOME, "/tmp/home");
     assert.equal(child.TMPDIR, "/tmp");
     assert.equal(child.OPENAI_API_KEY, undefined);
+    assert.equal(child.GITHUB_TOKEN, undefined);
     assert.equal(child.SEC01_SECRET, undefined);
     assert.equal(child.NODE_TEST_CONTEXT, undefined);
     assert.equal(child.NODE_OPTIONS, undefined);

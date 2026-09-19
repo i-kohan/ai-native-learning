@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --prefix target-app
+      - run: npm install --prefix harness
+      - run: npm test
+      - name: Experiment CI01 fault
+        if: hashFiles('harness/fixtures/ci01.red') != ''
+        run: |
+          echo "CI01_CONTROLLED_RED: experiment-only fault file present"
+          echo "This step is not part of local npm test verification."
+          exit 1

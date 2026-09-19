@@ -44,6 +44,13 @@ import {
   runOwnershipProbe,
 } from "./ownership-probe.ts";
 import {
+  isExpectedCi01Outcome,
+  isExpectedGhi01Outcome,
+  printGithubProbeSummary,
+  runCi01Probe,
+  runGhi01Probe,
+} from "./ghi01-probe.ts";
+import {
   isExpectedISO01Outcome,
   printIsolationProbeSummary,
   runIsolationProbe,
@@ -1150,6 +1157,8 @@ type CliOptions = {
   checkpointProbe?: boolean;
   retryProbe?: boolean;
   ownershipProbe?: boolean;
+  ghi01Probe?: boolean;
+  ci01Probe?: boolean;
   taskId?: TaskId;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
@@ -1312,6 +1321,36 @@ function parseArgs(argv: string[]): CliOptions {
       conversationStateMode,
     };
   }
+  if (argv.includes("--ghi01") || argv.includes("GHI01")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      ghi01Probe: true,
+      contextMode: "variant",
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--ci01") || argv.includes("CI01")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      ci01Probe: true,
+      contextMode: "variant",
+      conversationStateMode,
+    };
+  }
   if (argv.includes("--checkpoint") || argv.includes("CHK01")) {
     return {
       all: false,
@@ -1463,6 +1502,8 @@ async function main(): Promise<void> {
     checkpointProbe,
     retryProbe,
     ownershipProbe,
+    ghi01Probe,
+    ci01Probe,
     taskId,
     contextMode,
     conversationStateMode,
@@ -1479,6 +1520,20 @@ async function main(): Promise<void> {
     const result = await runOwnershipProbe();
     printOwnershipProbeSummary(result);
     process.exit(isExpectedOWN01Outcome(result) ? 0 : 1);
+    return;
+  }
+
+  if (ghi01Probe) {
+    const result = await runGhi01Probe();
+    printGithubProbeSummary(result);
+    process.exit(isExpectedGhi01Outcome(result) ? 0 : 1);
+    return;
+  }
+
+  if (ci01Probe) {
+    const result = await runCi01Probe();
+    printGithubProbeSummary(result);
+    process.exit(isExpectedCi01Outcome(result) ? 0 : 1);
     return;
   }
 

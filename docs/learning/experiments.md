@@ -2009,3 +2009,29 @@ Default `runV1Harness()` stays in-memory unless `durable` is opted in. No automa
 Initial review found the first time-based stale-mutex recovery unsafe: elapsed time does not prove the holder is dead. The mutex was replaced with fail-closed `O_CREAT | O_EXCL` acquisition plus a holder token, and regression tests cover a paused holder beyond the old stale threshold and stale-release safety.
 
 Module 19 experiment recorded; formally closed by Topic Chat on 2026-09-18.
+
+---
+
+## Module 20 — GitHub / CI Integration
+
+### Hypothesis
+
+A linked post-terminal `DeliveryState` can take a locally accepted artifact to a real draft PR and exact-head CI without changing Modules 16–19 uncommitted resume semantics, and without treating GitHub as a fenced resource.
+
+### Decision rules (frozen before outcomes)
+
+GHI01 and CI01 PASS criteria are listed in the Topic prompt and in `docs/learning/lessons/20-github-ci-integration/notes.md`. Mocks do not replace live evidence.
+
+### Deterministic result (2026-09-19)
+
+`npm test --prefix harness`: **252 passed**, including new `delivery.test.ts` contracts and Modules 16–19 regressions.
+
+Covered: PR reuse, `ci_waiting` restart, stale SHA rejection, unexpected remote movement, protected branch, no force-push, ambiguous create-PR reconcile, semantic vs infrastructure CI, repair SHA + fresh REVIEW, credential isolation.
+
+### Live probes
+
+GHI01 and CI01 were **not executed**. This environment had no `GITHUB_TOKEN` / `GH_TOKEN` and no `gh`. That is missing evidence, not a probe PASS.
+
+### Conclusion
+
+The delivery mechanism and deterministic contracts are implemented. Formal GHI01/CI01 PASS is not claimed.

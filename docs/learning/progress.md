@@ -24,7 +24,7 @@ Completed modules:
 18. ✅ 18 — Retry Semantics (closed by Topic Chat)
 19. ✅ 19 — Orchestration as Distributed Systems (closed by Topic Chat on 2026-09-18)
 
-Next module: **20 — GitHub / CI Integration** (pending Master start).
+Next module: **20 — GitHub / CI Integration** (implemented; live GHI01/CI01 not yet evidenced; not closed by Master).
 
 ---
 
@@ -45,7 +45,8 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional advisory ReviewPlan sequential units exist only when a binder is supplied (Module 14 experiment). Harness-owned `UnitExecutionScope` bounds each episode. Default remains one Worker;
 - eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
 - opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17) plus harness-owned bounded REVIEW retry on `review_ready` (Module 18);
-- opt-in single-machine workflow lease + fencing token for authoritative WorkflowState writes (Module 19). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path.
+- opt-in single-machine workflow lease + fencing token for authoritative WorkflowState writes (Module 19). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path;
+- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01/CI01 evidence is still missing in this workspace because no delivery-layer GitHub token was available.
 
 Conceptual default flow:
 
@@ -64,6 +65,48 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 20 — GitHub / CI Integration
+
+**Status:** implemented, not formally closed. Deterministic contracts **passed**. Live GHI01/CI01 **not run** in this session.
+
+Theory:
+
+`docs/learning/lessons/20-github-ci-integration/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/20-github-ci-integration/notes.md`
+
+## What was implemented
+
+Linked post-terminal GitHub delivery:
+
+- separate `DeliveryState` keyed by `workflowId`;
+- deterministic `agent/<workflowId>` branch;
+- intended vs observed GitHub reconciliation, no force push, no merge;
+- exact-head CI admission;
+- one bounded semantic CI repair with fresh VERIFY + REVIEW;
+- smallest `pull_request` GitHub Actions workflow;
+- experiment-only `harness/fixtures/ci01.red` CI fault.
+
+## Important design decisions
+
+`WorkflowState` terminal remains terminal. Durable workspace resume still assumes an uncommitted tree (`HEAD === headRevision === baseRevision`). After H1, `DeliveryState.expectedHeadSha` owns the delivery head.
+
+`WorkflowState` fencing does not fence GitHub. Ownership is checked before privileged writes; GitHub still cannot enforce the fencing token.
+
+## Current result
+
+Harness unit tests: **252 passed**, including Modules 16–19 regressions and new delivery contracts.
+
+GHI01 / CI01 live probes were **not executed**: `GITHUB_TOKEN` / `GH_TOKEN` / `gh` were absent. That is a missing-evidence result, not a PASS.
+
+## Failures / open questions
+
+Topic Chat / Master own formal closure. Live issue → draft PR → Actions evidence still has to be recorded before GHI01/CI01 can pass.
 
 ---
 
