@@ -1,6 +1,6 @@
 # 20 — GitHub / CI Integration
 
-Практический журнал Module 20. Formal closure remains with Topic Chat / Master.
+Практический журнал Module 20. Topic Chat closure: **PASS** on 2026-09-20; Master owns next-module selection.
 
 ## What we built
 
@@ -118,11 +118,25 @@ CI01 **PASS** (2026-09-20):
 - final phase `ready_for_human_review`
 - PR remains draft / unmerged
 
-Failed probe artifacts `#3` / `#4` were leftover GHI01 attempts and are closed. `#5` stays open while PR `#6` is the GHI01 artifact. Draft PR `#8` is a failed CI01 attempt (host harness tests broke after extra DELETE tests were committed); successful CI01 is PR `#9`.
+Failed probe artifacts `#3` / `#4` were leftover GHI01 attempts and are closed. `#5` stays open while PR `#6` is the GHI01 artifact. PR `#8` is a failed CI01 attempt (host harness tests broke after extra DELETE tests were committed) and is closed as superseded; successful CI01 is draft PR `#9`.
 
 Probe hygiene: `DELIVERY_PROBE_ISSUE` reuses an explicit issue; otherwise a failed/in-progress `traces/workflows/<probe>-latest-issue.json` is reused instead of creating another issue.
 
 CI for delivery PRs now runs `npm test --prefix target-app`, matching local VERIFY. Full-repo `npm test` also runs harness tests that copy `target-app/tests` into calibration fixtures, so a green artifact can look red for the wrong reason.
+
+## Topic Chat closure
+
+**PASS — 2026-09-20.**
+
+The frozen Module 20 success criteria are satisfied:
+
+- real GitHub delivery path evidenced by GHI01;
+- exact-current-head CI admission evidenced by GHI01/CI01;
+- real controlled H1 red → one bounded repair → fresh VERIFY + independent REVIEW → H2 green evidenced by CI01;
+- restart/PR reuse, stale-SHA rejection, unexpected remote movement, protected-branch rejection, no-force, and credential-isolation contracts covered deterministically;
+- final authority remains human: both successful probe PRs are draft and unmerged.
+
+This is **mechanism evidence**, not a claim of broad autonomous delivery reliability.
 
 ## Residual limits
 
