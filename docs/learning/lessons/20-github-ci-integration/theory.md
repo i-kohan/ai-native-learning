@@ -74,6 +74,23 @@ policy          → stop
 stale SHA       → ignore for admission
 ```
 
+## CI scope is policy, not “more tests = better”
+
+The delivery gate should verify the **candidate and contract being delivered**. A broader command is not automatically a stronger admission gate if it mixes unrelated meta-system checks into the candidate's delivery result.
+
+For the Module 20 target-app delivery probes, local VERIFY and PR CI both use the target-app test contract. Full-repo harness tests remain valuable regression evidence for developing the harness itself, but they are a different check class and should not be silently conflated with target-app delivery admission.
+
+In a mature system this usually becomes an explicit check policy:
+
+```text
+candidate-specific required checks
++ repository/platform health checks where policy requires them
++ optional/advisory checks
+→ harness-owned admission decision
+```
+
+The key is not “run fewer checks”; it is **name which checks authorize which transition**.
+
 ## Residual race
 
 WorkflowState fencing does **not** fence GitHub. There remains a check→external-action race because GitHub does not enforce our fencing token.
@@ -88,6 +105,15 @@ GitHub credentials belong only to the outer delivery layer. The model never rece
 
 CI logs are untrusted external data.
 
+## Validation boundary
+
+Module 20 was validated with two mechanism probes:
+
+- **GHI01:** real issue → locally accepted artifact → deterministic branch → real draft PR → CI PASS on the exact current head;
+- **CI01:** real CI failure on H1 → failure evidence bound to H1 → one bounded repair → fresh VERIFY + independent REVIEW → H2 → the same PR → real CI PASS on H2.
+
+These probes establish the delivery/control-flow mechanism and exact-head evidence discipline. They do **not** establish a statistical reliability claim for arbitrary repositories, CI failures, or autonomous repairs.
+
 ## Takeaways
 
 1. Terminal implementation state and GitHub delivery state are different lifecycles.
@@ -96,3 +122,4 @@ CI logs are untrusted external data.
 4. One CI repair is a new artifact and needs fresh VERIFY + REVIEW.
 5. Fencing a local file is not fencing GitHub.
 6. Ambiguous writes must be reconciled, not blindly retried.
+7. CI scope is an explicit admission policy: evidence is useful only if the harness knows which transition that check is allowed to authorize.
