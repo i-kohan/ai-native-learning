@@ -23,8 +23,9 @@ Completed modules:
 17. ✅ 17 — Checkpoint / Resume (closed by Master)
 18. ✅ 18 — Retry Semantics (closed by Topic Chat)
 19. ✅ 19 — Orchestration as Distributed Systems (closed by Topic Chat on 2026-09-18)
+20. ✅ 20 — GitHub / CI Integration (closed by Topic Chat on 2026-09-20; live GHI01 + CI01 PASS)
 
-Next module: **20 — GitHub / CI Integration** (implemented; live GHI01 PASS; live CI01 PASS; not formally closed by Topic Chat / Master).
+Next module: **pending Master selection**. Do not start Module 21 automatically from this Topic Chat.
 
 ---
 
@@ -46,7 +47,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
 - opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17) plus harness-owned bounded REVIEW retry on `review_ready` (Module 18);
 - opt-in single-machine workflow lease + fencing token for authoritative WorkflowState writes (Module 19). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path;
-- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence is recorded; formal closure remains with Topic Chat / Master.
+- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence passed; Module 20 is closed by Topic Chat, while Master owns next-module selection.
 
 Conceptual default flow:
 
@@ -70,7 +71,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 20 — GitHub / CI Integration
 
-**Status:** implemented, not formally closed. Deterministic contracts **passed**. Live GHI01 **PASS**. Live CI01 **PASS**. Formal closure remains with Topic Chat / Master.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-20. Deterministic contracts **passed**. Live GHI01 **PASS**. Live CI01 **PASS**.
 
 Theory:
 
@@ -127,9 +128,11 @@ CI01 live evidence (2026-09-20):
 - final phase `ready_for_human_review`
 - PR remains draft / unmerged
 
-## Failures / open questions
+## Closure / remaining boundaries
 
-Topic Chat / Master own formal closure. Implementation plus live GHI01/CI01 mechanism evidence is recorded; do not treat the module as closed until they review it.
+Topic Chat closure: **PASS** on 2026-09-20. GHI01 proves real issue → accepted artifact → deterministic branch → draft PR → current-head green CI. CI01 proves real H1 red → bounded repair → fresh VERIFY + independent REVIEW → H2 → same PR → current-head green CI.
+
+This remains mechanism evidence, not a broad reliability qualification. GitHub polling, one repair maximum, and the residual ownership check → external-action race remain explicit boundaries. Master owns next-module selection.
 
 ---
 
