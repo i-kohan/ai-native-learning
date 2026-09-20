@@ -23,9 +23,10 @@ Completed modules:
 17. ✅ 17 — Checkpoint / Resume (closed by Master)
 18. ✅ 18 — Retry Semantics (closed by Topic Chat)
 19. ✅ 19 — Orchestration as Distributed Systems (closed by Topic Chat on 2026-09-18)
-20. ✅ 20 — GitHub / CI Integration (closed by Topic Chat on 2026-09-20; live GHI01 + CI01 PASS)
+20. ✅ 20 — GitHub / CI Integration (closed by Master on 2026-09-20; live GHI01 + CI01 PASS)
+21. ⏭ 21 — Optional Browser QA (skipped / not applicable on current non-UI capstone; revisit only for a real UI workload)
 
-Next module: **pending Master selection**. Do not start Module 21 automatically from this Topic Chat.
+Next module: **22 — Bounded Parallel Fan-Out**.
 
 ---
 
@@ -47,7 +48,8 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
 - opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17) plus harness-owned bounded REVIEW retry on `review_ready` (Module 18);
 - opt-in single-machine workflow lease + fencing token for authoritative WorkflowState writes (Module 19). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path;
-- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence passed; Module 20 is closed by Topic Chat, while Master owns next-module selection.
+- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence passed; Module 20 is closed by Master;
+- Module 21 Browser QA is intentionally skipped for the current capstone because `target-app` has no meaningful UI surface. Revisit only when a real UI workload makes browser-observable evidence relevant.
 
 Conceptual default flow:
 
