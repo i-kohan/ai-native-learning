@@ -88,11 +88,41 @@ Live probes require `GITHUB_TOKEN` or `GH_TOKEN` in the delivery-layer environme
 
 `harness/tests/delivery.test.ts` covers PR reuse, `ci_waiting` restart, stale SHA rejection, unexpected remote movement, protected branch, no force-push, ambiguous create-PR reconcile, semantic vs infrastructure CI, repair SHA change + fresh REVIEW, and credential isolation.
 
-Harness unit tests after implementation: **252 passed** (was 239). Modules 16–19 durability/checkpoint/retry/ownership tests still pass.
+Harness unit tests after CI01 evaluator strengthening: **254 passed**. Modules 16–19 durability/checkpoint/retry/ownership tests still pass.
 
 ## Live probes
 
-GHI01 and CI01 were implemented and wired, but this session had no GitHub token in the environment (`gh` absent, `GITHUB_TOKEN`/`GH_TOKEN` unset). Live issue/PR/Actions evidence is therefore **not recorded**. Do not treat the mechanism as GHI01/CI01 PASS.
+GHI01 **PASS** (retained, not rerun):
+
+- issue `#5`
+- draft PR `#6`
+- workflowId `GHI01-2026-09-19T18-12-22-355Z`
+- baseSha `223d1111c8cca84ecc6e7d7cadcbf15ad13a7f82`
+- H1 `11109909a22eaf7e87942ffc1f9e2515394f2c50`
+- Actions run `35460488830` = PASS
+- PR remains draft / unmerged
+
+CI01 **PASS** (2026-09-20):
+
+- issue `#7`
+- draft PR `#9`
+- workflowId `CI01-2026-09-20T13-09-15-630Z`
+- baseSha `86e47b48a34976b75cdd0cb8d9840af330915940`
+- H1 `cbb79d7aa4d20f903e76919b0258508e6f2c4df6`
+- CI(H1) `35512678853` = FAIL (`Experiment CI01 fault`; local `npm test --prefix target-app` was green)
+- repair from that H1 observation, `ciRepairAttempts` = 1
+- fresh VERIFY(H2) PASS + independent REVIEW(H2) PASS
+- H2 `fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39`
+- CI(H2) `35512702897` = PASS
+- same PR `#9` advanced H1 → H2
+- final phase `ready_for_human_review`
+- PR remains draft / unmerged
+
+Failed probe artifacts `#3` / `#4` were leftover GHI01 attempts and are closed. `#5` stays open while PR `#6` is the GHI01 artifact. Draft PR `#8` is a failed CI01 attempt (host harness tests broke after extra DELETE tests were committed); successful CI01 is PR `#9`.
+
+Probe hygiene: `DELIVERY_PROBE_ISSUE` reuses an explicit issue; otherwise a failed/in-progress `traces/workflows/<probe>-latest-issue.json` is reused instead of creating another issue.
+
+CI for delivery PRs now runs `npm test --prefix target-app`, matching local VERIFY. Full-repo `npm test` also runs harness tests that copy `target-app/tests` into calibration fixtures, so a green artifact can look red for the wrong reason.
 
 ## Residual limits
 

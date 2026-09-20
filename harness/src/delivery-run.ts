@@ -61,6 +61,25 @@ export type DeliveryRunResult = {
   outcome: DeliveryState["deliveryPhase"];
 };
 
+export type DeliveryProbeEvent =
+  | {
+      type: "candidate_accepted";
+      expectedHeadSha: string;
+      previousExpectedHeadSha?: string;
+      verificationPassed: boolean;
+      reviewPassed: boolean;
+    }
+  | {
+      type: "ci_observed";
+      runId: number;
+      observation: CiObservation;
+    }
+  | {
+      type: "repair_started";
+      sourceHeadSha: string;
+      repairAttempt: number;
+    };
+
 export type DeliveryRunOptions = {
   config: HarnessConfig;
   storeDir: string;
@@ -83,6 +102,7 @@ export type DeliveryRunOptions = {
   ciPollIntervalMs?: number;
   ciPollTimeoutMs?: number;
   leaseTtlMs?: number;
+  onEvent?: (event: DeliveryProbeEvent) => void;
 };
 
 /**
@@ -167,10 +187,13 @@ async function executeDelivery(
       state.deliveryPhase !== "ready_for_human_review" &&
       state.deliveryPhase !== "delivery_failed"
     ) {
+      const latest = deliveryStateExists(options.storeDir, options.workflowId)
+        ? loadDeliveryState(options.storeDir, options.workflowId)
+        : state;
       state = persist(
         options,
         admitDeliveryFailed({
-          current: state,
+          current: latest,
           failureReason: redactSecrets(error.message),
         }),
       );
@@ -295,8 +318,9 @@ async function commitLocallyAccepted(options: {
   workspaceRoot: string;
   verify?: DeliveryVerifyFn;
   review?: DeliveryReviewFn;
+  onEvent?: (event: DeliveryProbeEvent) => void;
 }): Promise<DeliveryState> {
-  await acceptDeliveryCandidate({
+  const accepted = await acceptDeliveryCandidate({
     config: options.config,
     spec: options.state.spec,
     baseline: options.baseline,
@@ -304,14 +328,23 @@ async function commitLocallyAccepted(options: {
     verify: options.verify,
     review: options.review,
   });
+  const previous = options.state.expectedHeadSha;
   const sha = options.git.commitAcceptedTree(
     options.workspaceRoot,
     deliveryCommitMessage(options.state),
   );
-  return persist(
+  const next = persist(
     options,
     admitHeadCommitted({ current: options.state, expectedHeadSha: sha }),
   );
+  options.onEvent?.({
+    type: "candidate_accepted",
+    expectedHeadSha: sha,
+    previousExpectedHeadSha: previous,
+    verificationPassed: accepted.verification.passed,
+    reviewPassed: accepted.reviewPassed,
+  });
+  return next;
 }
 
 async function publishBranch(options: {
@@ -386,11 +419,13 @@ async function waitForCurrentHeadCi(
   let state = options.state;
 
   while (options.nowMs() < deadline) {
-    const observation = await observeCurrentHeadCi(options, state);
-    if (!observation) {
+    const observed = await observeCurrentHeadCi(options, state);
+    if (!observed) {
       await sleep(intervalMs);
       continue;
     }
+    const { observation, runId } = observed;
+    options.onEvent?.({ type: "ci_observed", runId, observation });
     state = persist(
       options,
       admitCiObservation({ current: state, observation }),
@@ -440,6 +475,11 @@ async function repairThenCommit(
   observation: CiObservation,
 ): Promise<DeliveryState> {
   state = persist(options, admitCiRepairStarted({ current: state }));
+  options.onEvent?.({
+    type: "repair_started",
+    sourceHeadSha: observation.headSha,
+    repairAttempt: state.ciRepairAttempts,
+  });
   await repairFromCiEvidence({
     config: options.config,
     spec: state.spec,
@@ -448,7 +488,7 @@ async function repairThenCommit(
     tracer: options.tracer,
     repair: options.repair,
   });
-  await acceptDeliveryCandidate({
+  const accepted = await acceptDeliveryCandidate({
     config: options.config,
     spec: state.spec,
     baseline: options.baseline,
@@ -456,20 +496,29 @@ async function repairThenCommit(
     verify: options.verify,
     review: options.review,
   });
+  const previous = state.expectedHeadSha;
   const sha = options.git.commitAcceptedTree(
     options.workspaceRoot,
     `CI repair for ${state.workflowId}`,
   );
-  return persist(
+  const next = persist(
     options,
     admitHeadCommitted({ current: state, expectedHeadSha: sha }),
   );
+  options.onEvent?.({
+    type: "candidate_accepted",
+    expectedHeadSha: sha,
+    previousExpectedHeadSha: previous,
+    verificationPassed: accepted.verification.passed,
+    reviewPassed: accepted.reviewPassed,
+  });
+  return next;
 }
 
 async function observeCurrentHeadCi(
   options: { github: GitHubClient },
   state: DeliveryState,
-): Promise<CiObservation | null> {
+): Promise<{ observation: CiObservation; runId: number } | null> {
   const expected = state.expectedHeadSha;
   const prNumber = state.prNumber;
   if (!expected || prNumber === undefined) {
@@ -505,15 +554,18 @@ async function observeCurrentHeadCi(
     evidenceExcerpt: excerpt,
   });
   return {
-    repository: state.repository,
-    prNumber,
-    headSha: run.headSha,
-    workflow: run.name,
-    job: failedJob?.name ?? null,
-    failedStep,
-    conclusion,
-    failureClass,
-    evidenceExcerpt: redactSecrets(excerpt),
+    runId: run.id,
+    observation: {
+      repository: state.repository,
+      prNumber,
+      headSha: run.headSha,
+      workflow: run.name,
+      job: failedJob?.name ?? null,
+      failedStep,
+      conclusion,
+      failureClass,
+      evidenceExcerpt: redactSecrets(excerpt),
+    },
   };
 }
 

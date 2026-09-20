@@ -1,0 +1,50 @@
+CI01 PASS
+
+CI01 passes only if all are true:
+H1 != H2
+real CI(H1) = FAIL
+failure evidence is bound to H1
+repair is derived from H1 failure evidence
+H2 receives fresh local VERIFY = PASS
+H2 receives fresh independent REVIEW = PASS
+expectedHeadSha changes H1 → H2 only after local acceptance
+same PR moves to H2
+late/stale CI(H1) cannot authorize H2
+real CI(H2) = PASS
+outcome = ready_for_human_review
+
+workflowId: CI01-2026-09-20T13-09-15-630Z
+issue: https://github.com/i-kohan/ai-native-learning/issues/7
+baseSha: 86e47b48a34976b75cdd0cb8d9840af330915940
+branch: agent/CI01-2026-09-20T13-09-15-630Z
+prNumber: 9
+firstHeadSha: cbb79d7aa4d20f903e76919b0258508e6f2c4df6
+expectedHeadSha: fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39
+deliveryPhase: ready_for_human_review
+prMerged: false
+
+CI01 lifecycle evidence
+H1: cbb79d7aa4d20f903e76919b0258508e6f2c4df6
+H2: fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39
+CI(H1): failure runId=35512678853 sha=cbb79d7aa4d20f903e76919b0258508e6f2c4df6
+repair: source=cbb79d7aa4d20f903e76919b0258508e6f2c4df6 attempt=1 derivedFromH1=true
+VERIFY(H2): PASS
+REVIEW(H2): PASS
+CI(H2): success runId=35512702897 sha=fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39
+samePr: true prNumber=9
+stale H1 cannot authorize H2:
+  live: real H1 FAIL=true real H2 PASS=true
+  deterministic: exact-head admission classification=stale admission=ignore_stale
+
+PASS distinctHeads
+PASS realH1CiFailed
+PASS h1FailureBoundToH1
+PASS repairDerivedFromH1
+PASS h2VerifyPassed
+PASS h2ReviewPassed
+PASS expectedHeadChangedAfterAcceptance
+PASS samePrAdvanced
+PASS staleH1CannotAuthorizeH2
+PASS realH2CiPassed
+PASS readyForHumanReview
+PASS prNotMerged

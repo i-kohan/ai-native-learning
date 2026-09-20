@@ -51,7 +51,7 @@ export function createDeliveryGit(): DeliveryGit {
         (rel) => fs.existsSync(path.join(cwd, rel)),
       );
       if (toAdd.length > 0) {
-        git(cwd, ["add", "--", ...toAdd]);
+        git(cwd, ["add", "-A", "--", ...toAdd]);
       }
       const status = git(cwd, ["status", "--porcelain"]);
       if (status.trim() === "") {

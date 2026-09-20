@@ -71,7 +71,7 @@ export async function acceptDeliveryCandidate(options: {
       "Local VERIFY failed; delivery will not commit this artifact.",
     );
   }
-  const reviewFn = options.review ?? defaultDeliveryReview;
+  const reviewFn = options.review ?? runDefaultDeliveryReview;
   const review = await reviewFn({
     config: options.config,
     spec: options.spec,
@@ -165,14 +165,16 @@ export function formatCiRepairContract(
   ].join("\n");
 }
 
-async function defaultDeliveryReview(options: {
+export async function runDefaultDeliveryReview(options: {
   config: HarnessConfig;
   spec: Spec;
   baseline: FileSnapshot;
   verification: VerificationResult;
   tracer: Tracer;
+  current?: FileSnapshot;
 }): Promise<ReviewResult> {
-  const current = snapshotDirectory(options.config.targetSrcRoot);
+  const current =
+    options.current ?? snapshotDirectory(options.config.targetSrcRoot);
   const { changedFiles, unifiedDiff } = diffSnapshots(
     options.baseline,
     current,

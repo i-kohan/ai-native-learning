@@ -2024,14 +2024,39 @@ GHI01 and CI01 PASS criteria are listed in the Topic prompt and in `docs/learnin
 
 ### Deterministic result (2026-09-19)
 
-`npm test --prefix harness`: **252 passed**, including new `delivery.test.ts` contracts and Modules 16–19 regressions.
+`npm test --prefix harness`: **254 passed**, including new `delivery.test.ts` contracts and Modules 16–19 regressions.
 
-Covered: PR reuse, `ci_waiting` restart, stale SHA rejection, unexpected remote movement, protected branch, no force-push, ambiguous create-PR reconcile, semantic vs infrastructure CI, repair SHA + fresh REVIEW, credential isolation.
+Covered: PR reuse, `ci_waiting` restart, stale SHA rejection, unexpected remote movement, protected branch, no force-push, ambiguous create-PR reconcile, semantic vs infrastructure CI, repair SHA + fresh REVIEW, credential isolation, CI01 intermediate-lifecycle evaluator, failed-issue reuse.
 
 ### Live probes
 
-GHI01 and CI01 were **not executed**. This environment had no `GITHUB_TOKEN` / `GH_TOKEN` and no `gh`. That is missing evidence, not a probe PASS.
+GHI01 **PASS** (2026-09-19, retained):
+
+- issue `#5`
+- draft PR `#6`
+- workflowId `GHI01-2026-09-19T18-12-22-355Z`
+- baseSha `223d1111c8cca84ecc6e7d7cadcbf15ad13a7f82`
+- H1 `11109909a22eaf7e87942ffc1f9e2515394f2c50`
+- Actions run `35460488830` = PASS
+- PR remains draft / unmerged
+
+CI01 **PASS** (2026-09-20):
+
+- issue `#7`
+- draft PR `#9`
+- workflowId `CI01-2026-09-20T13-09-15-630Z`
+- baseSha `86e47b48a34976b75cdd0cb8d9840af330915940`
+- H1 `cbb79d7aa4d20f903e76919b0258508e6f2c4df6`
+- CI(H1) run `35512678853` = FAIL
+- H2 `fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39`
+- CI(H2) run `35512702897` = PASS
+- same PR `#9`
+- `ciRepairAttempts` = 1
+- final delivery phase `ready_for_human_review`
+- PR remains draft / unmerged
+
+Live evidence: real H1 FAIL and real H2 PASS. Deterministic invariant: an H1 observation cannot authorize `expectedHeadSha=H2` (`classifyCiEvidence` = `stale`, `admitCurrentHeadCi` = `ignore_stale`). No live late H1 PASS was fabricated.
 
 ### Conclusion
 
-The delivery mechanism and deterministic contracts are implemented. Formal GHI01/CI01 PASS is not claimed.
+Implementation plus live GHI01/CI01 mechanism evidence is recorded. Formal Module 20 closure remains with Topic Chat / Master.

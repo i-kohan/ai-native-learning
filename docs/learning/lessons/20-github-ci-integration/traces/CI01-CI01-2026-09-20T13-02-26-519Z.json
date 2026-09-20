@@ -1,0 +1,61 @@
+{
+  "taskId": "CI01",
+  "taskKind": "mechanism_probe",
+  "mechanism": "github_ci_delivery",
+  "passed": false,
+  "workflowId": "CI01-2026-09-20T13-02-26-519Z",
+  "issueNumber": 7,
+  "issueUrl": "https://github.com/i-kohan/ai-native-learning/issues/7",
+  "baseSha": "86e47b48a34976b75cdd0cb8d9840af330915940",
+  "branch": "agent/CI01-2026-09-20T13-02-26-519Z",
+  "prNumber": 8,
+  "firstHeadSha": "a00f32bc974fc2a1184f6d20fb14c8d2d7b452e9",
+  "expectedHeadSha": "a00f32bc974fc2a1184f6d20fb14c8d2d7b452e9",
+  "deliveryPhase": "delivery_failed",
+  "prMerged": false,
+  "assertions": {
+    "distinctHeads": false,
+    "realH1CiFailed": true,
+    "h1FailureBoundToH1": true,
+    "repairDerivedFromH1": false,
+    "h2VerifyPassed": false,
+    "h2ReviewPassed": false,
+    "expectedHeadChangedAfterAcceptance": false,
+    "samePrAdvanced": false,
+    "staleH1CannotAuthorizeH2": false,
+    "realH2CiPassed": false,
+    "readyForHumanReview": false,
+    "prNotMerged": true
+  },
+  "lifecycle": {
+    "h1": "a00f32bc974fc2a1184f6d20fb14c8d2d7b452e9",
+    "h2": "a00f32bc974fc2a1184f6d20fb14c8d2d7b452e9",
+    "h1Ci": {
+      "headSha": "a00f32bc974fc2a1184f6d20fb14c8d2d7b452e9",
+      "conclusion": "failure",
+      "failureClass": "semantic",
+      "runId": 35512354731
+    },
+    "repairEvidence": {
+      "sourceHeadSha": "a00f32bc974fc2a1184f6d20fb14c8d2d7b452e9",
+      "repairAttempt": 1,
+      "derivedFromH1CiFailure": true
+    },
+    "h2Acceptance": null,
+    "h2Ci": null,
+    "prNumber": 8,
+    "samePr": false,
+    "staleH1CannotAuthorizeH2": {
+      "live": {
+        "realH1Fail": true,
+        "realH2Pass": false
+      },
+      "deterministic": {
+        "contract": "exact-head admission",
+        "classification": "success",
+        "admission": "ready_for_human_review"
+      }
+    }
+  },
+  "evidencePath": ""
+}

@@ -1,0 +1,52 @@
+{
+  "taskId": "CI01",
+  "taskKind": "mechanism_probe",
+  "mechanism": "github_ci_delivery",
+  "passed": false,
+  "workflowId": "CI01-2026-09-20T13-08-25-474Z",
+  "issueNumber": 7,
+  "issueUrl": "https://github.com/i-kohan/ai-native-learning/issues/7",
+  "baseSha": "86e47b48a34976b75cdd0cb8d9840af330915940",
+  "branch": "agent/CI01-2026-09-20T13-08-25-474Z",
+  "prNumber": null,
+  "firstHeadSha": null,
+  "expectedHeadSha": null,
+  "deliveryPhase": "delivery_failed",
+  "prMerged": false,
+  "assertions": {
+    "distinctHeads": false,
+    "realH1CiFailed": false,
+    "h1FailureBoundToH1": false,
+    "repairDerivedFromH1": false,
+    "h2VerifyPassed": false,
+    "h2ReviewPassed": false,
+    "expectedHeadChangedAfterAcceptance": false,
+    "samePrAdvanced": false,
+    "staleH1CannotAuthorizeH2": false,
+    "realH2CiPassed": false,
+    "readyForHumanReview": false,
+    "prNotMerged": true
+  },
+  "lifecycle": {
+    "h1": null,
+    "h2": null,
+    "h1Ci": null,
+    "repairEvidence": null,
+    "h2Acceptance": null,
+    "h2Ci": null,
+    "prNumber": null,
+    "samePr": false,
+    "staleH1CannotAuthorizeH2": {
+      "live": {
+        "realH1Fail": false,
+        "realH2Pass": false
+      },
+      "deterministic": {
+        "contract": "exact-head admission",
+        "classification": "unavailable",
+        "admission": "unavailable"
+      }
+    }
+  },
+  "evidencePath": ""
+}

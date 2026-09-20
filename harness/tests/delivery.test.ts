@@ -36,7 +36,13 @@ import type {
 import { reconcileDraftPull } from "../src/github-delivery.ts";
 import { decideRemoteBranchAction } from "../src/github-delivery.ts";
 import { redactSecrets } from "../src/github-redact.ts";
+import {
+  buildCi01LifecycleEvidence,
+  ci01Assertions,
+} from "../src/ci01-evidence.ts";
 import { GHI01_SPEC } from "../src/ghi01-task.ts";
+import { decideProbeIssueAction } from "../src/ghi01-probe.ts";
+import type { DeliveryProbeEvent } from "../src/delivery-run.ts";
 import { Tracer } from "../src/trace.ts";
 import { verificationChildEnv } from "../src/verify.ts";
 import type { HarnessConfig } from "../src/config.ts";
@@ -184,6 +190,14 @@ function mockGithub(options?: {
       number: 11,
       htmlUrl: "https://github.com/i-kohan/ai-native-learning/issues/11",
     }),
+    getIssue: async (number) => ({
+      number,
+      htmlUrl: `https://github.com/i-kohan/ai-native-learning/issues/${number}`,
+      title: "issue",
+      state: "open",
+    }),
+    createIssueComment: async () => undefined,
+    closeIssue: async () => undefined,
     listWorkflowRuns: async () => options?.runs ?? [],
     listJobs: async () => [
       {
@@ -540,6 +554,7 @@ describe("delivery runner contracts", () => {
     let repaired = false;
     let verifyCount = 0;
     let reviewCount = 0;
+    const events: DeliveryProbeEvent[] = [];
     const github = mockGithub({
       remote: { sha: H1 },
       runs: [
@@ -612,6 +627,9 @@ describe("delivery runner contracts", () => {
       repair: async () => {
         repaired = true;
       },
+      onEvent: (event) => {
+        events.push(event);
+      },
       nowMs: () => 1_000,
       sleep: async () => undefined,
       ciPollTimeoutMs: 5_000,
@@ -628,6 +646,28 @@ describe("delivery runner contracts", () => {
     assert.ok(reviewCount >= 1);
     assert.equal(result.outcome, "ready_for_human_review");
     assert.equal(result.delivery.prNumber, 7);
+    const evidence = buildCi01LifecycleEvidence({
+      delivery: result.delivery,
+      events,
+      h1Runs: [{ id: 1, headSha: H1, conclusion: "failure" }],
+      h2Runs: [{ id: 2, headSha: H2, conclusion: "success" }],
+      finalPrHeadSha: H2,
+    });
+    const assertions = ci01Assertions({
+      delivery: result.delivery,
+      evidence,
+      extra: { prMerged: false },
+    });
+    assert.equal(evidence.h1Ci?.runId, 1);
+    assert.equal(evidence.h2Ci?.runId, 2);
+    assert.equal(
+      evidence.staleH1CannotAuthorizeH2.deterministic.admission,
+      "ignore_stale",
+    );
+    assert.deepEqual(
+      Object.entries(assertions).filter(([, value]) => !value),
+      [],
+    );
   });
 
   it("does not set expectedHeadSha to H2 when fresh REVIEW fails", async () => {
@@ -706,6 +746,101 @@ describe("delivery credential isolation", () => {
         "ghp_should-not-leak-into-tests",
       ]),
       "token [redacted] in log",
+    );
+  });
+});
+
+describe("CI01 lifecycle evidence", () => {
+  it("fails the frozen protocol when only final H2 state is present", () => {
+    const storeDir = tmpDir("ci01-weak-");
+    let state = seedDelivery(storeDir, "wf-weak");
+    state = admitHeadCommitted({ current: state, expectedHeadSha: H1 });
+    state = {
+      ...state,
+      expectedHeadSha: H2,
+      firstHeadSha: H1,
+      deliveryPhase: "ready_for_human_review",
+      prNumber: 7,
+      ciRepairAttempts: 1,
+      ciObservation: observation({
+        headSha: H2,
+        conclusion: "success",
+        failureClass: "success",
+      }),
+    };
+    const evidence = buildCi01LifecycleEvidence({
+      delivery: state,
+      events: [],
+      h1Runs: [],
+      h2Runs: [{ id: 2, headSha: H2, conclusion: "success" }],
+      finalPrHeadSha: H2,
+    });
+    const assertions = ci01Assertions({
+      delivery: state,
+      evidence,
+      extra: { prMerged: false },
+    });
+    assert.equal(assertions.distinctHeads, true);
+    assert.equal(assertions.readyForHumanReview, true);
+    assert.equal(assertions.realH1CiFailed, false);
+    assert.equal(assertions.repairDerivedFromH1, false);
+    assert.equal(assertions.h2VerifyPassed, false);
+    assert.equal(assertions.staleH1CannotAuthorizeH2, false);
+  });
+
+  it("reuses a failed probe issue and creates after a pass", () => {
+    assert.equal(
+      decideProbeIssueAction({
+        explicitIssueNumber: 5,
+        latest: {
+          probeId: "GHI01",
+          issueNumber: 4,
+          issueUrl: "https://example.com/4",
+          workflowId: "old",
+          status: "failed",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      }),
+      "explicit",
+    );
+    assert.equal(
+      decideProbeIssueAction({
+        latest: {
+          probeId: "CI01",
+          issueNumber: 8,
+          issueUrl: "https://example.com/8",
+          workflowId: "old",
+          status: "failed",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      }),
+      "reuse_failed",
+    );
+    assert.equal(
+      decideProbeIssueAction({
+        latest: {
+          probeId: "CI01",
+          issueNumber: 8,
+          issueUrl: "https://example.com/8",
+          workflowId: "old",
+          status: "in_progress",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      }),
+      "reuse_failed",
+    );
+    assert.equal(
+      decideProbeIssueAction({
+        latest: {
+          probeId: "GHI01",
+          issueNumber: 5,
+          issueUrl: "https://example.com/5",
+          workflowId: "done",
+          status: "passed",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      }),
+      "create",
     );
   });
 });

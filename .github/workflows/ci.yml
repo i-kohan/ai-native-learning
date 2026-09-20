@@ -13,8 +13,7 @@ jobs:
         with:
           node-version: "22"
       - run: npm install --prefix target-app
-      - run: npm install --prefix harness
-      - run: npm test
+      - run: npm test --prefix target-app
       - name: Experiment CI01 fault
         if: hashFiles('harness/fixtures/ci01.red') != ''
         run: |

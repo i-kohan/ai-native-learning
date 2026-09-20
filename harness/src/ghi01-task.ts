@@ -55,13 +55,6 @@ export function applyDeleteTasksFixture(workspaceRoot: string): void {
     "tasks",
     "task-routes.ts",
   );
-  const testsPath = path.join(
-    workspaceRoot,
-    "target-app",
-    "tests",
-    "tasks.test.ts",
-  );
-
   let service = fs.readFileSync(servicePath, "utf8");
   if (!service.includes("delete(id: string)")) {
     service = service.replace(
@@ -112,6 +105,12 @@ export function applyDeleteTasksFixture(workspaceRoot: string): void {
     fs.writeFileSync(routesPath, routes);
   }
 
+  const testsPath = path.join(
+    workspaceRoot,
+    "target-app",
+    "tests",
+    "tasks.test.ts",
+  );
   let tests = fs.readFileSync(testsPath, "utf8");
   if (!tests.includes("DELETE /tasks/:id")) {
     tests += `

@@ -14,6 +14,8 @@ export type GitHubPull = {
 export type GitHubIssue = {
   number: number;
   htmlUrl: string;
+  title?: string;
+  state?: string;
 };
 
 export type GitHubWorkflowRun = {
@@ -49,6 +51,9 @@ export type GitHubClient = {
   }): Promise<GitHubPull>;
   getPull(number: number): Promise<GitHubPull>;
   createIssue(options: { title: string; body: string }): Promise<GitHubIssue>;
+  getIssue(number: number): Promise<GitHubIssue>;
+  createIssueComment(number: number, body: string): Promise<void>;
+  closeIssue(number: number): Promise<void>;
   listWorkflowRuns(headSha: string): Promise<GitHubWorkflowRun[]>;
   listJobs(runId: number): Promise<GitHubJob[]>;
   getJobLogExcerpt(jobId: number): Promise<string>;
@@ -263,6 +268,43 @@ export function createGitHubClient(options: {
       return { number, htmlUrl };
     },
 
+    async getIssue(number) {
+      const result = await request(
+        "GET",
+        `/repos/${owner}/${repo}/issues/${number}`,
+        undefined,
+        "get_issue",
+      );
+      if (result.status !== 200) {
+        throw apiError("get_issue", result);
+      }
+      return parseIssue(result.json);
+    },
+
+    async createIssueComment(number, body) {
+      const result = await request(
+        "POST",
+        `/repos/${owner}/${repo}/issues/${number}/comments`,
+        { body },
+        "create_issue_comment",
+      );
+      if (result.status !== 201) {
+        throw writeError("create_issue_comment", result);
+      }
+    },
+
+    async closeIssue(number) {
+      const result = await request(
+        "PATCH",
+        `/repos/${owner}/${repo}/issues/${number}`,
+        { state: "closed" },
+        "close_issue",
+      );
+      if (result.status !== 200) {
+        throw writeError("close_issue", result);
+      }
+    },
+
     async listWorkflowRuns(headSha) {
       const query = new URLSearchParams({ head_sha: headSha });
       const result = await request(
@@ -313,6 +355,26 @@ export function createGitHubClient(options: {
       }
       return redactSecrets(result.text);
     },
+  };
+}
+
+function parseIssue(value: unknown): GitHubIssue {
+  if (!isRecord(value)) {
+    throw new DeliveryError(
+      "corrupt_state",
+      "GitHub issue payload must be an object.",
+    );
+  }
+  const number = parsePositiveId(value.number, "issue.number");
+  const htmlUrl = value.html_url;
+  if (typeof htmlUrl !== "string") {
+    throw new DeliveryError("corrupt_state", "GitHub issue identity is missing.");
+  }
+  return {
+    number,
+    htmlUrl,
+    title: typeof value.title === "string" ? value.title : undefined,
+    state: typeof value.state === "string" ? value.state : undefined,
   };
 }
 

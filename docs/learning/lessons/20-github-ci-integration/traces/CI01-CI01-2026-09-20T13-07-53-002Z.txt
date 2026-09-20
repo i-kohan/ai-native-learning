@@ -1,0 +1,50 @@
+CI01 FAIL
+
+CI01 passes only if all are true:
+H1 != H2
+real CI(H1) = FAIL
+failure evidence is bound to H1
+repair is derived from H1 failure evidence
+H2 receives fresh local VERIFY = PASS
+H2 receives fresh independent REVIEW = PASS
+expectedHeadSha changes H1 → H2 only after local acceptance
+same PR moves to H2
+late/stale CI(H1) cannot authorize H2
+real CI(H2) = PASS
+outcome = ready_for_human_review
+
+workflowId: CI01-2026-09-20T13-07-53-002Z
+issue: https://github.com/i-kohan/ai-native-learning/issues/7
+baseSha: 86e47b48a34976b75cdd0cb8d9840af330915940
+branch: agent/CI01-2026-09-20T13-07-53-002Z
+prNumber: null
+firstHeadSha: null
+expectedHeadSha: null
+deliveryPhase: delivery_failed
+prMerged: false
+
+CI01 lifecycle evidence
+H1: null
+H2: null
+CI(H1): missing runId=missing sha=missing
+repair: source=missing attempt=missing derivedFromH1=false
+VERIFY(H2): FAIL
+REVIEW(H2): FAIL
+CI(H2): missing runId=missing sha=missing
+samePr: false prNumber=null
+stale H1 cannot authorize H2:
+  live: real H1 FAIL=false real H2 PASS=false
+  deterministic: exact-head admission classification=unavailable admission=unavailable
+
+FAIL distinctHeads
+FAIL realH1CiFailed
+FAIL h1FailureBoundToH1
+FAIL repairDerivedFromH1
+FAIL h2VerifyPassed
+FAIL h2ReviewPassed
+FAIL expectedHeadChangedAfterAcceptance
+FAIL samePrAdvanced
+FAIL staleH1CannotAuthorizeH2
+FAIL realH2CiPassed
+FAIL readyForHumanReview
+PASS prNotMerged

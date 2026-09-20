@@ -1,0 +1,70 @@
+{
+  "taskId": "CI01",
+  "taskKind": "mechanism_probe",
+  "mechanism": "github_ci_delivery",
+  "passed": true,
+  "workflowId": "CI01-2026-09-20T13-09-15-630Z",
+  "issueNumber": 7,
+  "issueUrl": "https://github.com/i-kohan/ai-native-learning/issues/7",
+  "baseSha": "86e47b48a34976b75cdd0cb8d9840af330915940",
+  "branch": "agent/CI01-2026-09-20T13-09-15-630Z",
+  "prNumber": 9,
+  "firstHeadSha": "cbb79d7aa4d20f903e76919b0258508e6f2c4df6",
+  "expectedHeadSha": "fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39",
+  "deliveryPhase": "ready_for_human_review",
+  "prMerged": false,
+  "assertions": {
+    "distinctHeads": true,
+    "realH1CiFailed": true,
+    "h1FailureBoundToH1": true,
+    "repairDerivedFromH1": true,
+    "h2VerifyPassed": true,
+    "h2ReviewPassed": true,
+    "expectedHeadChangedAfterAcceptance": true,
+    "samePrAdvanced": true,
+    "staleH1CannotAuthorizeH2": true,
+    "realH2CiPassed": true,
+    "readyForHumanReview": true,
+    "prNotMerged": true
+  },
+  "lifecycle": {
+    "h1": "cbb79d7aa4d20f903e76919b0258508e6f2c4df6",
+    "h2": "fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39",
+    "h1Ci": {
+      "headSha": "cbb79d7aa4d20f903e76919b0258508e6f2c4df6",
+      "conclusion": "failure",
+      "failureClass": "semantic",
+      "runId": 35512678853
+    },
+    "repairEvidence": {
+      "sourceHeadSha": "cbb79d7aa4d20f903e76919b0258508e6f2c4df6",
+      "repairAttempt": 1,
+      "derivedFromH1CiFailure": true
+    },
+    "h2Acceptance": {
+      "verificationPassed": true,
+      "reviewPassed": true,
+      "afterRepair": true,
+      "previousExpectedHeadSha": "cbb79d7aa4d20f903e76919b0258508e6f2c4df6"
+    },
+    "h2Ci": {
+      "headSha": "fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39",
+      "conclusion": "success",
+      "runId": 35512702897
+    },
+    "prNumber": 9,
+    "samePr": true,
+    "staleH1CannotAuthorizeH2": {
+      "live": {
+        "realH1Fail": true,
+        "realH2Pass": true
+      },
+      "deterministic": {
+        "contract": "exact-head admission",
+        "classification": "stale",
+        "admission": "ignore_stale"
+      }
+    }
+  },
+  "evidencePath": ""
+}

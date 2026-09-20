@@ -24,7 +24,7 @@ Completed modules:
 18. ✅ 18 — Retry Semantics (closed by Topic Chat)
 19. ✅ 19 — Orchestration as Distributed Systems (closed by Topic Chat on 2026-09-18)
 
-Next module: **20 — GitHub / CI Integration** (implemented; live GHI01/CI01 not yet evidenced; not closed by Master).
+Next module: **20 — GitHub / CI Integration** (implemented; live GHI01 PASS; live CI01 PASS; not formally closed by Topic Chat / Master).
 
 ---
 
@@ -46,7 +46,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
 - opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17) plus harness-owned bounded REVIEW retry on `review_ready` (Module 18);
 - opt-in single-machine workflow lease + fencing token for authoritative WorkflowState writes (Module 19). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path;
-- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01/CI01 evidence is still missing in this workspace because no delivery-layer GitHub token was available.
+- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence is recorded; formal closure remains with Topic Chat / Master.
 
 Conceptual default flow:
 
@@ -70,7 +70,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 20 — GitHub / CI Integration
 
-**Status:** implemented, not formally closed. Deterministic contracts **passed**. Live GHI01/CI01 **not run** in this session.
+**Status:** implemented, not formally closed. Deterministic contracts **passed**. Live GHI01 **PASS**. Live CI01 **PASS**. Formal closure remains with Topic Chat / Master.
 
 Theory:
 
@@ -100,13 +100,36 @@ Linked post-terminal GitHub delivery:
 
 ## Current result
 
-Harness unit tests: **252 passed**, including Modules 16–19 regressions and new delivery contracts.
+Harness unit tests: **254 passed**, including Modules 16–19 regressions and delivery contracts.
 
-GHI01 / CI01 live probes were **not executed**: `GITHUB_TOKEN` / `GH_TOKEN` / `gh` were absent. That is a missing-evidence result, not a PASS.
+GHI01 live evidence (retained, not rerun):
+
+- issue `#5`
+- draft PR `#6`
+- workflowId `GHI01-2026-09-19T18-12-22-355Z`
+- baseSha `223d1111c8cca84ecc6e7d7cadcbf15ad13a7f82`
+- H1 `11109909a22eaf7e87942ffc1f9e2515394f2c50`
+- Actions run `35460488830` = PASS
+- PR remains draft / unmerged
+
+CI01 live evidence (2026-09-20):
+
+- issue `#7`
+- draft PR `#9`
+- workflowId `CI01-2026-09-20T13-09-15-630Z`
+- baseSha `86e47b48a34976b75cdd0cb8d9840af330915940`
+- H1 `cbb79d7aa4d20f903e76919b0258508e6f2c4df6`
+- CI(H1) run `35512678853` = FAIL
+- H2 `fdc7b1ddd14ed8cc3af86eb6879fd890f7532c39`
+- CI(H2) run `35512702897` = PASS
+- same PR `#9` advanced H1 → H2
+- `ciRepairAttempts` = 1
+- final phase `ready_for_human_review`
+- PR remains draft / unmerged
 
 ## Failures / open questions
 
-Topic Chat / Master own formal closure. Live issue → draft PR → Actions evidence still has to be recorded before GHI01/CI01 can pass.
+Topic Chat / Master own formal closure. Implementation plus live GHI01/CI01 mechanism evidence is recorded; do not treat the module as closed until they review it.
 
 ---
 
