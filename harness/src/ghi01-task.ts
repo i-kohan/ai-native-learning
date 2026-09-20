@@ -10,6 +10,7 @@ export const GHI01_TASK = [
   "Existing task:",
   "- delete it",
   "- return 200",
+  "- body is the deleted task, same shape as POST /tasks/:id/complete",
   "",
   "Missing task:",
   "- return 404",
@@ -21,7 +22,7 @@ export const GHI01_TASK = [
 export const GHI01_SPEC: Spec = {
   goal: "Add DELETE /tasks/:id for existing and missing tasks.",
   requirements: [
-    "DELETE /tasks/:id deletes an existing task and returns 200.",
+    "DELETE /tasks/:id deletes an existing task and returns 200 with the deleted task body.",
     'DELETE /tasks/:id for a missing task returns 404 with body {"error":"task_not_found"}.',
     "Add tests for both cases.",
   ],

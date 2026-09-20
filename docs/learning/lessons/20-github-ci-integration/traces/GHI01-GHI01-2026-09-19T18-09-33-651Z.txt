@@ -1,0 +1,42 @@
+GHI01 FAIL
+
+GHI01 passes only if all are true:
+real GitHub issue identity persisted
+exact configured baseSha recorded
+deterministic non-main branch originates from that exact base
+local VERIFY + independent REVIEW precede delivery
+exact pushed candidate SHA persisted
+real draft PR exists
+restart/re-run reuses the same PR rather than creating a duplicate
+real GitHub Actions run occurs
+CI observation is tied to the exact current expectedHeadSha
+stale SHA cannot authorize delivery
+current-head CI is green
+outcome = ready_for_human_review
+PR is not merged
+GitHub credentials never enter model/repository execution environment
+
+workflowId: GHI01-2026-09-19T18-09-33-651Z
+issue: https://github.com/i-kohan/ai-native-learning/issues/3
+baseSha: null
+branch: null
+prNumber: null
+firstHeadSha: null
+expectedHeadSha: null
+deliveryPhase: null
+prMerged: null
+
+PASS realIssue
+FAIL baseShaRecorded
+FAIL deterministicBranch
+FAIL localAcceptancePreceded
+FAIL expectedHeadPersisted
+FAIL draftPrExists
+FAIL restartReusedPr
+FAIL ciObserved
+PASS ciTiedToCurrentHead
+PASS staleCannotAuthorize
+FAIL currentHeadGreen
+FAIL readyForHumanReview
+FAIL prNotMerged
+PASS credentialsIsolated

@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import { DeliveryError } from "./delivery-error.ts";
 import { redactSecrets } from "./github-redact.ts";
 import { verificationChildEnv } from "./verify.ts";
@@ -45,7 +47,12 @@ export function createDeliveryGit(): DeliveryGit {
       ]).toLowerCase();
     },
     commitAcceptedTree(cwd, message) {
-      git(cwd, ["add", "--", "target-app", ".github", "harness/fixtures"]);
+      const toAdd = ["target-app", ".github", "harness/fixtures"].filter(
+        (rel) => fs.existsSync(path.join(cwd, rel)),
+      );
+      if (toAdd.length > 0) {
+        git(cwd, ["add", "--", ...toAdd]);
+      }
       const status = git(cwd, ["status", "--porcelain"]);
       if (status.trim() === "") {
         return git(cwd, ["rev-parse", "HEAD"]).toLowerCase();

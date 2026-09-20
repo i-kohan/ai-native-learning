@@ -1,0 +1,33 @@
+{
+  "taskId": "GHI01",
+  "taskKind": "mechanism_probe",
+  "mechanism": "github_ci_delivery",
+  "passed": true,
+  "workflowId": "GHI01-2026-09-19T18-12-22-355Z",
+  "issueNumber": 5,
+  "issueUrl": "https://github.com/i-kohan/ai-native-learning/issues/5",
+  "baseSha": "223d1111c8cca84ecc6e7d7cadcbf15ad13a7f82",
+  "branch": "agent/GHI01-2026-09-19T18-12-22-355Z",
+  "prNumber": 6,
+  "firstHeadSha": "11109909a22eaf7e87942ffc1f9e2515394f2c50",
+  "expectedHeadSha": "11109909a22eaf7e87942ffc1f9e2515394f2c50",
+  "deliveryPhase": "ready_for_human_review",
+  "prMerged": false,
+  "assertions": {
+    "realIssue": true,
+    "baseShaRecorded": true,
+    "deterministicBranch": true,
+    "localAcceptancePreceded": true,
+    "expectedHeadPersisted": true,
+    "draftPrExists": true,
+    "restartReusedPr": true,
+    "ciObserved": true,
+    "ciTiedToCurrentHead": true,
+    "staleCannotAuthorize": true,
+    "currentHeadGreen": true,
+    "readyForHumanReview": true,
+    "prNotMerged": true,
+    "credentialsIsolated": true
+  },
+  "evidencePath": ""
+}
