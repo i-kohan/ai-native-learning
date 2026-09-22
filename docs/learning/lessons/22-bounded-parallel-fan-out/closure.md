@@ -48,13 +48,17 @@ Observed result:
 | sequential | 0/3 | 56251ms | 54537ms | fan-in conflict |
 | parallel | 0/3 | 38455ms | 36788ms | fan-in conflict |
 
-Parallel scheduling reduced wall time materially, but correctness was not preserved and cost increased. Precommitted PAR01 decision:
+Parallel scheduling reached the terminal fan-in failure sooner, but correctness was not preserved and cost increased. Because all six runs stopped at fan-in, the observed 56251ms vs 38455ms comparison is **time-to-failure**, not evidence of successful end-to-end latency improvement.
+
+Final integrated VERIFY and REVIEW were not executed in these runs. The historical PAR01 artifact predates a reporting correction and labels final VERIFY as `FAIL`; authoritative interpretation is `skipped` because no integrated artifact reached the verifier. The historical artifact remains unchanged.
+
+Precommitted PAR01 decision:
 
 ```text
 not_worth_current_workload
 ```
 
-This is workload-bounded evidence, not a claim that bounded fan-out is generally bad.
+This correction does not change the decision and does not require a PAR01 rerun. This is workload-bounded evidence, not a claim that bounded fan-out is generally bad.
 
 ## Final understanding check
 
