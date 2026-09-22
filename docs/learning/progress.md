@@ -118,7 +118,7 @@ First PAR01 (`…20-18-39-907Z`) is invalid: a fresh Spec per trial, and one seq
 
 ## Failures / open questions
 
-P03 is product-independent and file-coupled; children often PASS then conflict in `task-service.ts`. Unknown-id 404 now precedes title validation, so Spec variance is no longer a valid-trial artifact. Topic Chat / Master own formal closure.
+P03 is semantically independent but integration-coupled; children can PASS scoped VERIFY and still conflict during deterministic fan-in in `task-service.ts`. Unknown-id 404 now precedes title validation, so Spec variance is no longer a valid-trial artifact. Topic Chat / Master own formal closure.
 
 ---
 
