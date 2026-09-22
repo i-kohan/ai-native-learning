@@ -89,7 +89,11 @@ Evidence: `traces/fanout-m22-par01-2026-09-22T21-10-55-910Z.txt`
 | sequential | 0/3      | 0/3         | 56251ms     | 52298 / 4004         | 54537ms               |
 | parallel   | 0/3      | 0/3         | 38455ms     | 76701 / 5636         | 36788ms               |
 
-Все шесть: A/B scoped VERIFY PASS, затем deterministic fan-in conflict в `task-service.ts`. Wall у parallel лучше (−32%), cost хуже. Conclusion: **`not_worth_current_workload`**. `defaultUnchanged=true`.
+Все шесть: A/B scoped VERIFY PASS, затем deterministic fan-in conflict в `task-service.ts`. Wall до terminal fan-in failure у parallel ниже (−32%), cost хуже. Conclusion: **`not_worth_current_workload`**. `defaultUnchanged=true`.
+
+Важно: эти runs останавливаются на fan-in, поэтому final integrated VERIFY и REVIEW **не запускались**. Исторический PAR01 artifact был записан до evaluator reporting fix и показывает `verify=FAIL`; authoritative interpretation для этих runs — `finalVerification=skipped`, потому что integrated artifact не существовал для проверки. Исторический artifact не переписываем.
+
+Поэтому 56251ms vs 38455ms — наблюдаемое время до terminal fan-in failure, а не доказательство 32% latency improvement успешного end-to-end workflow. Это не меняет PAR01 decision: correctness/integration gate уже не выполнен, а cost также регрессирует.
 
 PAR01 timing начинается с setup конкретного scheduling trial и не включает live Spec generation: Spec был один раз разрешён до 3×2 и затем переиспользован неизменно, чтобы не смешивать Spec variance с эффектом scheduling. Для production economics Spec/planning overhead всё равно нужно учитывать на более широком e2e уровне.
 
