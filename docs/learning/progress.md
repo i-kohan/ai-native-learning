@@ -25,10 +25,9 @@ Completed modules:
 19. ✅ 19 — Orchestration as Distributed Systems (closed by Topic Chat on 2026-09-18)
 20. ✅ 20 — GitHub / CI Integration (closed by Master on 2026-09-20; live GHI01 + CI01 PASS)
 21. ⏭ 21 — Optional Browser QA (skipped / not applicable on current non-UI capstone; revisit only for a real UI workload)
+22. ✅ 22 — Bounded Parallel Fan-Out (closed by Topic Chat on 2026-09-23; PAR01 = `not_worth_current_workload`)
 
-Next module: **22 — Bounded Parallel Fan-Out**.
-
-Module **22 — Bounded Parallel Fan-Out** is implemented as an experiment/probe (corrected PAR01 = `not_worth_current_workload`); not formally closed.
+Next module: **23 — MCP Deeper Dive**.
 
 ---
 
@@ -75,7 +74,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 22 — Bounded Parallel Fan-Out
 
-**Status:** implemented, not formally closed. Harness tests **278 passed**. Corrected PAR01 = **`not_worth_current_workload`**. Formal closure remains with Topic Chat / Master.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-23. Harness tests **278 passed**. Corrected PAR01 = **`not_worth_current_workload`**. Default remains Spec → one Worker.
 
 Theory:
 
@@ -118,7 +117,7 @@ First PAR01 (`…20-18-39-907Z`) is invalid: a fresh Spec per trial, and one seq
 
 ## Failures / open questions
 
-P03 is semantically independent but integration-coupled; children can PASS scoped VERIFY and still conflict during deterministic fan-in in `task-service.ts`. Unknown-id 404 now precedes title validation, so Spec variance is no longer a valid-trial artifact. Topic Chat / Master own formal closure.
+P03 is semantically independent but integration-coupled; children can PASS scoped VERIFY and still conflict during deterministic fan-in in `task-service.ts`. Unknown-id 404 now precedes title validation, so Spec variance is no longer a valid-trial artifact. Topic Chat closure: PASS. Revisit fan-out only when integration coupling is low and end-to-end evidence justifies it.
 
 ---
 
