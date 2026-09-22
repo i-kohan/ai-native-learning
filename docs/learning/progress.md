@@ -28,6 +28,8 @@ Completed modules:
 
 Next module: **22 — Bounded Parallel Fan-Out**.
 
+Module **22 — Bounded Parallel Fan-Out** is implemented as an experiment/probe (PAR01 = `not_worth_current_workload`); not formally closed.
+
 ---
 
 ## Current execution core
@@ -48,8 +50,8 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - eval catalog now distinguishes `dev` / `holdout` / `probe` / isolation / security. H01/H02 have a host-owned independent grader that runs after the harness terminal outcome. T01–T04 still have `escapedDefect=null` because their grader is VERIFY;
 - opt-in durable workflow checkpoints `spec_required → implementation_ready → review_ready` (Modules 16–17) plus harness-owned bounded REVIEW retry on `review_ready` (Module 18);
 - opt-in single-machine workflow lease + fencing token for authoritative WorkflowState writes (Module 19). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path;
-- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence passed; Module 20 is closed by Master;
-- Module 21 Browser QA is intentionally skipped for the current capstone because `target-app` has no meaningful UI surface. Revisit only when a real UI workload makes browser-observable evidence relevant.
+- opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence is recorded; formal closure remains with Topic Chat / Master.
+- optional bounded fan-out behind an explicit `FanOutPlan` binder (Module 22). Same exact-base worktrees, schedule `sequential | parallel`, Git 3-way fan-in. Default remains Spec → one Worker; PAR01 on P03 was `not_worth_current_workload`.
 
 Conceptual default flow:
 
@@ -68,6 +70,51 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 22 — Bounded Parallel Fan-Out
+
+**Status:** implemented, not formally closed. Harness tests **272 passed**. PAR01 = **`not_worth_current_workload`**. Formal closure remains with Topic Chat / Master.
+
+Theory:
+
+`docs/learning/lessons/22-bounded-parallel-fan-out/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/22-bounded-parallel-fan-out/notes.md`
+
+## What was implemented
+
+Bounded two-unit fan-out probe, not a generic scheduler:
+
+- frozen `FanOutPlan` (A title mutation, B deletion) separate from ReviewPlan;
+- exact-base child A / child B / integration worktrees;
+- one Spec, then schedule `sequential | parallel`;
+- harness-owned scoped VERIFY; child success is not Worker-claimed;
+- real Git source deltas; deterministic A→B `git apply --3way` fan-in;
+- file overlap allowed; incompatible hunks fail closed;
+- final VERIFY + independent REVIEW after fan-in;
+- PAR01 measurement/decision rule frozen before the 3×2.
+
+## Important design decisions
+
+FanOutPlan is process control. Spec stays product authority. Both units receive the full `Spec.acceptance` list (shared); unit scope is intent + test files, not keyword `owns()`.
+
+`git apply --3way` needs index ≈ working tree. `restoreFixture` rewrites `target-app/src` on disk; apply now syncs the index first.
+
+Default architecture is unchanged: Spec → one Worker.
+
+## Current result
+
+Smoke (`benchmark:fanout:smoke`): all worktrees on one SHA.
+
+PAR01 (`benchmark:fanout`, 2026-09-22): sequential expected **0/3**, parallel **2/3**, median wall 59s vs 57s, parallel more expensive. Evidence: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-18-39-907Z.txt`.
+
+## Failures / open questions
+
+P03 is product-independent and file-coupled; children often PASS then conflict in `task-service.ts`. One sequential trial never left Spec (`needs_human_judgment` on 400 vs 404 precedence). Topic Chat / Master own formal closure.
 
 ---
 

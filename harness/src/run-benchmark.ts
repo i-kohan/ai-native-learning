@@ -98,6 +98,15 @@ import {
   type DecompositionArmId,
   type DecompositionProbeAttempt,
 } from "./decomposition-experiment.ts";
+import {
+  bindP03FanOutPlan,
+  isExpectedP03Outcome,
+  runFanOutExperiment,
+  writeFanOutExperimentArtifact,
+  type FanOutArmId,
+  type FanOutProbeAttempt,
+} from "./fanout-experiment.ts";
+import { cleanupFanOutWorkspaces, createFanOutWorkspaces } from "./fan-out.ts";
 import { runFinalVerification } from "./verify.ts";
 import {
   bindConfig,
@@ -120,6 +129,36 @@ export type BenchmarkRunLabel = {
   taskId: TaskId;
   contextMode: ContextMode;
 };
+
+export function prepareP03(config: HarnessConfig): {
+  task: string;
+  initialTestsPassed: boolean;
+  initialTestOutput: string;
+} {
+  restoreFixture(config, path.join(config.repoRoot, "benchmarks"));
+  const hostP03 = path.join(REPO_ROOT, "benchmarks", "P03");
+  const taskPath = path.join(hostP03, "task.md");
+  const testFiles = ["title-mutation.test.ts", "task-deletion.test.ts"];
+  if (!fs.existsSync(taskPath)) {
+    throw new Error(`Missing P03 fixture files under ${hostP03}`);
+  }
+  const testsDir = path.join(config.targetAppRoot, "tests");
+  fs.mkdirSync(testsDir, { recursive: true });
+  for (const file of testFiles) {
+    const from = path.join(hostP03, file);
+    if (!fs.existsSync(from)) {
+      throw new Error(`Missing P03 test file: ${from}`);
+    }
+    fs.copyFileSync(from, path.join(testsDir, file));
+  }
+  const task = fs.readFileSync(taskPath, "utf8").trim();
+  const verification = runFinalVerification(config);
+  return {
+    task,
+    initialTestsPassed: verification.passed,
+    initialTestOutput: verification.output,
+  };
+}
 
 export function prepareP02(config: HarnessConfig): {
   task: string;
@@ -753,6 +792,101 @@ export async function runP02DecompositionExperiment() {
   });
 }
 
+export async function executeP03FanOutTrial(options: {
+  arm: FanOutArmId;
+  runId: string;
+}): Promise<FanOutProbeAttempt> {
+  const trialStartedAt = Date.now();
+  const workspaces = createFanOutWorkspaces({
+    hostRepoRoot: REPO_ROOT,
+    runId: options.runId,
+  });
+  try {
+    const base = loadConfig();
+    const integrationConfig = bindConfig(base, workspaces.integration);
+    const prep = prepareP03(integrationConfig);
+    prepareP03(bindConfig(base, workspaces.children.A));
+    prepareP03(bindConfig(base, workspaces.children.B));
+    if (prep.initialTestsPassed) {
+      return {
+        fixtureApplied: false,
+        result: null,
+        error:
+          "P03: expected initial tests to FAIL after title/deletion tests were added, but they passed.",
+        trialWallTimeMs: Date.now() - trialStartedAt,
+      };
+    }
+    console.log(
+      `\n=== Preparing P03 (${options.arm}) integration=${workspaces.integration.id} ===`,
+    );
+    console.log("initial_tests: FAIL (P03 tests added to green fixture)");
+    const beforeSnapshot = snapshotDirectory(integrationConfig.targetSrcRoot);
+    const result = await runV1Harness({
+      config: integrationConfig,
+      task: prep.task,
+      runId: options.runId,
+      beforeSnapshot,
+      contextMode: "variant",
+      conversationStateMode: "manual",
+      workspace: workspaces.integration,
+      bindFanOutPlan: (spec) =>
+        bindP03FanOutPlan(spec, workspaces.baseRevision),
+      fanOutSchedule: options.arm,
+      fanOutChildWorkspaces: workspaces.children,
+      prepareFanOutWorkspace: (config) => {
+        prepareP03(config);
+      },
+    });
+    result.durationMs = Date.now() - trialStartedAt;
+    printHarnessResult(result);
+    return {
+      fixtureApplied: true,
+      result,
+      error: null,
+      trialWallTimeMs: result.durationMs,
+    };
+  } catch (error) {
+    return {
+      fixtureApplied: false,
+      result: null,
+      error: error instanceof Error ? error.message : String(error),
+      trialWallTimeMs: Date.now() - trialStartedAt,
+    };
+  } finally {
+    cleanupFanOutWorkspaces(REPO_ROOT, workspaces);
+  }
+}
+
+export async function runP03FanOutExperiment() {
+  return runFanOutExperiment({
+    runTrial: (arm, runId) => executeP03FanOutTrial({ arm, runId }),
+    scoreExpected: isExpectedP03Outcome,
+  });
+}
+
+export function runFanOutSmoke(): {
+  baseRevision: string;
+  childRevisions: string[];
+  integrationRevision: string;
+} {
+  const runId = `P03-fanout-smoke-${timestamp()}`;
+  const workspaces = createFanOutWorkspaces({
+    hostRepoRoot: REPO_ROOT,
+    runId,
+  });
+  try {
+    return {
+      baseRevision: workspaces.baseRevision,
+      childRevisions: Object.values(workspaces.children).map(
+        (item) => item.baseRevision,
+      ),
+      integrationRevision: workspaces.integration.baseRevision,
+    };
+  } finally {
+    cleanupFanOutWorkspaces(REPO_ROOT, workspaces);
+  }
+}
+
 export async function runConversationStateExperiment() {
   return runOrchestrationExperiment({
     runTrial: async (arm: OrchestrationArmId, runId: string) =>
@@ -1153,6 +1287,8 @@ type CliOptions = {
   planningExperiment?: boolean;
   subagentsExperiment?: boolean;
   decompositionExperiment?: boolean;
+  fanOutExperiment?: boolean;
+  fanOutSmoke?: boolean;
   durabilityProbe?: boolean;
   checkpointProbe?: boolean;
   retryProbe?: boolean;
@@ -1214,6 +1350,22 @@ function parseArgs(argv: string[]): CliOptions {
       evalSuite: false,
       routingExperiment: false,
       subagentsExperiment: true,
+      contextMode: "variant",
+      conversationStateMode,
+    };
+  }
+  if (argv.includes("--fanout") || argv.includes("fanout")) {
+    return {
+      all: false,
+      experiment: false,
+      repairProbe: false,
+      reviewProbe: false,
+      isolationProbe: false,
+      securityProbe: false,
+      evalSuite: false,
+      routingExperiment: false,
+      fanOutExperiment: true,
+      fanOutSmoke: argv.includes("--smoke") || argv.includes("smoke"),
       contextMode: "variant",
       conversationStateMode,
     };
@@ -1498,6 +1650,8 @@ async function main(): Promise<void> {
     planningExperiment,
     subagentsExperiment,
     decompositionExperiment,
+    fanOutExperiment,
+    fanOutSmoke,
     durabilityProbe,
     checkpointProbe,
     retryProbe,
@@ -1609,6 +1763,35 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (fanOutExperiment && fanOutSmoke) {
+    const smoke = runFanOutSmoke();
+    const sameBase =
+      smoke.childRevisions.every(
+        (revision) => revision === smoke.baseRevision,
+      ) && smoke.integrationRevision === smoke.baseRevision;
+    console.log("fan_out_smoke: ok");
+    console.log(`baseRevision: ${smoke.baseRevision}`);
+    console.log(`child_revisions: ${smoke.childRevisions.join(",")}`);
+    console.log(`integration_revision: ${smoke.integrationRevision}`);
+    console.log(`exact_base: ${sameBase}`);
+    process.exit(sameBase ? 0 : 1);
+    return;
+  }
+
+  if (fanOutExperiment) {
+    const result = await runP03FanOutExperiment();
+    const artifacts = writeFanOutExperimentArtifact(result);
+    console.log(`\n${result.report}`);
+    console.log(`\nfanout_json: ${artifacts.jsonPath}`);
+    console.log(`fanout_report: ${artifacts.reportPath}`);
+    process.exit(
+      result.sequential.validTrials === 3 && result.parallel.validTrials === 3
+        ? 0
+        : 1,
+    );
+    return;
+  }
+
   if (decompositionExperiment) {
     const result = await runP02DecompositionExperiment();
     const artifacts = writeDecompositionExperimentArtifact(result);
@@ -1683,6 +1866,8 @@ async function main(): Promise<void> {
     console.error("   or: npm run benchmark:planning");
     console.error("   or: npm run benchmark:subagents");
     console.error("   or: npm run benchmark:decomposition");
+    console.error("   or: npm run benchmark:fanout");
+    console.error("   or: npm run benchmark:fanout -- --smoke");
     console.error("   or: npm run benchmark:orchestration");
     console.error("   or: npm run benchmark -- ISO01");
     console.error("   or: npm run benchmark -- SEC01");

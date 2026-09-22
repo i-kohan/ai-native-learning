@@ -73,6 +73,7 @@ function harnessResult(
     reviewabilityReportPath: null,
     reviewUnitGateFailed: false,
     stoppedReviewUnitId: null,
+    fanOut: null,
     plan: null,
     plannerTurns: 0,
     plannerModelCalls: 0,
@@ -269,6 +270,7 @@ describe("task catalog classification", () => {
     }
     assert.equal(catalogEntry("P01")?.evaluationRole, "dev");
     assert.equal(catalogEntry("P02")?.evaluationRole, "dev");
+    assert.equal(catalogEntry("P03")?.evaluationRole, "dev");
     assert.equal(catalogEntry("R01")?.evaluationRole, "probe");
     assert.equal(catalogEntry("REV01")?.evaluationRole, "probe");
     assert.equal(catalogEntry("ISO01")?.evaluationRole, "isolation");

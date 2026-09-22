@@ -1,0 +1,54 @@
+Experiment m22-p03-par01-fanout
+task: P03
+generated: 2026-09-22T20:18:39.907Z
+contextMode: variant
+conversationStateMode: manual
+
+A frozen two-unit FanOutPlan over genuinely independent P03 work can reduce full end-to-end wall time when scheduled in parallel, without changing product semantics, ReviewPlan, delivery, or the default Spec → one Worker architecture.
+
+PAR01 predefined decision rule (frozen before any final trials):
+PAR01 is supported only if:
+1. correctness is preserved in every valid trial;
+2. all child VERIFY gates, deterministic fan-in, final VERIFY, and independent REVIEW succeed;
+3. there are no unresolved integration conflicts or lost changes;
+4. median full end-to-end wall time of parallel is at least 20% lower than sequential;
+5. available median cost metrics do not materially regress by more than 20%.
+The 20% threshold is a practical precommitted material-difference threshold, not a universal law.
+Full trial wall clock starts before workspace setup and runs through final VERIFY + independent REVIEW.
+Do not manufacture a positive conclusion merely because the child execution interval became shorter.
+Allowed conclusions: supported | not_worth_current_workload | inconclusive.
+Default architecture remains Spec → one Worker. Fan-out is an experiment/probe layer only.
+
+## SEQUENTIAL A → B
+valid: 3/3
+expected: 0/3
+correctness: 0/3
+median wall: 59199ms
+median model/tools: 11 / 24
+median tokens in/out: 47586 / 5146
+median child interval: 43835ms
+trial 1: expected=false verify=skipped review=skipped wall=26157 childInterval=0 overlap=(none) conflict=false
+trial 2: expected=false verify=FAIL review=skipped wall=67926 childInterval=47646 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+trial 3: expected=false verify=FAIL review=skipped wall=59199 childInterval=43835 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+
+## PARALLEL A || B
+valid: 3/3
+expected: 2/3
+correctness: 2/3
+median wall: 56915ms
+median model/tools: 14 / 29
+median tokens in/out: 61487 / 5435
+median child interval: 38336ms
+trial 1: expected=true verify=PASS review=pass wall=56915 childInterval=38336 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=false
+trial 2: expected=true verify=PASS review=pass wall=47652 childInterval=25251 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=false
+trial 3: expected=false verify=FAIL review=skipped wall=103796 childInterval=83478 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+
+decision.correctnessPreserved: false
+decision.gatesSucceeded: false
+decision.noConflictsOrLostChanges: false
+decision.wallTimeImproved: false
+decision.costRegressed: true
+decision.childIntervalShorter: false
+decision.conclusion: not_worth_current_workload
+decision.defaultUnchanged: true
+- Correctness, child/final gates, or deterministic integration was not preserved on every valid trial.

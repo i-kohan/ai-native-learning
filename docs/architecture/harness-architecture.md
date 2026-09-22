@@ -1,6 +1,6 @@
 # Harness Architecture
 
-Last consolidated: 2026-09-19, after Module 20 post-terminal GitHub/CI delivery.
+Last consolidated: 2026-09-22, after Module 22 bounded fan-out probe (not adopted).
 
 This document is a compact map of the **current architecture**, not a target-state design. Historical experiment details remain in `docs/learning/lessons/` and `docs/learning/experiments.md`.
 
@@ -220,6 +220,14 @@ The bounded agent-as-tool boundary is understood and tested, but P01 Workers nat
 A merely advisory ReviewPlan failed to create real review surfaces. Harness-owned `UnitExecutionScope` did create real sequential boundaries, but at roughly 2× orchestration cost on P02.
 
 **Revisit when:** GitHub/CI delivery can turn semantic units into actual review/merge surfaces and human review cost can be measured.
+
+### Experimental: bounded parallel fan-out
+
+**Status:** keep OFF by default.
+
+The seam exists: one Spec, frozen two-unit `FanOutPlan`, exact-base worktrees, `sequential | parallel`, Git 3-way fan-in. PAR01 on P03 was `not_worth_current_workload` (conflicts in a shared service file; no 20% wall-time win; parallel cost higher).
+
+**Revisit when:** a workload is independent in _files/hunks_, not only in product story, and e2e wall time is the scarce resource.
 
 ### Retained routing boundary
 

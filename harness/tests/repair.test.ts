@@ -300,6 +300,7 @@ describe("R01 expected outcome", () => {
       reviewabilityReportPath: null,
       reviewUnitGateFailed: false,
       stoppedReviewUnitId: null,
+      fanOut: null,
       plan: null,
       plannerTurns: 0,
       plannerModelCalls: 0,

@@ -43,6 +43,9 @@ const ENTRIES: TaskCatalogEntry[] = [
   entry("P02", "dev", "capability_regression", {
     defaultTrialCount: 3,
   }),
+  entry("P03", "dev", "capability_regression", {
+    defaultTrialCount: 3,
+  }),
   entry("H01", "holdout", "capability_regression", {
     contaminationStatus: "fresh_holdout",
     graderIndependentOfHarnessVerify: true,

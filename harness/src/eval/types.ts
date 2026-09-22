@@ -10,7 +10,7 @@ export const CAPABILITY_TASK_IDS = ["T01", "T02", "T03", "T04"] as const;
 export const EXECUTABLE_CAPABILITY_TASK_IDS = ["T01", "T02", "T03"] as const;
 export const PROBE_TASK_IDS = ["R01", "REV01"] as const;
 export const HOLDOUT_TASK_IDS = ["H01", "H02"] as const;
-export const KNOWN_WORKLOAD_TASK_IDS = ["P01", "P02"] as const;
+export const KNOWN_WORKLOAD_TASK_IDS = ["P01", "P02", "P03"] as const;
 export const FIXED_SUITE_TASK_IDS = [
   ...CAPABILITY_TASK_IDS,
   ...PROBE_TASK_IDS,

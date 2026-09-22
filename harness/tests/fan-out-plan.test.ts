@@ -1,0 +1,339 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import {
+  FAN_OUT_MAX_PARALLEL_WORKERS,
+  FAN_OUT_PLAN_RULE,
+  FAN_OUT_UNIT_SCOPE_RULE,
+  admitFanOutPlan,
+  fanOutUnitExecutionScope,
+  formatWorkerFanOutUnitTask,
+  parseFanOutPlanPayload,
+  type FanOutPlan,
+} from "../src/fan-out-plan.ts";
+import {
+  PAR01_DECISION_RULE,
+  bindP03FanOutPlan,
+  evaluatePar01Decision,
+  type FanOutArmReport,
+  type FanOutTrialRecord,
+} from "../src/fanout-experiment.ts";
+import type { Spec } from "../src/spec.ts";
+
+const SHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+function sampleSpec(acceptance: string[]): Spec {
+  return {
+    goal: "Add independent title mutation and deletion",
+    requirements: ["PATCH title", "DELETE task"],
+    constraints: ["Do not modify tests"],
+    nonGoals: ["Bulk delete"],
+    acceptance,
+    verification: ["npm test"],
+    ambiguities: [],
+  };
+}
+
+function validPlan(overrides: Partial<FanOutPlan> = {}): FanOutPlan {
+  return {
+    baseRevision: SHA,
+    maxParallelWorkers: FAN_OUT_MAX_PARALLEL_WORKERS,
+    integrationOrder: ["A", "B"],
+    units: [
+      {
+        id: "A",
+        intent: "Title mutation",
+        acceptanceRefs: ["PATCH /tasks/:id/title trims a non-empty title"],
+        verificationIntent: ["title tests"],
+        testFiles: ["tests/title-mutation.test.ts"],
+        dependsOn: [],
+      },
+      {
+        id: "B",
+        intent: "Task deletion",
+        acceptanceRefs: ["DELETE /tasks/:id returns the deleted task"],
+        verificationIntent: ["delete tests"],
+        testFiles: ["tests/task-deletion.test.ts"],
+        dependsOn: [],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+describe("FanOutPlan admission", () => {
+  const spec = sampleSpec([
+    "PATCH /tasks/:id/title trims a non-empty title",
+    "DELETE /tasks/:id returns the deleted task",
+  ]);
+
+  it("admits a well-formed two-unit independent plan", () => {
+    const admitted = admitFanOutPlan(validPlan(), spec);
+    assert.equal(admitted.ok, true);
+    if (admitted.ok) {
+      assert.equal(admitted.value.maxParallelWorkers, 2);
+      assert.deepEqual(admitted.value.integrationOrder, ["A", "B"]);
+    }
+  });
+
+  it("rejects a non-exact baseRevision", () => {
+    const parsed = parseFanOutPlanPayload({
+      ...validPlan(),
+      baseRevision: "HEAD",
+    });
+    assert.equal(parsed.ok, false);
+    if (!parsed.ok) {
+      assert.match(parsed.error, /exact 40-character commit SHA/);
+    }
+  });
+
+  it("rejects maxParallelWorkers other than 2", () => {
+    const parsed = parseFanOutPlanPayload({
+      ...validPlan(),
+      maxParallelWorkers: 4,
+    });
+    assert.equal(parsed.ok, false);
+    if (!parsed.ok) {
+      assert.match(parsed.error, /maxParallelWorkers must be 2/);
+    }
+  });
+
+  it("rejects duplicate unit ids", () => {
+    const parsed = parseFanOutPlanPayload({
+      ...validPlan(),
+      units: [validPlan().units[0], { ...validPlan().units[1], id: "A" }],
+    });
+    assert.equal(parsed.ok, false);
+    if (!parsed.ok) {
+      assert.match(parsed.error, /not unique/);
+    }
+  });
+
+  it("rejects unknown acceptance refs and lost Spec coverage", () => {
+    const unknown = admitFanOutPlan(
+      validPlan({
+        units: [
+          {
+            ...validPlan().units[0],
+            acceptanceRefs: ["not in spec"],
+          },
+          validPlan().units[1],
+        ],
+      }),
+      spec,
+    );
+    assert.equal(unknown.ok, false);
+    if (!unknown.ok) {
+      assert.match(unknown.error, /not in Spec.acceptance/);
+    }
+
+    const lost = admitFanOutPlan(
+      validPlan({
+        units: [
+          { ...validPlan().units[0], acceptanceRefs: [] },
+          validPlan().units[1],
+        ],
+      }),
+      spec,
+    );
+    assert.equal(lost.ok, false);
+    if (!lost.ok) {
+      assert.match(lost.error, /missing Spec.acceptance coverage/);
+    }
+  });
+
+  it("rejects dependencies between admitted fan-out units", () => {
+    const parsed = parseFanOutPlanPayload({
+      ...validPlan(),
+      units: [
+        validPlan().units[0],
+        { ...validPlan().units[1], dependsOn: ["A"] },
+      ],
+    });
+    assert.equal(parsed.ok, false);
+    if (!parsed.ok) {
+      assert.match(parsed.error, /must not declare dependencies/);
+    }
+  });
+
+  it("rejects integrationOrder that is not an exact permutation", () => {
+    const extra = parseFanOutPlanPayload({
+      ...validPlan(),
+      integrationOrder: ["A", "B", "C"],
+    });
+    assert.equal(extra.ok, false);
+
+    const swappedDuplicate = parseFanOutPlanPayload({
+      ...validPlan(),
+      integrationOrder: ["A", "A"],
+    });
+    assert.equal(swappedDuplicate.ok, false);
+
+    const unknown = parseFanOutPlanPayload({
+      ...validPlan(),
+      integrationOrder: ["A", "C"],
+    });
+    assert.equal(unknown.ok, false);
+  });
+
+  it("keeps FanOutUnit scope as process control, not product semantics", () => {
+    const plan = validPlan();
+    const scope = fanOutUnitExecutionScope(plan, plan.units[0]);
+    assert.equal(scope.currentUnitId, "A");
+    assert.deepEqual(scope.siblingUnits, [
+      { id: "B", intent: "Task deletion" },
+    ]);
+    const text = formatWorkerFanOutUnitTask(
+      "raw task",
+      spec,
+      plan,
+      plan.units[0],
+    );
+    assert.match(text, new RegExp(FAN_OUT_PLAN_RULE));
+    assert.match(text, new RegExp(FAN_OUT_UNIT_SCOPE_RULE));
+    assert.match(text, /Implement only this unit/);
+  });
+});
+
+describe("manual P03 FanOutPlan binding", () => {
+  it("shares every Spec.acceptance item with both units, including compile/all-tests wording", () => {
+    const spec = sampleSpec([
+      "The title-mutation tests pass.",
+      "The deletion tests pass.",
+      "All existing tests in tests/tasks.test.ts continue to pass.",
+      "The implementation compiles under the repository's TypeScript/tsx test setup and all repository tests pass.",
+    ]);
+    const bound = bindP03FanOutPlan(spec, SHA);
+    assert.equal(bound.ok, true);
+    if (bound.ok) {
+      assert.deepEqual(bound.value.units[0].acceptanceRefs, spec.acceptance);
+      assert.deepEqual(bound.value.units[1].acceptanceRefs, spec.acceptance);
+    }
+  });
+
+  it("covers a representative resolved Spec without depending on ReviewPlan", () => {
+    const spec = sampleSpec([
+      'PATCHing an existing task with { title: "  New title  " } returns 200 and a task whose stored title is "New title".',
+      "PATCH validation returns 400 for missing title, non-object body, non-string title, and blank/whitespace-only title.",
+      "PATCHing an unknown id returns 404.",
+      "DELETEing an existing task returns 200 and the deleted task; a subsequent GET for that id returns 404.",
+      "DELETEing an unknown id returns 404.",
+      "The existing tests in tests/tasks.test.ts continue to pass, and title/status/completedAt/list behavior remains unchanged.",
+    ]);
+    const bound = bindP03FanOutPlan(spec, SHA);
+    assert.equal(bound.ok, true);
+    if (bound.ok) {
+      assert.deepEqual(bound.value.integrationOrder, ["A", "B"]);
+      assert.equal(bound.value.units[0].dependsOn.length, 0);
+      assert.equal(bound.value.units[1].dependsOn.length, 0);
+      assert.ok(
+        bound.value.units[0].acceptanceRefs.some((item) =>
+          item.includes("PATCH"),
+        ),
+      );
+      assert.ok(
+        bound.value.units[1].acceptanceRefs.some((item) =>
+          item.includes("DELETE"),
+        ),
+      );
+    }
+  });
+
+  it("does not accept a ReviewPlan-shaped payload as a FanOutPlan", () => {
+    const parsed = parseFanOutPlanPayload({
+      decision: "decompose",
+      rationale: "not a fan-out plan",
+      units: [],
+    });
+    assert.equal(parsed.ok, false);
+  });
+});
+
+describe("PAR01 decision rule", () => {
+  it("is frozen before trials and does not treat a shorter child interval as support", () => {
+    assert.match(PAR01_DECISION_RULE, /at least 20% lower than sequential/);
+    assert.match(
+      PAR01_DECISION_RULE,
+      /Do not manufacture a positive conclusion merely because the child execution interval became shorter/,
+    );
+
+    const sequential = arm("sequential", [1000, 1100, 1200], [800, 850, 900]);
+    const parallel = arm("parallel", [950, 1000, 1050], [400, 410, 420]);
+    const decision = evaluatePar01Decision(sequential, parallel);
+    assert.equal(decision.childIntervalShorter, true);
+    assert.equal(decision.wallTimeImproved, false);
+    assert.equal(decision.conclusion, "not_worth_current_workload");
+    assert.equal(decision.defaultUnchanged, true);
+  });
+
+  it("supports PAR01 only when e2e wall time and cost criteria both hold", () => {
+    const sequential = arm("sequential", [1000, 1100, 1200], [800, 850, 900]);
+    const parallel = arm("parallel", [700, 720, 740], [400, 410, 420]);
+    const decision = evaluatePar01Decision(sequential, parallel);
+    assert.equal(decision.conclusion, "supported");
+    assert.equal(decision.wallTimeImproved, true);
+    assert.equal(decision.costRegressed, false);
+  });
+});
+
+function arm(
+  id: "sequential" | "parallel",
+  walls: number[],
+  intervals: number[],
+): FanOutArmReport {
+  const trials: FanOutTrialRecord[] = walls.map((wall, index) => ({
+    arm: id,
+    attempt: index + 1,
+    valid: true,
+    validity: { valid: true, reason: "valid" },
+    runId: `${id}-${index}`,
+    tracePath: null,
+    metrics: {
+      expectedOutcomeMet: true,
+      workflowStatus: "success",
+      finalVerification: "PASS",
+      finalReviewerOutcome: "pass",
+      childVerificationPassed: true,
+      fanInOk: true,
+      integrationConflicts: false,
+      lostChanges: [],
+      writeSetOverlap: ["target-app/src/tasks/task-routes.ts"],
+      childChangedFiles: { A: [], B: [] },
+      finalChangedFiles: [],
+      verificationRepairAttempts: 0,
+      reviewRepairAttempts: 0,
+      modelCalls: 20,
+      toolCalls: 40,
+      inputTokens: 10000,
+      outputTokens: 2000,
+      wallTimeMs: wall,
+      childADurationMs: 400,
+      childBDurationMs: 400,
+      childDurationSumMs: 800,
+      childIntervalMs: intervals[index],
+      fanInDurationMs: 20,
+      finalGateDurationMs: 200,
+      children: [],
+      schedule: id,
+    },
+  }));
+  const mid = Math.floor(walls.length / 2);
+  return {
+    id,
+    label: id,
+    schedule: id,
+    attemptedTrials: 3,
+    validTrials: 3,
+    expectedMet: 3,
+    correctnessPreserved: 3,
+    trials,
+    contaminated: [],
+    medians: {
+      wallTimeMs: [...walls].sort((a, b) => a - b)[mid],
+      modelCalls: 20,
+      toolCalls: 40,
+      inputTokens: 10000,
+      outputTokens: 2000,
+      childIntervalMs: [...intervals].sort((a, b) => a - b)[mid],
+    },
+  };
+}

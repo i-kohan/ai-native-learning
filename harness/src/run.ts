@@ -1,12 +1,12 @@
-import { REPO_ROOT, type HarnessConfig } from "./config.ts";
 import path from "node:path";
+import { type HarnessConfig, REPO_ROOT } from "./config.ts";
 import {
   buildRepositoryMap,
-  combineTokenUsage,
-  computePathOverlap,
   type ContextMode,
   type ContextPreparation,
   type ContextRunMetrics,
+  combineTokenUsage,
+  computePathOverlap,
   type InspectedPaths,
   type PhaseDiscoveryMetrics,
   type ReusableContext,
@@ -14,104 +14,118 @@ import {
 } from "./context.ts";
 import {
   diffSnapshots,
+  type FileSnapshot,
   reviewDeltaIdentity,
   snapshotDirectory,
-  type FileSnapshot,
 } from "./diff.ts";
-import { normalizeFailure, type NormalizedFailure } from "./failure.ts";
+import { shouldEnableSubagents } from "./evidence.ts";
+import { type NormalizedFailure, normalizeFailure } from "./failure.ts";
 import {
-  runAgentLoop,
+  type ChildEpisodeResult,
+  executeFanOut,
+  type FanOutEvidence,
+} from "./fan-out.ts";
+import {
+  childVerificationFiles,
+  type FanOutPlan,
+  type FanOutSchedule,
+  type FanOutUnit,
+  formatWorkerFanOutUnitTask,
+  type ParseFanOutPlanResult,
+} from "./fan-out-plan.ts";
+import {
   type AgentRunResult,
   type ConversationStateMode,
+  runAgentLoop,
 } from "./loop.ts";
+import { resolveModel, routingTraceFields } from "./model-routing.ts";
+import { formatWorkerTask, type Plan, shouldRunPlanner } from "./plan.ts";
+import { buildPlan, type PlannerPhaseResult } from "./planner-phase.ts";
 import { formatRepairContract, nextRepairDecision } from "./repair.ts";
 import {
+  DEFAULT_MAX_REVIEW_RETRY_ATTEMPTS,
+  type DurableRetryState,
+  executeReviewWithRetry,
+  logicalReviewId,
+  type RetryDecision,
+  reviewOperationId,
+} from "./retry.ts";
+import {
+  type ArchitectureConstraint,
   aggregateReviewState,
   decideFinding,
   emptyReviewRunState,
+  type FindingDecisionRecord,
   formatReviewRepairContract,
   nextReviewDecision,
-  shouldStartReview,
-  type ArchitectureConstraint,
-  type FindingDecisionRecord,
   type ReviewAttemptSummary,
   type ReviewContext,
   type ReviewRepairSummary,
   type ReviewRunState,
+  shouldStartReview,
 } from "./review.ts";
 import {
-  runIndependentReview,
+  loadReviewBaseline,
+  persistReviewBaseline,
+} from "./review-baseline.ts";
+import {
   type ReviewPhaseResult,
+  runIndependentReview,
 } from "./review-phase.ts";
-import type { SkillLoadRecord } from "./skills.ts";
-import { buildSpec } from "./spec-phase.ts";
 import {
-  summarizeAmbiguities,
-  writeSpecArtifact,
-  type Ambiguity,
-  type Spec,
-  type SpecDecision,
-} from "./spec.ts";
-import { resolveModel, routingTraceFields } from "./model-routing.ts";
-import { formatWorkerTask, shouldRunPlanner, type Plan } from "./plan.ts";
-import { buildPlan, type PlannerPhaseResult } from "./planner-phase.ts";
-import { shouldEnableSubagents } from "./evidence.ts";
-import {
+  type ChangeUnitTemplate,
   cumulativeTestFiles,
   formatReviewabilityReport,
   formatWorkerUnitTask,
-  shouldContinueDecomposedUnits,
   orderedUnits,
-  writeReviewabilityReport,
-  type ChangeUnitTemplate,
   type ParseReviewPlanResult,
   type ReviewPlan,
   type ReviewUnitReport,
+  shouldContinueDecomposedUnits,
+  writeReviewabilityReport,
 } from "./review-plan.ts";
+import type { SkillLoadRecord } from "./skills.ts";
+import {
+  type Ambiguity,
+  type Spec,
+  type SpecDecision,
+  summarizeAmbiguities,
+  writeSpecArtifact,
+} from "./spec.ts";
+import { buildSpec } from "./spec-phase.ts";
 import { Tracer } from "./trace.ts";
 import {
   runFinalVerification,
   runScopedVerification,
   type VerificationResult,
 } from "./verify.ts";
-import {
-  loadReviewBaseline,
-  persistReviewBaseline,
-} from "./review-baseline.ts";
-import {
-  bindResumedWorkspace,
-  captureWorkspaceResumeEvidence,
-  type Workspace,
-} from "./workspace.ts";
-import {
-  DEFAULT_MAX_REVIEW_RETRY_ATTEMPTS,
-  executeReviewWithRetry,
-  logicalReviewId,
-  reviewOperationId,
-  type DurableRetryState,
-  type RetryDecision,
-} from "./retry.ts";
 import { WorkflowError } from "./workflow-error.ts";
-import {
-  createWorkflowOwnerId,
-  acquireWorkflowLease,
-  releaseWorkflowLease,
-  DEFAULT_WORKFLOW_LEASE_TTL_MS,
-} from "./workflow-lease-store.ts";
 import type { WorkflowLease } from "./workflow-lease.ts";
 import { systemNowMs } from "./workflow-lease.ts";
-import { loadWorkflowState, saveWorkflowStateOwned } from "./workflow-store.ts";
+import {
+  acquireWorkflowLease,
+  createWorkflowOwnerId,
+  DEFAULT_WORKFLOW_LEASE_TTL_MS,
+  releaseWorkflowLease,
+} from "./workflow-lease-store.ts";
 import {
   admitImplementationReady,
   admitReviewReady,
   admitReviewRetryState,
   admitTerminal,
-  nextDurableAction,
   type DurableCheckpoint,
   type ImplementationReadyState,
+  nextDurableAction,
   type ReviewReadyState,
   type WorkflowState,
 } from "./workflow-state.ts";
+import { loadWorkflowState, saveWorkflowStateOwned } from "./workflow-store.ts";
+import {
+  bindResumedWorkspace,
+  captureWorkspaceResumeEvidence,
+  cleanupWorkspace,
+  type Workspace,
+} from "./workspace.ts";
 
 export type WorkflowStatus =
   | "success"
@@ -141,6 +155,10 @@ export type WorkflowFailureReason =
   | "spec_phase_failed"
   | "plan_phase_failed"
   | "review_plan_invalid"
+  | "fan_out_plan_invalid"
+  | "child_verification_failed"
+  | "fan_in_conflict"
+  | "fan_in_lost_changes"
   | "final_verification_failed"
   | "review_parse_failed"
   | "review_unresolved_blocker"
@@ -198,6 +216,7 @@ export type HarnessRunResult = {
   reviewabilityReportPath: string | null;
   reviewUnitGateFailed: boolean;
   stoppedReviewUnitId: string | null;
+  fanOut: FanOutEvidence | null;
   turns: number;
   modelCalls: number;
   toolCalls: number;
@@ -260,6 +279,14 @@ export async function runV1Harness(options: {
    */
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
   reviewUnitTemplates?: ChangeUnitTemplate[];
+  /**
+   * Experiment-only bounded fan-out. Default architecture remains one Worker.
+   * The binder is harness-owned and must not be an LLM fan-out planner.
+   */
+  bindFanOutPlan?: (spec: Spec) => ParseFanOutPlanResult;
+  fanOutSchedule?: FanOutSchedule;
+  fanOutChildWorkspaces?: Record<string, Workspace>;
+  prepareFanOutWorkspace?: (config: HarnessConfig) => void;
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
@@ -312,6 +339,10 @@ async function executeV1Harness(options: {
   subagentsEnabled?: boolean;
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
   reviewUnitTemplates?: ChangeUnitTemplate[];
+  bindFanOutPlan?: (spec: Spec) => ParseFanOutPlanResult;
+  fanOutSchedule?: FanOutSchedule;
+  fanOutChildWorkspaces?: Record<string, Workspace>;
+  prepareFanOutWorkspace?: (config: HarnessConfig) => void;
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
   architectureConstraints?: ArchitectureConstraint[];
@@ -405,6 +436,10 @@ async function executeV1Harness(options: {
       architectureConstraints: options.architectureConstraints,
       bindReviewPlan: options.bindReviewPlan,
       reviewUnitTemplates: options.reviewUnitTemplates,
+      bindFanOutPlan: options.bindFanOutPlan,
+      fanOutSchedule: options.fanOutSchedule,
+      fanOutChildWorkspaces: options.fanOutChildWorkspaces,
+      prepareFanOutWorkspace: options.prepareFanOutWorkspace,
       afterImplementationEpisode: options.afterImplementationEpisode,
       workspace,
       durable,
@@ -621,6 +656,10 @@ async function executeV1Harness(options: {
     architectureConstraints: options.architectureConstraints,
     bindReviewPlan: options.bindReviewPlan,
     reviewUnitTemplates: options.reviewUnitTemplates,
+    bindFanOutPlan: options.bindFanOutPlan,
+    fanOutSchedule: options.fanOutSchedule,
+    fanOutChildWorkspaces: options.fanOutChildWorkspaces,
+    prepareFanOutWorkspace: options.prepareFanOutWorkspace,
     afterImplementationEpisode: options.afterImplementationEpisode,
     workspace,
     durable,
@@ -654,6 +693,10 @@ async function continueAfterAdmittedSpec(options: {
   architectureConstraints?: ArchitectureConstraint[];
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
   reviewUnitTemplates?: ChangeUnitTemplate[];
+  bindFanOutPlan?: (spec: Spec) => ParseFanOutPlanResult;
+  fanOutSchedule?: FanOutSchedule;
+  fanOutChildWorkspaces?: Record<string, Workspace>;
+  prepareFanOutWorkspace?: (config: HarnessConfig) => void;
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
   durable?: DurableRunOptions;
@@ -870,6 +913,56 @@ async function continueAfterAdmittedSpec(options: {
     reviewPlan = bound.value;
   }
 
+  let fanOutPlan: FanOutPlan | null = null;
+  if (options.bindFanOutPlan && options.bindReviewPlan) {
+    return abortInvalidFanOutPlan({
+      task,
+      decision,
+      specPhase,
+      plannerPhase,
+      planningEnabled,
+      subagentsEnabled,
+      contextMode,
+      conversationStateMode,
+      contextPreparation,
+      beforeSnapshot,
+      config,
+      tracer,
+      startedAt,
+      workspace,
+      workflowId: workflow?.workflowId,
+      durable,
+      workflow,
+      error: "FanOutPlan and ReviewPlan cannot be combined.",
+    });
+  }
+  if (options.bindFanOutPlan) {
+    const bound = options.bindFanOutPlan(decision.spec);
+    if (!bound.ok) {
+      return abortInvalidFanOutPlan({
+        task,
+        decision,
+        specPhase,
+        plannerPhase,
+        planningEnabled,
+        subagentsEnabled,
+        contextMode,
+        conversationStateMode,
+        contextPreparation,
+        beforeSnapshot,
+        config,
+        tracer,
+        startedAt,
+        workspace,
+        workflowId: workflow?.workflowId,
+        durable,
+        workflow,
+        error: bound.error,
+      });
+    }
+    fanOutPlan = bound.value;
+  }
+
   tracer.record("harness_gate", {
     action: "execute",
     implementationStarted: true,
@@ -878,13 +971,84 @@ async function continueAfterAdmittedSpec(options: {
     planAccepted: Boolean(plannerPhase.plan),
     reviewPlanDecision: reviewPlan?.decision ?? null,
     reviewUnitCount: reviewPlan?.units.length ?? 0,
+    fanOutUnits: fanOutPlan?.units.map((unit) => unit.id) ?? [],
+    fanOutSchedule: options.fanOutSchedule ?? null,
   });
 
   let implementation: AgentRunResult;
   let reviewUnits: ReviewUnitReport[] = [];
   let reviewUnitGateFailed = false;
   let stoppedReviewUnitId: string | null = null;
-  if (reviewPlan?.decision === "decompose") {
+  let fanOutEvidence: FanOutEvidence | null = null;
+  const admittedFanOut = fanOutPlan;
+  if (admittedFanOut) {
+    if (!workspace) {
+      throw new Error(
+        "Fan-out requires an isolated workspace from an exact base revision.",
+      );
+    }
+    const executed = await executeFanOut({
+      plan: admittedFanOut,
+      schedule: options.fanOutSchedule ?? "sequential",
+      hostRepoRoot: durable?.hostRepoRoot ?? REPO_ROOT,
+      runId,
+      parentConfig: config,
+      integration: workspace,
+      children: options.fanOutChildWorkspaces,
+      prepareWorkspace: options.prepareFanOutWorkspace,
+      executeChild: (args) =>
+        runFanOutChildEpisode({
+          ...args,
+          originalTask: task,
+          spec: decision.spec,
+          plan: admittedFanOut,
+          tracer,
+          reusableContext,
+          runId,
+          conversationStateMode,
+          subagentsEnabled,
+        }),
+    });
+    for (const owned of executed.workspacesCreatedByHarness) {
+      cleanupWorkspace({
+        hostRepoRoot: durable?.hostRepoRoot ?? REPO_ROOT,
+        workspace: owned,
+      });
+    }
+    fanOutEvidence = executed.evidence;
+    if (!executed.implementation) {
+      throw new Error("Fan-out produced no implementation episode.");
+    }
+    implementation = executed.implementation;
+    const integrated = snapshotDirectory(config.targetSrcRoot);
+    const integratedDiff = diffSnapshots(beforeSnapshot, integrated);
+    implementation.changedFiles = integratedDiff.changedFiles;
+    implementation.unifiedDiff = integratedDiff.unifiedDiff;
+    tracer.record("fan_out_completed", {
+      schedule: executed.evidence.schedule,
+      ok: executed.ok,
+      failureReason: executed.evidence.failureReason,
+      childIntervalMs: executed.evidence.childIntervalMs,
+      writeSetOverlap: executed.evidence.writeSetOverlap,
+      fanIn: {
+        ok: executed.evidence.fanIn.ok,
+        appliedUnitIds: executed.evidence.fanIn.appliedUnitIds,
+        conflict: executed.evidence.fanIn.conflict,
+        lostChanges: executed.evidence.fanIn.lostChanges,
+      },
+      provenance: executed.evidence.provenance,
+      children: executed.evidence.children.map((child) => ({
+        unitId: child.unitId,
+        baseRevision: child.baseRevision,
+        changedFiles: child.changedFiles,
+        verificationPassed: child.verificationPassed,
+        repairAttempts: child.repairAttempts,
+        durationMs: child.durationMs,
+        modelCalls: child.modelCalls,
+        toolCalls: child.toolCalls,
+      })),
+    });
+  } else if (reviewPlan?.decision === "decompose") {
     const decomposed = await runDecomposedImplementation({
       config,
       task,
@@ -931,40 +1095,77 @@ async function continueAfterAdmittedSpec(options: {
     options.afterImplementationEpisode();
   }
 
-  const verified = await runVerifyRepairLoop({
-    config,
-    task,
-    spec: decision.spec,
-    tracer,
-    reusableContext,
-    runId,
-    implementation,
-    conversationStateMode,
-    emitSuccessOutcome: false,
-  });
-
-  let workflowStatus = verified.workflowStatus;
-  let failureReason = verified.failureReason;
-  let modelFinalResponse = verified.modelFinalResponse;
-  let verificationAttempts = verified.verificationAttempts;
-  let repairAttempts = verified.repairAttempts;
-  let repeatedFailure = verified.repeatedFailure;
-  let verifications = verified.verifications;
-  let repairs = verified.repairs;
-  let finalVerificationPassed = verified.finalVerificationPassed;
-  let finalVerification = verified.finalVerification;
+  let workflowStatus: WorkflowStatus = "failure";
+  let failureReason: WorkflowFailureReason | undefined;
+  let modelFinalResponse = implementation.modelFinalResponse;
+  let verificationAttempts = 0;
+  let repairAttempts = 0;
+  let repeatedFailure = false;
+  let verifications: VerificationAttempt[] = [];
+  let repairs: RepairAttemptSummary[] = [];
+  let finalVerificationPassed = false;
+  let finalVerification: VerificationResult | null = null;
   let reviewState = emptyReviewRunState();
   let lastRetryDecision: RetryDecision | undefined;
-  const skillLoads: SkillLoadRecord[] = [
-    ...collectedSkillLoads(implementation),
-    ...verified.skillLoads,
-  ];
+  const skillLoads: SkillLoadRecord[] = collectedSkillLoads(implementation);
+
+  const fanOutBlocked =
+    fanOutEvidence !== null && fanOutEvidence.ok === false;
+  if (fanOutEvidence && fanOutEvidence.ok === false) {
+    failureReason = fanOutFailureReason(fanOutEvidence);
+    modelFinalResponse = fanOutFailureMessage(fanOutEvidence);
+    tracer.record("workflow_outcome", {
+      status: "failure",
+      reason: failureReason,
+      implementationStarted: true,
+      fanOutFailure: fanOutEvidence.failureReason,
+    });
+  }
+
+  const verified = fanOutBlocked
+    ? null
+    : await runVerifyRepairLoop({
+        config,
+        task,
+        spec: decision.spec,
+        tracer,
+        reusableContext,
+        runId,
+        implementation,
+        conversationStateMode,
+        emitSuccessOutcome: false,
+      });
+
+  if (verified) {
+    workflowStatus = verified.workflowStatus;
+    failureReason = verified.failureReason;
+    modelFinalResponse = verified.modelFinalResponse;
+    verificationAttempts = verified.verificationAttempts;
+    repairAttempts = verified.repairAttempts;
+    repeatedFailure = verified.repeatedFailure;
+    verifications = verified.verifications;
+    repairs = verified.repairs;
+    finalVerificationPassed = verified.finalVerificationPassed;
+    finalVerification = verified.finalVerification;
+    skillLoads.push(...verified.skillLoads);
+  }
 
   const canReview =
+    verified !== null &&
     shouldStartReview(verified.finalVerificationPassed) &&
     verified.workflowStatus === "success";
+  const lastPassedVerification = canReview
+    ? verified.finalVerification
+    : null;
 
-  if (canReview && durable && workflow && reviewBaselineRef) {
+  if (
+    verified &&
+    canReview &&
+    lastPassedVerification &&
+    durable &&
+    workflow &&
+    reviewBaselineRef
+  ) {
     if (!workspace) {
       throw new WorkflowError(
         "workspace_missing",
@@ -979,8 +1180,8 @@ async function continueAfterAdmittedSpec(options: {
       reviewBaseline: reviewBaselineRef,
       verification: {
         passed: true,
-        exitCode: verified.finalVerification!.exitCode,
-        durationMs: verified.finalVerification!.durationMs,
+        exitCode: lastPassedVerification.exitCode,
+        durationMs: lastPassedVerification.durationMs,
         attempt: verified.verificationAttempts,
       },
       tracer,
@@ -1004,14 +1205,14 @@ async function continueAfterAdmittedSpec(options: {
         verificationAttempts,
         repairAttempts,
         repeatedFailure,
-        finalVerification: verified.finalVerification!,
+        finalVerification: lastPassedVerification,
         workspace,
         workflowId: workflow.workflowId,
       });
     }
   }
 
-  if (canReview) {
+  if (verified && canReview && lastPassedVerification) {
     const reviewed = await runIndependentReviewLoop({
       config,
       task,
@@ -1022,7 +1223,7 @@ async function continueAfterAdmittedSpec(options: {
       implementation,
       beforeSnapshot,
       architectureConstraints: options.architectureConstraints ?? [],
-      lastVerification: verified.finalVerification!,
+      lastVerification: lastPassedVerification,
       lastVerificationAttempt: verified.verificationAttempts,
       conversationStateMode,
       durable,
@@ -1045,7 +1246,7 @@ async function continueAfterAdmittedSpec(options: {
     if (reviewed.lastRetryDecision) {
       lastRetryDecision = reviewed.lastRetryDecision;
     }
-  } else if (verified.workflowStatus === "success") {
+  } else if (verified?.workflowStatus === "success") {
     tracer.record("workflow_outcome", {
       status: "success",
       reason: "verified_success",
@@ -1100,6 +1301,7 @@ async function continueAfterAdmittedSpec(options: {
     reviewabilityReportPath,
     reviewUnitGateFailed,
     stoppedReviewUnitId,
+    fanOut: fanOutEvidence,
     contextMode,
     conversationStateMode,
     contextPreparation,
@@ -1172,6 +1374,18 @@ export function printHarnessResult(result: HarnessRunResult): void {
   if (result.reviewUnitGateFailed) {
     console.log(
       `review_unit_gate: failed at ${result.stoppedReviewUnitId ?? "(unknown)"}`,
+    );
+  }
+  if (result.fanOut) {
+    console.log(
+      `fan_out: ${result.fanOut.schedule} units=${result.fanOut.children
+        .map(
+          (child) =>
+            `${child.unitId}:${child.verificationPassed ? "PASS" : "FAIL"}`,
+        )
+        .join(
+          " | ",
+        )} fan_in=${result.fanOut.fanIn.ok ? "ok" : "failed"} overlap=${result.fanOut.writeSetOverlap.join(",") || "(none)"}`,
     );
   }
   console.log(
@@ -1326,6 +1540,191 @@ function formatEscalationMessage(
   ].join("\n");
 }
 
+async function abortInvalidFanOutPlan(options: {
+  task: string;
+  decision: Extract<SpecDecision, { status: "executable" }>;
+  specPhase: {
+    turns: number;
+    modelCalls: number;
+    toolCalls: number;
+    inspectedPaths: InspectedPaths;
+    discovery: PhaseDiscoveryMetrics;
+    tokenUsage: TokenUsageSummary | null;
+  };
+  plannerPhase: PlannerPhaseResult;
+  planningEnabled: boolean;
+  subagentsEnabled: boolean;
+  contextMode: ContextMode;
+  conversationStateMode: ConversationStateMode;
+  contextPreparation: ContextPreparation | null;
+  beforeSnapshot: FileSnapshot;
+  config: HarnessConfig;
+  tracer: Tracer;
+  startedAt: number;
+  workspace?: Workspace;
+  workflowId?: string;
+  durable?: DurableRunOptions;
+  workflow: WorkflowState | null;
+  error: string;
+}): Promise<HarnessRunResult> {
+  const afterSnapshot = snapshotDirectory(options.config.targetSrcRoot);
+  const { changedFiles, unifiedDiff } = diffSnapshots(
+    options.beforeSnapshot,
+    afterSnapshot,
+  );
+  const result = baseResult({
+    task: options.task,
+    workflowStatus: "failure",
+    failureReason: "fan_out_plan_invalid",
+    specDecision: options.decision,
+    unresolvedQuestions: [],
+    implementationStarted: false,
+    implementation: null,
+    specPhase: options.specPhase,
+    plannerPhase: options.plannerPhase,
+    planningEnabled: options.planningEnabled,
+    subagentsEnabled: options.subagentsEnabled,
+    contextMode: options.contextMode,
+    conversationStateMode: options.conversationStateMode,
+    contextPreparation: options.contextPreparation,
+    receivedTerminalResponse: false,
+    verificationAttempts: 0,
+    repairAttempts: 0,
+    repeatedFailure: false,
+    verifications: [],
+    repairs: [],
+    finalVerificationPassed: false,
+    finalVerification: null,
+    modelFinalResponse: options.error,
+    changedFiles,
+    unifiedDiff,
+    tracePath: options.tracer.tracePath,
+    durationMs: Date.now() - options.startedAt,
+    skillLoads: [],
+    workspace: options.workspace,
+    workflowId: options.workflowId,
+  });
+  options.tracer.record("harness_gate", {
+    action: "abort",
+    reason: "fan_out_plan_invalid",
+    implementationStarted: false,
+    fanOutPlanError: options.error,
+  });
+  persistDurableTerminal(options.durable, options.workflow, {
+    workflowStatus: "failure",
+    failureReason: "fan_out_plan_invalid",
+  });
+  await finishRun(options.tracer, result);
+  return result;
+}
+
+function fanOutFailureReason(evidence: FanOutEvidence): WorkflowFailureReason {
+  if (evidence.failureReason === "fan_in_conflict") {
+    return "fan_in_conflict";
+  }
+  if (evidence.failureReason === "lost_changes") {
+    return "fan_in_lost_changes";
+  }
+  return "child_verification_failed";
+}
+
+function fanOutFailureMessage(evidence: FanOutEvidence): string {
+  if (evidence.fanIn.conflict) {
+    return `Fan-in conflict on unit ${evidence.fanIn.conflict.failedUnitId}: ${evidence.fanIn.conflict.evidence}`;
+  }
+  if (evidence.fanIn.lostChanges.length > 0) {
+    return `Fan-in lost changes: ${evidence.fanIn.lostChanges.join(", ")}`;
+  }
+  const failed = evidence.children.find((child) => !child.verificationPassed);
+  return failed
+    ? `Child ${failed.unitId} scoped VERIFY failed.`
+    : "Fan-out implementation failed.";
+}
+
+async function runFanOutChildEpisode(options: {
+  unit: FanOutUnit;
+  config: HarnessConfig;
+  originalTask: string;
+  spec: Spec;
+  plan: FanOutPlan;
+  tracer: Tracer;
+  reusableContext: ReusableContext | undefined;
+  runId: string;
+  conversationStateMode: ConversationStateMode;
+  subagentsEnabled: boolean;
+}): Promise<ChildEpisodeResult> {
+  const startedAt = Date.now();
+  const unitTask = formatWorkerFanOutUnitTask(
+    options.originalTask,
+    options.spec,
+    options.plan,
+    options.unit,
+  );
+  const beforeSnapshot = snapshotDirectory(options.config.targetSrcRoot);
+  const { episode, verified } = await runScopedWorkerUnit({
+    config: options.config,
+    unitTask,
+    spec: options.spec,
+    tracer: options.tracer,
+    reusableContext: options.reusableContext,
+    runId: `${options.runId}-child-${options.unit.id}`,
+    conversationStateMode: options.conversationStateMode,
+    subagentsEnabled: options.subagentsEnabled,
+    beforeSnapshot,
+    testFiles: childVerificationFiles(options.unit),
+  });
+  return {
+    episode: foldRepairsIntoImplementation(episode, verified.repairs),
+    verificationPassed: verified.finalVerificationPassed,
+    verificationOutput: verified.finalVerification?.output ?? "",
+    repairAttempts: verified.repairAttempts,
+    startedAt,
+    finishedAt: Date.now(),
+  };
+}
+
+async function runScopedWorkerUnit(options: {
+  config: HarnessConfig;
+  unitTask: string;
+  spec: Spec;
+  tracer: Tracer;
+  reusableContext: ReusableContext | undefined;
+  runId: string;
+  conversationStateMode: ConversationStateMode;
+  subagentsEnabled: boolean;
+  beforeSnapshot: FileSnapshot;
+  testFiles: string[];
+}): Promise<{
+  episode: AgentRunResult;
+  verified: Awaited<ReturnType<typeof runVerifyRepairLoop>>;
+}> {
+  const episode = await runAgentLoop({
+    config: options.config,
+    task: options.unitTask,
+    runId: options.runId,
+    beforeSnapshot: options.beforeSnapshot,
+    spec: options.spec,
+    tracer: options.tracer,
+    reusableContext: options.reusableContext,
+    phase: "implementation",
+    conversationStateMode: options.conversationStateMode,
+    subagentsEnabled: options.subagentsEnabled,
+  });
+  const verified = await runVerifyRepairLoop({
+    config: options.config,
+    task: options.unitTask,
+    spec: options.spec,
+    tracer: options.tracer,
+    reusableContext: options.reusableContext,
+    runId: options.runId,
+    implementation: episode,
+    conversationStateMode: options.conversationStateMode,
+    emitSuccessOutcome: false,
+    verify: () => runScopedVerification(options.config, options.testFiles),
+  });
+  return { episode, verified };
+}
+
 async function runDecomposedImplementation(options: {
   config: HarnessConfig;
   task: string;
@@ -1365,35 +1764,21 @@ async function runDecomposedImplementation(options: {
       options.plan,
       unit,
     );
-    const episode = await runAgentLoop({
-      config: options.config,
-      task: unitTask,
-      runId: options.runId,
-      beforeSnapshot: unitBefore,
-      spec: options.spec,
-      tracer: options.tracer,
-      reusableContext: options.reusableContext,
-      phase: "implementation",
-      conversationStateMode: options.conversationStateMode,
-      subagentsEnabled: options.subagentsEnabled,
-    });
-    merged = merged ? mergeAgentRuns(merged, episode) : episode;
-
     completedIds.push(unit.id);
     const scopedFiles = cumulativeTestFiles(completedIds, options.templates);
-
-    const unitVerified = await runVerifyRepairLoop({
+    const { episode, verified: unitVerified } = await runScopedWorkerUnit({
       config: options.config,
-      task: unitTask,
+      unitTask,
       spec: options.spec,
       tracer: options.tracer,
       reusableContext: options.reusableContext,
       runId: options.runId,
-      implementation: episode,
       conversationStateMode: options.conversationStateMode,
-      emitSuccessOutcome: false,
-      verify: () => runScopedVerification(options.config, scopedFiles),
+      subagentsEnabled: options.subagentsEnabled,
+      beforeSnapshot: unitBefore,
+      testFiles: scopedFiles,
     });
+    merged = merged ? mergeAgentRuns(merged, episode) : episode;
 
     merged = foldRepairsIntoImplementation(merged, unitVerified.repairs);
 
@@ -1720,8 +2105,14 @@ async function runVerifyRepairLoop(options: {
       };
     }
 
+    if (!normalized) {
+      throw new Error(
+        "Repair requires normalized verification failure evidence.",
+      );
+    }
+
     repairAttempts = decision.attempt;
-    previousSignature = normalized?.signature ?? null;
+    previousSignature = normalized.signature;
     const repairBefore = snapshotDirectory(config.targetSrcRoot);
 
     tracer.record("repair_started", {
@@ -1730,19 +2121,19 @@ async function runVerifyRepairLoop(options: {
       conversationStateMode,
       maxRepairAttempts: config.maxRepairAttempts,
       specGoal: spec.goal,
-      failedTests: normalized?.failedTests ?? [],
-      failureSignature: normalized?.signature ?? null,
+      failedTests: normalized.failedTests,
+      failureSignature: normalized.signature,
       promptIncludesSpec: true,
-      promptIncludesFailureEvidence: Boolean(normalized),
+      promptIncludesFailureEvidence: true,
       promptPreview: truncate(
-        formatRepairContract(task, spec, normalized!),
+        formatRepairContract(task, spec, normalized),
         2000,
       ),
     });
 
     const repair = await runAgentLoop({
       config,
-      task: formatRepairContract(task, spec, normalized!),
+      task: formatRepairContract(task, spec, normalized),
       runId,
       beforeSnapshot: repairBefore,
       spec,
@@ -2349,6 +2740,7 @@ function baseResult(fields: {
   reviewabilityReportPath?: string | null;
   reviewUnitGateFailed?: boolean;
   stoppedReviewUnitId?: string | null;
+  fanOut?: FanOutEvidence | null;
   contextMode: ContextMode;
   conversationStateMode: ConversationStateMode;
   contextPreparation: ContextPreparation | null;
@@ -2499,6 +2891,7 @@ function baseResult(fields: {
     reviewabilityReportPath: fields.reviewabilityReportPath ?? null,
     reviewUnitGateFailed: fields.reviewUnitGateFailed ?? false,
     stoppedReviewUnitId: fields.stoppedReviewUnitId ?? null,
+    fanOut: fields.fanOut ?? null,
     turns:
       fields.specPhase.turns +
       fields.plannerPhase.turns +
@@ -2622,6 +3015,28 @@ async function finishRun(
     reviewabilityReportPath: result.reviewabilityReportPath,
     reviewUnitGateFailed: result.reviewUnitGateFailed,
     stoppedReviewUnitId: result.stoppedReviewUnitId,
+    fanOut: result.fanOut
+      ? {
+          schedule: result.fanOut.schedule,
+          ok: result.fanOut.ok,
+          failureReason: result.fanOut.failureReason,
+          writeSetOverlap: result.fanOut.writeSetOverlap,
+          childIntervalMs: result.fanOut.childIntervalMs,
+          childDurationSumMs: result.fanOut.childDurationSumMs,
+          provenance: result.fanOut.provenance,
+          fanIn: result.fanOut.fanIn,
+          children: result.fanOut.children.map((child) => ({
+            unitId: child.unitId,
+            baseRevision: child.baseRevision,
+            changedFiles: child.changedFiles,
+            verificationPassed: child.verificationPassed,
+            repairAttempts: child.repairAttempts,
+            durationMs: child.durationMs,
+            modelCalls: child.modelCalls,
+            toolCalls: child.toolCalls,
+          })),
+        }
+      : null,
     researchDelegations: result.implementation?.researchDelegations ?? [],
     receivedTerminalResponse: result.receivedTerminalResponse,
     verificationAttempts: result.verificationAttempts,
@@ -2702,6 +3117,7 @@ function assertDurableModeSupported(options: {
   planningEnabled?: boolean;
   subagentsEnabled?: boolean;
   bindReviewPlan?: unknown;
+  bindFanOutPlan?: unknown;
 }): void {
   if (options.planningEnabled) {
     throw new WorkflowError(
@@ -2719,6 +3135,12 @@ function assertDurableModeSupported(options: {
     throw new WorkflowError(
       "unsupported_mode",
       "Durable execution does not support ReviewPlan decomposition.",
+    );
+  }
+  if (options.bindFanOutPlan) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "Durable execution does not support FanOutPlan.",
     );
   }
 }

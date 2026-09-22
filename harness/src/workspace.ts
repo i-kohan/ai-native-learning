@@ -142,7 +142,9 @@ export function captureWorkspaceResumeEvidence(
     baseRevision: workspace.baseRevision,
     ref: workspace.ref,
     headRevision: readWorkspaceHead(workspace.root),
-    workingTreeFingerprint: fingerprintWorkingTree(workspaceSourceRoot(workspace)),
+    workingTreeFingerprint: fingerprintWorkingTree(
+      workspaceSourceRoot(workspace),
+    ),
   };
 }
 
@@ -201,9 +203,7 @@ function assertWorkspaceMatchesResumeEvidence(
   );
   const mismatches: string[] = [];
   if (actualHead !== expected.headRevision) {
-    mismatches.push(
-      `HEAD ${actualHead} != persisted ${expected.headRevision}`,
-    );
+    mismatches.push(`HEAD ${actualHead} != persisted ${expected.headRevision}`);
   }
   if (actualHead !== expected.baseRevision) {
     mismatches.push(
@@ -211,7 +211,9 @@ function assertWorkspaceMatchesResumeEvidence(
     );
   }
   if (actualFingerprint !== expected.workingTreeFingerprint) {
-    mismatches.push("working tree fingerprint does not match persisted evidence");
+    mismatches.push(
+      "working tree fingerprint does not match persisted evidence",
+    );
   }
 
   if (mismatches.length > 0) {
@@ -246,7 +248,7 @@ function fingerprintWorkingTree(targetSrcRoot: string): string {
   return fingerprintSnapshot(snapshotDirectory(targetSrcRoot));
 }
 
-function readWorkspaceHead(workspaceRoot: string): string {
+export function readWorkspaceHead(workspaceRoot: string): string {
   return git(workspaceRoot, ["rev-parse", "HEAD"]).trim();
 }
 

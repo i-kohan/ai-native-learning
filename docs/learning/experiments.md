@@ -2060,3 +2060,58 @@ Live evidence: real H1 FAIL and real H2 PASS. Deterministic invariant: an H1 obs
 ### Conclusion
 
 Implementation plus live GHI01/CI01 mechanism evidence is recorded. Formal Module 20 closure remains with Topic Chat / Master.
+
+---
+
+## Module 22 — Bounded parallel fan-out (PAR01)
+
+### Hypothesis
+
+A frozen two-unit FanOutPlan over genuinely independent P03 work can reduce full end-to-end wall time when scheduled in parallel, without changing product semantics, ReviewPlan, delivery, or the default Spec → one Worker architecture.
+
+### What this experiment is
+
+A **bounded fan-out / fan-in probe**. Not a generic scheduler, not two Specs, not LLM merge.
+
+```text
+exact base SHA
+→ worktrees A, B, integration
+→ one Spec
+→ frozen units A (title) / B (delete)
+→ sequential A→B  vs  parallel A||B
+→ scoped child VERIFY
+→ Git 3-way fan-in in frozen order A, then B
+→ final VERIFY + independent REVIEW
+```
+
+Task: P03. File overlap is allowed. Incompatible hunks are conflicts.
+
+### Decision rule
+
+Frozen before any final trial. PAR01 is `supported` only if every valid trial keeps correctness; child VERIFY, fan-in, final VERIFY, and independent REVIEW succeed; no unresolved conflicts or lost changes; parallel median e2e wall time is at least 20% lower; available median cost does not regress by more than 20%.
+
+Do not treat a shorter child interval as support. Allowed conclusions: `supported | not_worth_current_workload | inconclusive`. Default stays Spec → one Worker.
+
+### Results (2026-09-22)
+
+Command: `npm run benchmark:fanout`
+
+Evidence: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-18-39-907Z.txt`
+
+Harness unit tests: **272 passed**.
+
+| Arm        | valid | expected | correctness | median wall | median model/tools | median tokens in/out | median child interval |
+| ---------- | ----: | -------: | ----------: | ----------: | -----------------: | -------------------: | --------------------: |
+| sequential |   3/3 |      0/3 |         0/3 |     59199ms |            11 / 24 |         47586 / 5146 |               43835ms |
+| parallel   |   3/3 |      2/3 |         2/3 |     56915ms |            14 / 29 |         61487 / 5435 |               38336ms |
+
+Sequential trial 1: Spec `needs_human_judgment` (400 vs 404 when unknown id and invalid title). Trials 2–3: A/B VERIFY PASS, real 3-way conflict in `task-service.ts`.  
+Parallel trials 1–2: expected success (final VERIFY PASS, REVIEW pass). Trial 3: same service conflict.
+
+`decision.wallTimeImproved`: false. `decision.costRegressed`: true. `decision.childIntervalShorter`: false.
+
+### Conclusion
+
+**`not_worth_current_workload`.** Mechanism can run; this P03 workload does not preserve correctness on every trial and does not buy 20% wall time. Parallel 2/3 vs sequential 0/3 is trial variance of patches/Specs, not a smarter merge. Default unchanged.
+
+Module 22 experiment recorded; Topic Chat / Master own formal closure.
