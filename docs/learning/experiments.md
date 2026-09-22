@@ -2075,9 +2075,10 @@ A **bounded fan-out / fan-in probe**. Not a generic scheduler, not two Specs, no
 
 ```text
 P03 task + frozen 404-over-400 precedence
-→ resolve Spec ONCE (must be executable)
-→ same Spec for all 6 trials
-→ each trial: exact base SHA + identical prepared fixture
+→ resolve HEAD → frozenBaseRevision ONCE
+→ resolve Spec ONCE against that SHA
+→ same SHA + same Spec for all 6 trials
+→ each trial: identical prepared fixture
 → sequential A→B  vs  parallel A||B
 → scoped child VERIFY
 → Git 3-way fan-in in frozen order A, then B
@@ -2096,27 +2097,33 @@ Do not treat a shorter child interval as support. Allowed conclusions: `supporte
 
 `fanout-m22-par01-2026-09-22T20-18-39-907Z` is **not** authoritative. Each trial built its own Spec, so sequential vs parallel was not a pure schedule comparison. One sequential trial was counted valid after Spec `needs_human_judgment` (children never started). Keep the artifact only as history: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-18-39-907Z.txt`.
 
-### Results (2026-09-22, corrected)
+### Superseded run (frozen Spec, unfrozen HEAD)
+
+`fanout-m22-par01-2026-09-22T20-48-39-502Z` froze one Spec but still resolved `HEAD` per trial. Keep as history only: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-48-39-502Z.txt`.
+
+### Results (2026-09-22, frozen base + frozen Spec)
 
 Command: `npm run benchmark:fanout`
 
-Frozen Spec fingerprint: `eeafb0b983c52ea7de8270e390ef6f9076e8606a23f27be3862b8e9cbb04d702` (one executable Spec for all six trials).
+- `frozenBaseRevision`: `b65e157001e5080a68560f399a8e6f20e50a7d76`
+- `frozenSpecFingerprint`: `fd0e059b4c8ff20b962a7c1de66da15f2209101a6dd4edb9638b88970cb7c81a`
+- `preparedSourceFingerprint`: `d71e8d5c9253c567b004c41d61be830f5fda78696d93d23a5e1c23b19d9f9e50`
 
-Evidence: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-48-39-502Z.txt`
+Evidence: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T21-10-55-910Z.txt`
 
-Harness unit tests: **278 passed**.
+Fan-out unit tests: **27 passed**.
 
 | Arm        | valid | expected | correctness | median wall | median model/tools | median tokens in/out | median child interval |
 | ---------- | ----: | -------: | ----------: | ----------: | -----------------: | -------------------: | --------------------: |
-| sequential |   3/3 |      0/3 |         0/3 |     49277ms |            11 / 15 |         51239 / 4057 |               47647ms |
-| parallel   |   3/3 |      1/3 |         1/3 |     52269ms |            12 / 17 |         57446 / 5445 |               44422ms |
+| sequential |   3/3 |      0/3 |         0/3 |     56251ms |            11 / 17 |         52298 / 4004 |               54537ms |
+| parallel   |   3/3 |      0/3 |         0/3 |     38455ms |            14 / 20 |         76701 / 5636 |               36788ms |
 
-All six trials started both children. Sequential 3/3: A/B VERIFY PASS, real 3-way conflict in `task-service.ts`. Parallel: two same conflicts; one full success (VERIFY PASS, REVIEW pass).
+All six trials used the same frozen SHA and started both children. Sequential 3/3 and parallel 3/3: A/B VERIFY PASS, real 3-way conflict in `task-service.ts`.
 
-`decision.wallTimeImproved`: false. `decision.costRegressed`: true. `decision.childIntervalShorter`: false.
+`decision.wallTimeImproved`: true. `decision.costRegressed`: true. `decision.childIntervalShorter`: true.
 
 ### Conclusion
 
-**`not_worth_current_workload`.** After the methodology fix the conclusion is the same class as before, but the numbers changed: no Spec-variance artifact, sequential 0/3 vs parallel 1/3 (was 2/3), parallel median wall is slightly *worse*. Default unchanged.
+**`not_worth_current_workload`.** Wall time now meets the 20% bar, but correctness is 0/6 and cost regresses. Default unchanged.
 
 Module 22 experiment recorded; Topic Chat / Master own formal closure.

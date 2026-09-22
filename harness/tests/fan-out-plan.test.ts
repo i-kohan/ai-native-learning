@@ -2,28 +2,93 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { describe, it } from "node:test";
 import {
+  admitFanOutPlan,
   FAN_OUT_MAX_PARALLEL_WORKERS,
   FAN_OUT_PLAN_RULE,
   FAN_OUT_UNIT_SCOPE_RULE,
-  admitFanOutPlan,
+  type FanOutPlan,
   fanOutUnitExecutionScope,
   formatWorkerFanOutUnitTask,
   parseFanOutPlanPayload,
-  type FanOutPlan,
 } from "../src/fan-out-plan.ts";
 import {
-  PAR01_DECISION_RULE,
   assessFanOutTrialValidity,
   bindP03FanOutPlan,
   evaluatePar01Decision,
-  metricsFromP03Run,
   type FanOutArmReport,
   type FanOutTrialRecord,
+  metricsFromP03Run,
+  PAR01_DECISION_RULE,
+  runFanOutExperiment,
 } from "../src/fanout-experiment.ts";
 import type { HarnessRunResult } from "../src/run.ts";
 import type { Spec } from "../src/spec.ts";
 
 const SHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+function startedResult(
+  base: string,
+  schedule: "sequential" | "parallel",
+): HarnessRunResult {
+  return {
+    specDecision: { status: "executable", spec: sampleSpec([]) },
+    workflowStatus: "success",
+    implementationStarted: true,
+    finalVerificationPassed: true,
+    finalReviewerOutcome: "pass",
+    repairAttempts: 0,
+    reviewRepairAttempts: 0,
+    modelCalls: 0,
+    toolCalls: 0,
+    changedFiles: [],
+    durationMs: 10,
+    contextMetrics: { tokenUsage: null },
+    verifications: [],
+    reviews: [],
+    fanOut: {
+      schedule,
+      plan: { baseRevision: base },
+      provenance: {
+        baseRevision: base,
+        childRevisions: { A: base, B: base },
+        integrationRevision: base,
+        exactBase: true,
+      },
+      children: [
+        {
+          unitId: "A",
+          startedAt: 10,
+          baseRevision: base,
+          durationMs: 1,
+          modelCalls: 1,
+          toolCalls: 1,
+          tokenUsage: null,
+          changedFiles: [],
+          verificationPassed: true,
+          repairAttempts: 0,
+        },
+        {
+          unitId: "B",
+          startedAt: 11,
+          baseRevision: base,
+          durationMs: 1,
+          modelCalls: 1,
+          toolCalls: 1,
+          tokenUsage: null,
+          changedFiles: [],
+          verificationPassed: true,
+          repairAttempts: 0,
+        },
+      ],
+      fanIn: { ok: true, durationMs: 1, conflict: null, lostChanges: [] },
+      writeSetOverlap: [],
+      childDurationSumMs: 2,
+      childIntervalMs: 2,
+      ok: true,
+      failureReason: null,
+    },
+  } as HarnessRunResult;
+}
 
 function sampleSpec(acceptance: string[]): Spec {
   return {
@@ -392,6 +457,69 @@ describe("PAR01 trial validity", () => {
     assert.equal(wrongArm.reason, "schedule_mismatch");
   });
 
+  it("rejects a trial whose workspace base differs from the frozen SHA", () => {
+    const other = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    const mismatch = assessFanOutTrialValidity({
+      fixtureApplied: true,
+      error: null,
+      expectedSchedule: "parallel",
+      expectedBaseRevision: SHA,
+      baseRevision: other,
+      result: startedResult(other, "parallel"),
+    });
+    assert.equal(mismatch.valid, false);
+    assert.equal(mismatch.reason, "base_mismatch");
+
+    const matched = assessFanOutTrialValidity({
+      fixtureApplied: true,
+      error: null,
+      expectedSchedule: "parallel",
+      expectedBaseRevision: SHA,
+      baseRevision: SHA,
+      result: startedResult(SHA, "parallel"),
+    });
+    assert.equal(matched.valid, true);
+  });
+
+  it("reuses one frozen base across experiment trials and records it", async () => {
+    const other = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    let calls = 0;
+    const result = await runFanOutExperiment({
+      frozenBaseRevision: SHA,
+      frozenSpecFingerprint: "spec-fp",
+      scoreExpected: () => false,
+      runTrial: async (arm) => {
+        calls += 1;
+        const base = calls === 2 ? other : SHA;
+        return {
+          fixtureApplied: true,
+          error: null,
+          trialWallTimeMs: 10,
+          preparedSourceFingerprint: "prep-fp",
+          expectedSchedule: arm,
+          baseRevision: base,
+          result: startedResult(base, arm),
+        };
+      },
+    });
+    assert.equal(result.frozenBaseRevision, SHA);
+    assert.equal(result.frozenSpecFingerprint, "spec-fp");
+    assert.match(result.report, /frozenBaseRevision: a{40}/);
+    assert.match(result.report, /preparedSourceFingerprint: prep-fp/);
+    assert.equal(
+      result.sequential.contaminated.some(
+        (trial) => trial.validity.reason === "base_mismatch",
+      ),
+      true,
+    );
+    assert.equal(result.sequential.validTrials, 3);
+    assert.equal(result.parallel.validTrials, 3);
+    for (const trial of [...result.sequential.trials, ...result.parallel.trials]) {
+      assert.equal(trial.baseRevision, SHA);
+      assert.equal(trial.metrics?.baseRevision, SHA);
+    }
+  });
+
   it("measures final VERIFY and REVIEW from real phase durations", () => {
     const metrics = metricsFromP03Run(
       {
@@ -443,11 +571,13 @@ describe("PAR01 trial validity", () => {
       true,
       1000,
       "fp",
+      SHA,
     );
     assert.equal(metrics.finalVerifyDurationMs, 41);
     assert.equal(metrics.finalReviewDurationMs, 60);
     assert.equal(metrics.preparedSourceFingerprint, "fp");
     assert.equal("finalGateDurationMs" in metrics, false);
+    assert.equal(metrics.baseRevision, SHA);
   });
 });
 
@@ -463,6 +593,7 @@ function arm(
     validity: { valid: true, reason: "valid" },
     runId: `${id}-${index}`,
     tracePath: null,
+    baseRevision: SHA,
     metrics: {
       expectedOutcomeMet: true,
       workflowStatus: "success",
@@ -490,6 +621,7 @@ function arm(
       finalVerifyDurationMs: 80,
       finalReviewDurationMs: 120,
       preparedSourceFingerprint: "abc",
+      baseRevision: SHA,
       children: [],
       schedule: id,
     },

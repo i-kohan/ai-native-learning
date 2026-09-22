@@ -800,6 +800,7 @@ export async function runP02DecompositionExperiment() {
 export async function executeP03FanOutTrial(options: {
   arm: FanOutArmId;
   runId: string;
+  baseRevision: string;
   admittedSpec: Extract<SpecDecision, { status: "executable" }>;
   frozenSpecPhase?: Parameters<typeof runV1Harness>[0]["frozenSpecPhase"];
 }): Promise<FanOutProbeAttempt> {
@@ -807,6 +808,7 @@ export async function executeP03FanOutTrial(options: {
   const workspaces = createFanOutWorkspaces({
     hostRepoRoot: REPO_ROOT,
     runId: options.runId,
+    ref: options.baseRevision,
   });
   try {
     const base = loadConfig();
@@ -827,6 +829,7 @@ export async function executeP03FanOutTrial(options: {
         result: null,
         error: prepared.error ?? null,
         trialWallTimeMs: Date.now() - trialStartedAt,
+        baseRevision: workspaces.baseRevision,
       };
     }
     if (prep.initialTestsPassed) {
@@ -837,6 +840,7 @@ export async function executeP03FanOutTrial(options: {
           "P03: expected initial tests to FAIL after title/deletion tests were added, but they passed.",
         trialWallTimeMs: Date.now() - trialStartedAt,
         preparedSourceFingerprint: prepared.fingerprint,
+        baseRevision: workspaces.baseRevision,
       };
     }
     console.log(
@@ -872,6 +876,7 @@ export async function executeP03FanOutTrial(options: {
       trialWallTimeMs: result.durationMs,
       preparedSourceFingerprint: prepared.fingerprint,
       expectedSchedule: options.arm,
+      baseRevision: workspaces.baseRevision,
     };
   } catch (error) {
     return {
@@ -879,6 +884,7 @@ export async function executeP03FanOutTrial(options: {
       result: null,
       error: error instanceof Error ? error.message : String(error),
       trialWallTimeMs: Date.now() - trialStartedAt,
+      baseRevision: workspaces.baseRevision,
     };
   } finally {
     cleanupFanOutWorkspaces(REPO_ROOT, workspaces);
@@ -906,7 +912,9 @@ export function samePreparedP03SourceState(targetSrcRoots: string[]): {
   return { ok: true, fingerprint };
 }
 
-export async function resolveP03SpecOnce(): Promise<
+export async function resolveP03SpecOnce(options: {
+  baseRevision: string;
+}): Promise<
   | {
       ok: true;
       decision: Extract<SpecDecision, { status: "executable" }>;
@@ -914,6 +922,7 @@ export async function resolveP03SpecOnce(): Promise<
         Parameters<typeof runV1Harness>[0]["frozenSpecPhase"]
       >;
       fingerprint: string;
+      baseRevision: string;
     }
   | { ok: false; error: string }
 > {
@@ -921,9 +930,15 @@ export async function resolveP03SpecOnce(): Promise<
   const workspace = createWorkspace({
     hostRepoRoot: REPO_ROOT,
     id: runId,
-    ref: resolveBaseRevision(REPO_ROOT),
+    ref: options.baseRevision,
   });
   try {
+    if (workspace.baseRevision !== options.baseRevision) {
+      return {
+        ok: false,
+        error: `Spec workspace base ${workspace.baseRevision} != frozen ${options.baseRevision}`,
+      };
+    }
     const config = bindConfig(loadConfig(), workspace);
     const prep = prepareP03(config);
     const tracer = new Tracer(config.tracesDir, runId);
@@ -950,6 +965,7 @@ export async function resolveP03SpecOnce(): Promise<
       decision: specPhase.decision,
       specPhase,
       fingerprint: fingerprintSpec(specPhase.decision.spec),
+      baseRevision: workspace.baseRevision,
     };
   } finally {
     cleanupWorkspace({ hostRepoRoot: REPO_ROOT, workspace });
@@ -961,11 +977,16 @@ function fingerprintSpec(spec: { acceptance: string[] } & object): string {
 }
 
 export async function runP03FanOutExperiment() {
-  const frozen = await resolveP03SpecOnce();
+  const frozenBaseRevision = resolveBaseRevision(REPO_ROOT, "HEAD");
+  console.log(`frozen_base: ${frozenBaseRevision}`);
+  const frozen = await resolveP03SpecOnce({
+    baseRevision: frozenBaseRevision,
+  });
   if (!frozen.ok) {
     console.error(`frozen_spec: failed (${frozen.error})`);
     return runFanOutExperiment({
       frozenSpecFingerprint: null,
+      frozenBaseRevision,
       runTrial: async () => ({
         fixtureApplied: false,
         result: null,
@@ -978,10 +999,12 @@ export async function runP03FanOutExperiment() {
   console.log(`frozen_spec: executable fingerprint=${frozen.fingerprint}`);
   return runFanOutExperiment({
     frozenSpecFingerprint: frozen.fingerprint,
+    frozenBaseRevision,
     runTrial: (arm, runId) =>
       executeP03FanOutTrial({
         arm,
         runId,
+        baseRevision: frozenBaseRevision,
         admittedSpec: frozen.decision,
         frozenSpecPhase: frozen.specPhase,
       }),

@@ -64,25 +64,32 @@ Harness after the methodology fix: **278 passed**.
 - Admission: exactly 2 units and `maxParallelWorkers === 2`.
 - Metrics: `finalVerifyDurationMs` / `finalReviewDurationMs` from real phases. No leftover `finalGateDurationMs`.
 - After `prepareP03`, A/B/integration must share one source fingerprint (same commit + same fixture, not “raw commit tree”).
+- PAR01 resolves `HEAD` → `frozenBaseRevision` once. Spec workspace and every trial worktree use that SHA. A trial whose provenance differs is `base_mismatch`, not a valid scheduling result.
 
 ## PAR01 superseded (invalid)
 
 `traces/fanout-m22-par01-2026-09-22T20-18-39-907Z.txt` — каждый trial писал свой Spec; один sequential был «valid» после `needs_human_judgment`. Не цитировать 0/3 vs 2/3 как текущий результат.
 
-## PAR01 corrected (2026-09-22)
+## PAR01 superseded (frozen Spec, unfrozen HEAD)
 
-Constants: `contextMode=variant`, `conversationStateMode=manual`. Один frozen Spec `eeafb0b983c52ea7…`. Valid 3/3 + 3/3.
+`traces/fanout-m22-par01-2026-09-22T20-48-39-502Z.txt` — один Spec, но каждый trial резолвил свой `HEAD`. Не цитировать 0/3 vs 1/3 как текущий результат.
 
-Evidence: `traces/fanout-m22-par01-2026-09-22T20-48-39-502Z.txt`
+## PAR01 corrected (2026-09-22, frozen base)
+
+Constants: `contextMode=variant`, `conversationStateMode=manual`.  
+`frozenBaseRevision=b65e157001e5080a68560f399a8e6f20e50a7d76`  
+`frozenSpecFingerprint=fd0e059b4c8ff20b962a7c1de66da15f…`  
+`preparedSourceFingerprint=d71e8d5c9253c567…`  
+Valid 3/3 + 3/3, все на том же SHA.
+
+Evidence: `traces/fanout-m22-par01-2026-09-22T21-10-55-910Z.txt`
 
 | Arm        | expected | correctness | median wall | median tokens in/out | median child interval |
 | ---------- | -------- | ----------- | ----------- | -------------------- | --------------------- |
-| sequential | 0/3      | 0/3         | 49277ms     | 51239 / 4057         | 47647ms               |
-| parallel   | 1/3      | 1/3         | 52269ms     | 57446 / 5445         | 44422ms               |
+| sequential | 0/3      | 0/3         | 56251ms     | 52298 / 4004         | 54537ms               |
+| parallel   | 0/3      | 0/3         | 38455ms     | 76701 / 5636         | 36788ms               |
 
-Все шесть trial стартовали A и B. Sequential: 3× conflict в `task-service.ts`. Parallel: 2× conflict, 1 success.
-
-Wall не −20% (parallel даже чуть медленнее). Parallel дороже. Conclusion: **`not_worth_current_workload`**. `defaultUnchanged=true`.
+Все шесть: A/B VERIFY PASS, conflict в `task-service.ts`. Wall у parallel лучше (−32%), cost хуже. Conclusion: **`not_worth_current_workload`**. `defaultUnchanged=true`.
 
 ## Open
 

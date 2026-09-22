@@ -1,13 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "./config.ts";
+import type { FanOutEvidence } from "./fan-out.ts";
 import {
   bindFanOutPlanFromTemplates,
   type FanOutSchedule,
   type FanOutUnitTemplate,
   type ParseFanOutPlanResult,
 } from "./fan-out-plan.ts";
-import type { FanOutEvidence } from "./fan-out.ts";
 import type { HarnessRunResult } from "./run.ts";
 import type { Spec } from "./spec.ts";
 
@@ -78,7 +78,8 @@ export type FanOutTrialValidityReason =
   | "run_error"
   | "fixture_not_applied"
   | "fan_out_not_started"
-  | "schedule_mismatch";
+  | "schedule_mismatch"
+  | "base_mismatch";
 
 export type FanOutTrialValidity = {
   valid: boolean;
@@ -125,6 +126,7 @@ export type FanOutTrialMetrics = {
   finalVerifyDurationMs: number | null;
   finalReviewDurationMs: number | null;
   preparedSourceFingerprint: string | null;
+  baseRevision: string | null;
   children: FanOutChildMetrics[];
   schedule: FanOutSchedule | null;
 };
@@ -136,6 +138,7 @@ export type FanOutTrialRecord = {
   validity: FanOutTrialValidity;
   runId: string | null;
   tracePath: string | null;
+  baseRevision: string | null;
   metrics: FanOutTrialMetrics | null;
 };
 
@@ -190,6 +193,7 @@ export type FanOutExperimentResult = {
   parallel: FanOutArmReport;
   decision: FanOutDecision;
   frozenSpecFingerprint: string | null;
+  frozenBaseRevision: string | null;
   report: string;
 };
 
@@ -200,12 +204,14 @@ export type FanOutProbeAttempt = {
   trialWallTimeMs: number | null;
   preparedSourceFingerprint?: string | null;
   expectedSchedule?: FanOutSchedule;
+  baseRevision?: string | null;
 };
 
 export type FanOutExperimentDeps = {
   runTrial: (arm: FanOutArmId, runId: string) => Promise<FanOutProbeAttempt>;
   scoreExpected: (result: HarnessRunResult) => boolean;
   frozenSpecFingerprint?: string | null;
+  frozenBaseRevision?: string | null;
 };
 
 const HYPOTHESIS =
@@ -232,6 +238,8 @@ export function assessFanOutTrialValidity(options: {
   error: string | null;
   result: HarnessRunResult | null;
   expectedSchedule?: FanOutSchedule;
+  expectedBaseRevision?: string | null;
+  baseRevision?: string | null;
 }): FanOutTrialValidity {
   if (!options.fixtureApplied) {
     return {
@@ -274,7 +282,59 @@ export function assessFanOutTrialValidity(options: {
       detail: `expected ${options.expectedSchedule}, got ${fanOut.schedule}`,
     };
   }
+  if (options.expectedBaseRevision) {
+    const actuals = collectTrialBaseRevisions({
+      baseRevision: options.baseRevision,
+      result,
+    });
+    if (
+      actuals.length === 0 ||
+      actuals.some((revision) => revision !== options.expectedBaseRevision)
+    ) {
+      return {
+        valid: false,
+        reason: "base_mismatch",
+        detail: `expected ${options.expectedBaseRevision}, got ${actuals.join(",") || "(none)"}`,
+      };
+    }
+  }
   return { valid: true, reason: "valid" };
+}
+
+export function collectTrialBaseRevisions(options: {
+  baseRevision?: string | null;
+  result?: HarnessRunResult | null;
+}): string[] {
+  const found = new Set<string>();
+  if (options.baseRevision) {
+    found.add(options.baseRevision);
+  }
+  const fanOut = options.result?.fanOut;
+  if (!fanOut) {
+    return [...found];
+  }
+  if (fanOut.plan?.baseRevision) {
+    found.add(fanOut.plan.baseRevision);
+  }
+  if (fanOut.provenance?.baseRevision) {
+    found.add(fanOut.provenance.baseRevision);
+  }
+  if (fanOut.provenance?.integrationRevision) {
+    found.add(fanOut.provenance.integrationRevision);
+  }
+  for (const revision of Object.values(
+    fanOut.provenance?.childRevisions ?? {},
+  )) {
+    if (revision) {
+      found.add(revision);
+    }
+  }
+  for (const child of fanOut.children) {
+    if (child.baseRevision) {
+      found.add(child.baseRevision);
+    }
+  }
+  return [...found];
 }
 
 export async function runFanOutExperiment(
@@ -295,6 +355,7 @@ export async function runFanOutExperiment(
     parallel,
     decision: evaluatePar01Decision(sequential, parallel),
     frozenSpecFingerprint: deps.frozenSpecFingerprint ?? null,
+    frozenBaseRevision: deps.frozenBaseRevision ?? null,
     report: "",
   };
   result.report = formatFanOutReport(result);
@@ -402,11 +463,17 @@ export function metricsFromP03Run(
   expectedOutcomeMet: boolean,
   trialWallTimeMs?: number,
   preparedSourceFingerprint?: string | null,
+  baseRevision?: string | null,
 ): FanOutTrialMetrics {
   const fanOut = result.fanOut;
   const childA = fanOut?.children.find((item) => item.unitId === "A");
   const childB = fanOut?.children.find((item) => item.unitId === "B");
   const wallTimeMs = trialWallTimeMs ?? result.durationMs;
+  const recordedBase =
+    baseRevision ??
+    fanOut?.provenance.baseRevision ??
+    fanOut?.plan.baseRevision ??
+    null;
   return {
     expectedOutcomeMet,
     workflowStatus: result.workflowStatus,
@@ -430,8 +497,8 @@ export function metricsFromP03Run(
     reviewRepairAttempts: result.reviewRepairAttempts,
     modelCalls: result.modelCalls,
     toolCalls: result.toolCalls,
-    inputTokens: result.contextMetrics.tokenUsage?.totalInputTokens ?? null,
-    outputTokens: result.contextMetrics.tokenUsage?.totalOutputTokens ?? null,
+    inputTokens: result.contextMetrics?.tokenUsage?.totalInputTokens ?? null,
+    outputTokens: result.contextMetrics?.tokenUsage?.totalOutputTokens ?? null,
     wallTimeMs,
     childADurationMs: childA?.durationMs ?? null,
     childBDurationMs: childB?.durationMs ?? null,
@@ -441,6 +508,7 @@ export function metricsFromP03Run(
     finalVerifyDurationMs: finalVerifyDuration(result),
     finalReviewDurationMs: finalReviewDuration(result),
     preparedSourceFingerprint: preparedSourceFingerprint ?? null,
+    baseRevision: recordedBase,
     children: (fanOut?.children ?? []).map(childMetrics),
     schedule: fanOut?.schedule ?? null,
   };
@@ -463,16 +531,24 @@ async function collectArm(
     const validity = assessFanOutTrialValidity({
       ...probe,
       expectedSchedule: arm,
+      expectedBaseRevision: deps.frozenBaseRevision,
     });
-    const metrics =
-      probe.result && validity.valid
-        ? metricsFromP03Run(
-            probe.result,
-            deps.scoreExpected(probe.result),
-            probe.trialWallTimeMs ?? undefined,
-            probe.preparedSourceFingerprint,
-          )
-        : null;
+    const baseRevision =
+      probe.baseRevision ??
+      collectTrialBaseRevisions({
+        baseRevision: probe.baseRevision,
+        result: probe.result,
+      })[0] ??
+      null;
+    const metrics = probe.result
+      ? metricsFromP03Run(
+          probe.result,
+          deps.scoreExpected(probe.result),
+          probe.trialWallTimeMs ?? undefined,
+          probe.preparedSourceFingerprint,
+          baseRevision,
+        )
+      : null;
     const record: FanOutTrialRecord = {
       arm,
       attempt,
@@ -480,6 +556,7 @@ async function collectArm(
       validity,
       runId: probe.result ? runId : null,
       tracePath: probe.result?.tracePath ?? null,
+      baseRevision,
       metrics,
     };
     if (validity.valid) {
@@ -608,7 +685,9 @@ function formatFanOutReport(result: FanOutExperimentResult): string {
     `generated: ${result.generatedAt}`,
     `contextMode: ${result.contextMode}`,
     `conversationStateMode: ${result.conversationStateMode}`,
+    `frozenBaseRevision: ${result.frozenBaseRevision ?? "(none)"}`,
     `frozenSpecFingerprint: ${result.frozenSpecFingerprint ?? "(none)"}`,
+    `preparedSourceFingerprint: ${uniquePreparedFingerprints(result).join(",") || "(none)"}`,
     "",
     result.hypothesis,
     "",
@@ -630,6 +709,20 @@ function formatFanOutReport(result: FanOutExperimentResult): string {
   ].join("\n");
 }
 
+function uniquePreparedFingerprints(result: FanOutExperimentResult): string[] {
+  const found = new Set<string>();
+  for (const trial of [
+    ...result.sequential.trials,
+    ...result.parallel.trials,
+  ]) {
+    const fingerprint = trial.metrics?.preparedSourceFingerprint;
+    if (fingerprint) {
+      found.add(fingerprint);
+    }
+  }
+  return [...found];
+}
+
 function formatArm(arm: FanOutArmReport): string {
   const lines = [
     `## ${arm.label}`,
@@ -646,7 +739,7 @@ function formatArm(arm: FanOutArmReport): string {
       continue;
     }
     lines.push(
-      `trial ${trial.attempt}: expected=${trial.metrics.expectedOutcomeMet} verify=${trial.metrics.finalVerification} review=${trial.metrics.finalReviewerOutcome} wall=${trial.metrics.wallTimeMs} childInterval=${trial.metrics.childIntervalMs} overlap=${trial.metrics.writeSetOverlap.join(",") || "(none)"} conflict=${trial.metrics.integrationConflicts}`,
+      `trial ${trial.attempt}: expected=${trial.metrics.expectedOutcomeMet} verify=${trial.metrics.finalVerification} review=${trial.metrics.finalReviewerOutcome} wall=${trial.metrics.wallTimeMs} childInterval=${trial.metrics.childIntervalMs} overlap=${trial.metrics.writeSetOverlap.join(",") || "(none)"} conflict=${trial.metrics.integrationConflicts} base=${trial.metrics.baseRevision ?? trial.baseRevision ?? "(none)"}`,
     );
   }
   return lines.join("\n");

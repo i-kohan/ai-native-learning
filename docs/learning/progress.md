@@ -91,7 +91,7 @@ Bounded two-unit fan-out probe, not a generic scheduler:
 
 - frozen `FanOutPlan` (A title mutation, B deletion) separate from ReviewPlan;
 - exact-base child A / child B / integration worktrees;
-- one Spec resolved once and reused for all six PAR01 trials; schedule `sequential | parallel`;
+- one base SHA and one Spec resolved once and reused for all six PAR01 trials; schedule `sequential | parallel`;
 - harness-owned scoped VERIFY; child success is not Worker-claimed;
 - real Git source deltas; deterministic A→B `git apply --3way` fan-in;
 - file overlap allowed; incompatible hunks fail closed;
@@ -114,7 +114,7 @@ Smoke (`benchmark:fanout:smoke`): all worktrees on one SHA.
 
 First PAR01 (`…20-18-39-907Z`) is invalid: a fresh Spec per trial, and one sequential “valid” after Spec escalate. Do not cite 0/3 vs 2/3.
 
-Corrected PAR01 (`benchmark:fanout`, 2026-09-22, one frozen Spec): sequential expected **0/3**, parallel **1/3**, median wall 49s vs 52s, parallel more expensive. Evidence: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-48-39-502Z.txt`.
+`…20-48-39-502Z` froze Spec but still resolved HEAD per trial. Authoritative PAR01 (`…21-10-55-910Z`): one frozen SHA `b65e157` + one Spec; sequential **0/3**, parallel **0/3**, median wall 56s vs 38s, parallel more expensive. Evidence: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T21-10-55-910Z.txt`.
 
 ## Failures / open questions
 

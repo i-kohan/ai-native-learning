@@ -2,24 +2,24 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { REPO_ROOT, loadConfig } from "../src/config.ts";
-import {
-  FAN_OUT_MAX_PARALLEL_WORKERS,
-  type FanOutPlan,
-  type FanOutUnit,
-} from "../src/fan-out-plan.ts";
+import { loadConfig, REPO_ROOT } from "../src/config.ts";
 import {
   assertExactBaseProvenance,
+  type ChildArtifact,
   childExecutionInterval,
   cleanupFanOutWorkspaces,
   createFanOutWorkspaces,
   fanInChildDeltas,
   scheduleFanOutChildren,
   writeSetOverlap,
-  type ChildArtifact,
 } from "../src/fan-out.ts";
-import { applySourceDelta, captureSourceDelta } from "../src/source-delta.ts";
+import {
+  FAN_OUT_MAX_PARALLEL_WORKERS,
+  type FanOutPlan,
+  type FanOutUnit,
+} from "../src/fan-out-plan.ts";
 import { prepareP03, samePreparedP03SourceState } from "../src/run-benchmark.ts";
+import { applySourceDelta, captureSourceDelta } from "../src/source-delta.ts";
 import {
   bindConfig,
   cleanupWorkspace,
@@ -31,6 +31,39 @@ import {
 const SERVICE = "target-app/src/tasks/task-service.ts";
 
 describe("exact-base fan-out provenance", () => {
+  it("reuses one frozen SHA for Spec workspace and every trial workspace set", () => {
+    const frozenBaseRevision = resolveBaseRevision(REPO_ROOT, "HEAD");
+    const spec = createWorkspace({
+      hostRepoRoot: REPO_ROOT,
+      id: `fanout-spec-${Date.now()}`,
+      ref: frozenBaseRevision,
+    });
+    const sequential = createFanOutWorkspaces({
+      hostRepoRoot: REPO_ROOT,
+      runId: `fanout-seq-${Date.now()}`,
+      ref: frozenBaseRevision,
+    });
+    const parallel = createFanOutWorkspaces({
+      hostRepoRoot: REPO_ROOT,
+      runId: `fanout-par-${Date.now()}`,
+      ref: frozenBaseRevision,
+    });
+    try {
+      assert.equal(spec.baseRevision, frozenBaseRevision);
+      assert.equal(readWorkspaceHead(spec.root), frozenBaseRevision);
+      for (const set of [sequential, parallel]) {
+        assert.equal(set.baseRevision, frozenBaseRevision);
+        assert.equal(set.children.A.baseRevision, frozenBaseRevision);
+        assert.equal(set.children.B.baseRevision, frozenBaseRevision);
+        assert.equal(set.integration.baseRevision, frozenBaseRevision);
+      }
+    } finally {
+      cleanupWorkspace({ hostRepoRoot: REPO_ROOT, workspace: spec });
+      cleanupFanOutWorkspaces(REPO_ROOT, sequential);
+      cleanupFanOutWorkspaces(REPO_ROOT, parallel);
+    }
+  });
+
   it("creates child A, child B, and integration from one resolved SHA", () => {
     const baseRevision = resolveBaseRevision(REPO_ROOT);
     const workspaces = createFanOutWorkspaces({
