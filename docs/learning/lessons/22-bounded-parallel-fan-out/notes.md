@@ -89,7 +89,9 @@ Evidence: `traces/fanout-m22-par01-2026-09-22T21-10-55-910Z.txt`
 | sequential | 0/3      | 0/3         | 56251ms     | 52298 / 4004         | 54537ms               |
 | parallel   | 0/3      | 0/3         | 38455ms     | 76701 / 5636         | 36788ms               |
 
-Все шесть: A/B VERIFY PASS, conflict в `task-service.ts`. Wall у parallel лучше (−32%), cost хуже. Conclusion: **`not_worth_current_workload`**. `defaultUnchanged=true`.
+Все шесть: A/B scoped VERIFY PASS, затем deterministic fan-in conflict в `task-service.ts`. Wall у parallel лучше (−32%), cost хуже. Conclusion: **`not_worth_current_workload`**. `defaultUnchanged=true`.
+
+PAR01 timing начинается с setup конкретного scheduling trial и не включает live Spec generation: Spec был один раз разрешён до 3×2 и затем переиспользован неизменно, чтобы не смешивать Spec variance с эффектом scheduling. Для production economics Spec/planning overhead всё равно нужно учитывать на более широком e2e уровне.
 
 ## Open
 
