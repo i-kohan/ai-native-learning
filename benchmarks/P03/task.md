@@ -7,8 +7,8 @@ Add two independent task operations. They have no semantic dependency on each ot
 - `PATCH /tasks/:id/title` updates an existing task title.
 - The body must be an object that contains a `title` property.
 - `title` must be a non-empty string. Trim before storing.
-- Missing `title`, a non-object body, a non-string title, or a blank/whitespace-only title returns HTTP 400.
-- Unknown task returns HTTP 404.
+- Missing `title`, a non-object body, a non-string title, or a blank/whitespace-only title returns HTTP 400 when the task exists.
+- Unknown task takes precedence over title validation. If the task id does not exist, `PATCH /tasks/:id/title` returns HTTP 404 regardless of whether the supplied title is valid.
 - Success returns HTTP 200 with the updated task.
 
 ## Unit B — task deletion

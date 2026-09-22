@@ -2074,17 +2074,17 @@ A frozen two-unit FanOutPlan over genuinely independent P03 work can reduce full
 A **bounded fan-out / fan-in probe**. Not a generic scheduler, not two Specs, not LLM merge.
 
 ```text
-exact base SHA
-→ worktrees A, B, integration
-→ one Spec
-→ frozen units A (title) / B (delete)
+P03 task + frozen 404-over-400 precedence
+→ resolve Spec ONCE (must be executable)
+→ same Spec for all 6 trials
+→ each trial: exact base SHA + identical prepared fixture
 → sequential A→B  vs  parallel A||B
 → scoped child VERIFY
 → Git 3-way fan-in in frozen order A, then B
 → final VERIFY + independent REVIEW
 ```
 
-Task: P03. File overlap is allowed. Incompatible hunks are conflicts.
+Task: P03. File overlap is allowed. Incompatible hunks are conflicts. A trial is valid only if fan-out children actually started. Spec escalation is not a valid scheduling result.
 
 ### Decision rule
 
@@ -2092,26 +2092,31 @@ Frozen before any final trial. PAR01 is `supported` only if every valid trial ke
 
 Do not treat a shorter child interval as support. Allowed conclusions: `supported | not_worth_current_workload | inconclusive`. Default stays Spec → one Worker.
 
-### Results (2026-09-22)
+### Superseded run (invalid methodology)
+
+`fanout-m22-par01-2026-09-22T20-18-39-907Z` is **not** authoritative. Each trial built its own Spec, so sequential vs parallel was not a pure schedule comparison. One sequential trial was counted valid after Spec `needs_human_judgment` (children never started). Keep the artifact only as history: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-18-39-907Z.txt`.
+
+### Results (2026-09-22, corrected)
 
 Command: `npm run benchmark:fanout`
 
-Evidence: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-18-39-907Z.txt`
+Frozen Spec fingerprint: `eeafb0b983c52ea7de8270e390ef6f9076e8606a23f27be3862b8e9cbb04d702` (one executable Spec for all six trials).
 
-Harness unit tests: **272 passed**.
+Evidence: `docs/learning/lessons/22-bounded-parallel-fan-out/traces/fanout-m22-par01-2026-09-22T20-48-39-502Z.txt`
+
+Harness unit tests: **278 passed**.
 
 | Arm        | valid | expected | correctness | median wall | median model/tools | median tokens in/out | median child interval |
 | ---------- | ----: | -------: | ----------: | ----------: | -----------------: | -------------------: | --------------------: |
-| sequential |   3/3 |      0/3 |         0/3 |     59199ms |            11 / 24 |         47586 / 5146 |               43835ms |
-| parallel   |   3/3 |      2/3 |         2/3 |     56915ms |            14 / 29 |         61487 / 5435 |               38336ms |
+| sequential |   3/3 |      0/3 |         0/3 |     49277ms |            11 / 15 |         51239 / 4057 |               47647ms |
+| parallel   |   3/3 |      1/3 |         1/3 |     52269ms |            12 / 17 |         57446 / 5445 |               44422ms |
 
-Sequential trial 1: Spec `needs_human_judgment` (400 vs 404 when unknown id and invalid title). Trials 2–3: A/B VERIFY PASS, real 3-way conflict in `task-service.ts`.  
-Parallel trials 1–2: expected success (final VERIFY PASS, REVIEW pass). Trial 3: same service conflict.
+All six trials started both children. Sequential 3/3: A/B VERIFY PASS, real 3-way conflict in `task-service.ts`. Parallel: two same conflicts; one full success (VERIFY PASS, REVIEW pass).
 
 `decision.wallTimeImproved`: false. `decision.costRegressed`: true. `decision.childIntervalShorter`: false.
 
 ### Conclusion
 
-**`not_worth_current_workload`.** Mechanism can run; this P03 workload does not preserve correctness on every trial and does not buy 20% wall time. Parallel 2/3 vs sequential 0/3 is trial variance of patches/Specs, not a smarter merge. Default unchanged.
+**`not_worth_current_workload`.** After the methodology fix the conclusion is the same class as before, but the numbers changed: no Spec-variance artifact, sequential 0/3 vs parallel 1/3 (was 2/3), parallel median wall is slightly *worse*. Default unchanged.
 
 Module 22 experiment recorded; Topic Chat / Master own formal closure.

@@ -42,7 +42,7 @@ npm run benchmark:fanout:smoke
 npm run benchmark:fanout
 ```
 
-Harness after the bind/apply fixes: **272 passed**.
+Harness after the methodology fix: **278 passed**.
 
 ## Bind mistake
 
@@ -56,23 +56,33 @@ Harness after the bind/apply fixes: **272 passed**.
 
 Фикс: перед apply `git add -A -- target-app/src`. `.gitignore` на `.worktrees/` только прячет папки от `git status` в корне.
 
-## PAR01 (2026-09-22)
+## Methodology corrections
 
-Constants: `contextMode=variant`, `conversationStateMode=manual`. Valid 3/3 + 3/3.
+- P03: unknown task → 404 even if title is invalid (frozen in `task.md` + test).
+- Spec resolves **once**; all 6 trials reuse that executable Spec (`admittedSpec` experiment seam). Default `runV1Harness()` still builds Spec.
+- Valid trial = executable Spec + fan-out evidence + expected schedule + both children started. Spec escalate is contaminated.
+- Admission: exactly 2 units and `maxParallelWorkers === 2`.
+- Metrics: `finalVerifyDurationMs` / `finalReviewDurationMs` from real phases. No leftover `finalGateDurationMs`.
+- After `prepareP03`, A/B/integration must share one source fingerprint (same commit + same fixture, not “raw commit tree”).
 
-Evidence: `traces/fanout-m22-par01-2026-09-22T20-18-39-907Z.txt`
+## PAR01 superseded (invalid)
+
+`traces/fanout-m22-par01-2026-09-22T20-18-39-907Z.txt` — каждый trial писал свой Spec; один sequential был «valid» после `needs_human_judgment`. Не цитировать 0/3 vs 2/3 как текущий результат.
+
+## PAR01 corrected (2026-09-22)
+
+Constants: `contextMode=variant`, `conversationStateMode=manual`. Один frozen Spec `eeafb0b983c52ea7…`. Valid 3/3 + 3/3.
+
+Evidence: `traces/fanout-m22-par01-2026-09-22T20-48-39-502Z.txt`
 
 | Arm        | expected | correctness | median wall | median tokens in/out | median child interval |
 | ---------- | -------- | ----------- | ----------- | -------------------- | --------------------- |
-| sequential | 0/3      | 0/3         | 59199ms     | 47586 / 5146         | 43835ms               |
-| parallel   | 2/3      | 2/3         | 56915ms     | 61487 / 5435         | 38336ms               |
+| sequential | 0/3      | 0/3         | 49277ms     | 51239 / 4057         | 47647ms               |
+| parallel   | 1/3      | 1/3         | 52269ms     | 57446 / 5445         | 44422ms               |
 
-Sequential: (1) Spec escalate 400-vs-404 на unknown id + invalid title; (2)(3) A/B VERIFY PASS, real conflict в `task-service.ts`.  
-Parallel: два полных success (VERIFY + REVIEW), один тот же conflict.
+Все шесть trial стартовали A и B. Sequential: 3× conflict в `task-service.ts`. Parallel: 2× conflict, 1 success.
 
-Wall не −20%. Parallel дороже. `childInterval` короче недостаточно. Conclusion: **`not_worth_current_workload`**. `defaultUnchanged=true`.
-
-0/3 vs 2/3 — не «parallel лучше мержит». Каждый trial — новый Spec и новые патчи. Склейка всегда A, потом B. Повезло с hunks.
+Wall не −20% (parallel даже чуть медленнее). Parallel дороже. Conclusion: **`not_worth_current_workload`**. `defaultUnchanged=true`.
 
 ## Open
 

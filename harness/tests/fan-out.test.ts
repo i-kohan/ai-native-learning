@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { REPO_ROOT } from "../src/config.ts";
+import { REPO_ROOT, loadConfig } from "../src/config.ts";
 import {
   FAN_OUT_MAX_PARALLEL_WORKERS,
   type FanOutPlan,
@@ -19,7 +19,9 @@ import {
   type ChildArtifact,
 } from "../src/fan-out.ts";
 import { applySourceDelta, captureSourceDelta } from "../src/source-delta.ts";
+import { prepareP03, samePreparedP03SourceState } from "../src/run-benchmark.ts";
 import {
+  bindConfig,
   cleanupWorkspace,
   createWorkspace,
   readWorkspaceHead,
@@ -53,6 +55,33 @@ describe("exact-base fan-out provenance", () => {
         baseRevision,
       );
       assert.equal(provenance.exactBase, true);
+    } finally {
+      cleanupFanOutWorkspaces(REPO_ROOT, workspaces);
+    }
+  });
+});
+
+describe("prepared P03 fixture equality", () => {
+  it("gives child A, child B, and integration the same prepared source fingerprint", () => {
+    const baseRevision = resolveBaseRevision(REPO_ROOT);
+    const stamp = Date.now();
+    const workspaces = createFanOutWorkspaces({
+      hostRepoRoot: REPO_ROOT,
+      runId: `fanout-prep-${stamp}`,
+      ref: baseRevision,
+    });
+    try {
+      const base = loadConfig();
+      prepareP03(bindConfig(base, workspaces.integration));
+      prepareP03(bindConfig(base, workspaces.children.A));
+      prepareP03(bindConfig(base, workspaces.children.B));
+      const prepared = samePreparedP03SourceState([
+        path.join(workspaces.integration.root, "target-app/src"),
+        path.join(workspaces.children.A.root, "target-app/src"),
+        path.join(workspaces.children.B.root, "target-app/src"),
+      ]);
+      assert.equal(prepared.ok, true);
+      assert.equal(prepared.fingerprint.length, 64);
     } finally {
       cleanupFanOutWorkspaces(REPO_ROOT, workspaces);
     }

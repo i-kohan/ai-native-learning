@@ -28,10 +28,10 @@ fan-in (сборка) = put their source deltas back into one integration tree.
 ## 2. Flow
 
 ```text
-exact base SHA
+resolve executable Spec once (PAR01)
+→ exact base SHA + same prepared fixture
 → child A + child B + integration worktrees
-→ one Spec on integration
-→ bind frozen units A / B
+→ bind the same frozen Spec / units A / B
 → schedule children (A then B, or A || B)
 → scoped VERIFY per child
 → apply A, then B, with git apply --3way
@@ -62,7 +62,7 @@ Child success is harness VERIFY, not a Worker claim. Parallel settles both child
 1. Shared acceptance (both units get the whole Spec list) unblocked bind; scope stayed intent + test files.
 2. Syncing index to disk before apply removed false `does not match index` failures.
 3. P03 title + delete is product-independent and file-coupled: children often PASS, then conflict in `task-service.ts`.
-4. PAR01: sequential expected 0/3, parallel 2/3, wall ~59s vs ~57s, parallel more expensive → `not_worth_current_workload`.
+4. First PAR01 was methodologically invalid (fresh Spec per trial). Corrected PAR01: one frozen Spec, sequential 0/3, parallel 1/3, wall ~49s vs ~52s, parallel more expensive → `not_worth_current_workload`.
 
 ## 6. Takeaways
 

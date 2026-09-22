@@ -76,7 +76,9 @@ export function bindP03FanOutPlan(
 export type FanOutTrialValidityReason =
   | "valid"
   | "run_error"
-  | "fixture_not_applied";
+  | "fixture_not_applied"
+  | "fan_out_not_started"
+  | "schedule_mismatch";
 
 export type FanOutTrialValidity = {
   valid: boolean;
@@ -120,7 +122,9 @@ export type FanOutTrialMetrics = {
   childDurationSumMs: number;
   childIntervalMs: number;
   fanInDurationMs: number;
-  finalGateDurationMs: number | null;
+  finalVerifyDurationMs: number | null;
+  finalReviewDurationMs: number | null;
+  preparedSourceFingerprint: string | null;
   children: FanOutChildMetrics[];
   schedule: FanOutSchedule | null;
 };
@@ -185,6 +189,7 @@ export type FanOutExperimentResult = {
   sequential: FanOutArmReport;
   parallel: FanOutArmReport;
   decision: FanOutDecision;
+  frozenSpecFingerprint: string | null;
   report: string;
 };
 
@@ -193,11 +198,14 @@ export type FanOutProbeAttempt = {
   result: HarnessRunResult | null;
   error: string | null;
   trialWallTimeMs: number | null;
+  preparedSourceFingerprint?: string | null;
+  expectedSchedule?: FanOutSchedule;
 };
 
 export type FanOutExperimentDeps = {
   runTrial: (arm: FanOutArmId, runId: string) => Promise<FanOutProbeAttempt>;
   scoreExpected: (result: HarnessRunResult) => boolean;
+  frozenSpecFingerprint?: string | null;
 };
 
 const HYPOTHESIS =
@@ -223,6 +231,7 @@ export function assessFanOutTrialValidity(options: {
   fixtureApplied: boolean;
   error: string | null;
   result: HarnessRunResult | null;
+  expectedSchedule?: FanOutSchedule;
 }): FanOutTrialValidity {
   if (!options.fixtureApplied) {
     return {
@@ -236,6 +245,33 @@ export function assessFanOutTrialValidity(options: {
       valid: false,
       reason: "run_error",
       ...(options.error ? { detail: options.error } : {}),
+    };
+  }
+  const result = options.result;
+  const fanOut = result.fanOut;
+  if (
+    result.specDecision?.status !== "executable" ||
+    !fanOut ||
+    fanOut.children.length !== 2 ||
+    !fanOut.children.every((child) => child.startedAt > 0)
+  ) {
+    return {
+      valid: false,
+      reason: "fan_out_not_started",
+      detail:
+        result.specDecision?.status === "needs_human_judgment"
+          ? "Spec escalated before fan-out"
+          : "Fan-out children did not start",
+    };
+  }
+  if (
+    options.expectedSchedule &&
+    fanOut.schedule !== options.expectedSchedule
+  ) {
+    return {
+      valid: false,
+      reason: "schedule_mismatch",
+      detail: `expected ${options.expectedSchedule}, got ${fanOut.schedule}`,
     };
   }
   return { valid: true, reason: "valid" };
@@ -258,6 +294,7 @@ export async function runFanOutExperiment(
     sequential,
     parallel,
     decision: evaluatePar01Decision(sequential, parallel),
+    frozenSpecFingerprint: deps.frozenSpecFingerprint ?? null,
     report: "",
   };
   result.report = formatFanOutReport(result);
@@ -364,6 +401,7 @@ export function metricsFromP03Run(
   result: HarnessRunResult,
   expectedOutcomeMet: boolean,
   trialWallTimeMs?: number,
+  preparedSourceFingerprint?: string | null,
 ): FanOutTrialMetrics {
   const fanOut = result.fanOut;
   const childA = fanOut?.children.find((item) => item.unitId === "A");
@@ -400,7 +438,9 @@ export function metricsFromP03Run(
     childDurationSumMs: fanOut?.childDurationSumMs ?? 0,
     childIntervalMs: fanOut?.childIntervalMs ?? 0,
     fanInDurationMs: fanOut?.fanIn.durationMs ?? 0,
-    finalGateDurationMs: finalGateDuration(result, fanOut, wallTimeMs),
+    finalVerifyDurationMs: finalVerifyDuration(result),
+    finalReviewDurationMs: finalReviewDuration(result),
+    preparedSourceFingerprint: preparedSourceFingerprint ?? null,
     children: (fanOut?.children ?? []).map(childMetrics),
     schedule: fanOut?.schedule ?? null,
   };
@@ -420,13 +460,17 @@ async function collectArm(
     attempt += 1;
     const runId = `P03-fanout-${arm}-${attempt}-${timestamp()}`;
     const probe = await deps.runTrial(arm, runId);
-    const validity = assessFanOutTrialValidity(probe);
+    const validity = assessFanOutTrialValidity({
+      ...probe,
+      expectedSchedule: arm,
+    });
     const metrics =
       probe.result && validity.valid
         ? metricsFromP03Run(
             probe.result,
             deps.scoreExpected(probe.result),
             probe.trialWallTimeMs ?? undefined,
+            probe.preparedSourceFingerprint,
           )
         : null;
     const record: FanOutTrialRecord = {
@@ -524,24 +568,21 @@ function medianImprovedBy(
   return variant <= baseline * (1 - threshold);
 }
 
-function finalGateDuration(
-  result: HarnessRunResult,
-  fanOut: FanOutEvidence | null | undefined,
-  wallTimeMs: number,
-): number | null {
-  if (!fanOut) {
+function finalVerifyDuration(result: HarnessRunResult): number | null {
+  if (result.finalVerification) {
+    return result.finalVerification.durationMs;
+  }
+  if (result.verifications.length === 0) {
     return null;
   }
-  const childEnd = Math.max(
-    0,
-    ...fanOut.children.map((item) => item.finishedAt),
-  );
-  if (childEnd === 0) {
-    return null;
+  return result.verifications.reduce((sum, item) => sum + item.durationMs, 0);
+}
+
+function finalReviewDuration(result: HarnessRunResult): number | null {
+  if (result.reviews.length === 0) {
+    return result.finalReviewerOutcome === "skipped" ? null : 0;
   }
-  const remaining =
-    wallTimeMs - fanOut.childIntervalMs - fanOut.fanIn.durationMs;
-  return remaining >= 0 ? remaining : result.durationMs;
+  return result.reviews.reduce((sum, item) => sum + item.durationMs, 0);
 }
 
 function childMetrics(
@@ -567,6 +608,7 @@ function formatFanOutReport(result: FanOutExperimentResult): string {
     `generated: ${result.generatedAt}`,
     `contextMode: ${result.contextMode}`,
     `conversationStateMode: ${result.conversationStateMode}`,
+    `frozenSpecFingerprint: ${result.frozenSpecFingerprint ?? "(none)"}`,
     "",
     result.hypothesis,
     "",

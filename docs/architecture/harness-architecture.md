@@ -225,7 +225,7 @@ A merely advisory ReviewPlan failed to create real review surfaces. Harness-owne
 
 **Status:** keep OFF by default.
 
-The seam exists: one Spec, frozen two-unit `FanOutPlan`, exact-base worktrees, `sequential | parallel`, Git 3-way fan-in. PAR01 on P03 was `not_worth_current_workload` (conflicts in a shared service file; no 20% wall-time win; parallel cost higher).
+The seam exists: one Spec, frozen two-unit `FanOutPlan`, exact-base worktrees, `sequential | parallel`, Git 3-way fan-in. Corrected PAR01 on P03 (one frozen executable Spec reused across 3×2 scheduling trials) was `not_worth_current_workload` (conflicts in a shared service file; no 20% wall-time win; parallel cost higher). The earlier per-trial-Spec run is not evidence.
 
 **Revisit when:** a workload is independent in _files/hunks_, not only in product story, and e2e wall time is the scarce resource.
 

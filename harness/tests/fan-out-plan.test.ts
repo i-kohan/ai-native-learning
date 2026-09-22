@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { describe, it } from "node:test";
 import {
   FAN_OUT_MAX_PARALLEL_WORKERS,
@@ -12,11 +13,14 @@ import {
 } from "../src/fan-out-plan.ts";
 import {
   PAR01_DECISION_RULE,
+  assessFanOutTrialValidity,
   bindP03FanOutPlan,
   evaluatePar01Decision,
+  metricsFromP03Run,
   type FanOutArmReport,
   type FanOutTrialRecord,
 } from "../src/fanout-experiment.ts";
+import type { HarnessRunResult } from "../src/run.ts";
 import type { Spec } from "../src/spec.ts";
 
 const SHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -83,6 +87,39 @@ describe("FanOutPlan admission", () => {
     assert.equal(parsed.ok, false);
     if (!parsed.ok) {
       assert.match(parsed.error, /exact 40-character commit SHA/);
+    }
+  });
+
+  it("rejects a 3-unit FanOutPlan", () => {
+    const extra = {
+      ...validPlan().units[1],
+      id: "C",
+      acceptanceRefs: ["extra"],
+    };
+    const parsed = parseFanOutPlanPayload({
+      ...validPlan(),
+      units: [...validPlan().units, extra],
+      integrationOrder: ["A", "B", "C"],
+    });
+    assert.equal(parsed.ok, false);
+    if (!parsed.ok) {
+      assert.match(parsed.error, /exactly 2 units/);
+    }
+    const admitted = admitFanOutPlan(
+      {
+        ...validPlan(),
+        units: [...validPlan().units, extra],
+        integrationOrder: ["A", "B", "C"],
+      },
+      sampleSpec([
+        "PATCH /tasks/:id/title trims a non-empty title",
+        "DELETE /tasks/:id returns the deleted task",
+        "extra",
+      ]),
+    );
+    assert.equal(admitted.ok, false);
+    if (!admitted.ok) {
+      assert.match(admitted.error, /exactly 2 units/);
     }
   });
 
@@ -194,6 +231,20 @@ describe("FanOutPlan admission", () => {
   });
 });
 
+describe("P03 frozen precedence", () => {
+  it("freezes unknown-task 404 over title validation in the task text", () => {
+    const task = fs.readFileSync(
+      new URL("../../benchmarks/P03/task.md", import.meta.url),
+      "utf8",
+    );
+    assert.match(task, /Unknown task takes precedence over title validation/);
+    assert.match(
+      task,
+      /returns HTTP 404 regardless of whether the supplied title is valid/,
+    );
+  });
+});
+
 describe("manual P03 FanOutPlan binding", () => {
   it("shares every Spec.acceptance item with both units, including compile/all-tests wording", () => {
     const spec = sampleSpec([
@@ -207,6 +258,22 @@ describe("manual P03 FanOutPlan binding", () => {
     if (bound.ok) {
       assert.deepEqual(bound.value.units[0].acceptanceRefs, spec.acceptance);
       assert.deepEqual(bound.value.units[1].acceptanceRefs, spec.acceptance);
+    }
+  });
+
+  it("binds the same frozen Spec identically for reuse across trials", () => {
+    const spec = sampleSpec([
+      "Title mutation works.",
+      "Deletion works.",
+      "Existing tests continue to pass.",
+    ]);
+    const first = bindP03FanOutPlan(spec, SHA);
+    const second = bindP03FanOutPlan(spec, SHA);
+    assert.equal(first.ok, true);
+    assert.equal(second.ok, true);
+    if (first.ok && second.ok) {
+      assert.deepEqual(first.value.units[0].acceptanceRefs, spec.acceptance);
+      assert.deepEqual(first.value.units, second.value.units);
     }
   });
 
@@ -275,6 +342,115 @@ describe("PAR01 decision rule", () => {
   });
 });
 
+describe("PAR01 trial validity", () => {
+  it("rejects Spec escalation and missing children as invalid scheduling trials", () => {
+    const escalated = assessFanOutTrialValidity({
+      fixtureApplied: true,
+      error: null,
+      result: {
+        specDecision: { status: "needs_human_judgment", spec: sampleSpec([]) },
+        fanOut: null,
+      } as HarnessRunResult,
+      expectedSchedule: "sequential",
+    });
+    assert.equal(escalated.valid, false);
+    assert.equal(escalated.reason, "fan_out_not_started");
+
+    const started = assessFanOutTrialValidity({
+      fixtureApplied: true,
+      error: null,
+      expectedSchedule: "parallel",
+      result: {
+        specDecision: { status: "executable", spec: sampleSpec([]) },
+        fanOut: {
+          schedule: "parallel",
+          children: [
+            { unitId: "A", startedAt: 10 },
+            { unitId: "B", startedAt: 11 },
+          ],
+        },
+      } as HarnessRunResult,
+    });
+    assert.equal(started.valid, true);
+
+    const wrongArm = assessFanOutTrialValidity({
+      fixtureApplied: true,
+      error: null,
+      expectedSchedule: "sequential",
+      result: {
+        specDecision: { status: "executable", spec: sampleSpec([]) },
+        fanOut: {
+          schedule: "parallel",
+          children: [
+            { unitId: "A", startedAt: 10 },
+            { unitId: "B", startedAt: 11 },
+          ],
+        },
+      } as HarnessRunResult,
+    });
+    assert.equal(wrongArm.valid, false);
+    assert.equal(wrongArm.reason, "schedule_mismatch");
+  });
+
+  it("measures final VERIFY and REVIEW from real phase durations", () => {
+    const metrics = metricsFromP03Run(
+      {
+        workflowStatus: "success",
+        specDecision: { status: "executable", spec: sampleSpec([]) },
+        implementationStarted: true,
+        finalVerificationPassed: true,
+        finalReviewerOutcome: "pass",
+        repairAttempts: 0,
+        reviewRepairAttempts: 0,
+        modelCalls: 4,
+        toolCalls: 8,
+        changedFiles: [],
+        durationMs: 1000,
+        contextMetrics: { tokenUsage: null },
+        verifications: [{ durationMs: 40 }],
+        reviews: [{ durationMs: 60 }],
+        finalVerification: { durationMs: 41 },
+        fanOut: {
+          schedule: "sequential",
+          children: [
+            {
+              unitId: "A",
+              durationMs: 10,
+              modelCalls: 1,
+              toolCalls: 1,
+              tokenUsage: null,
+              changedFiles: [],
+              verificationPassed: true,
+              repairAttempts: 0,
+            },
+            {
+              unitId: "B",
+              durationMs: 10,
+              modelCalls: 1,
+              toolCalls: 1,
+              tokenUsage: null,
+              changedFiles: [],
+              verificationPassed: true,
+              repairAttempts: 0,
+            },
+          ],
+          fanIn: { ok: true, durationMs: 5, conflict: null, lostChanges: [] },
+          writeSetOverlap: [],
+          childDurationSumMs: 20,
+          childIntervalMs: 20,
+        },
+      } as HarnessRunResult,
+      true,
+      1000,
+      "fp",
+    );
+    assert.equal(metrics.finalVerifyDurationMs, 41);
+    assert.equal(metrics.finalReviewDurationMs, 60);
+    assert.equal(metrics.preparedSourceFingerprint, "fp");
+    assert.equal("finalGateDurationMs" in metrics, false);
+  });
+});
+
 function arm(
   id: "sequential" | "parallel",
   walls: number[],
@@ -311,7 +487,9 @@ function arm(
       childDurationSumMs: 800,
       childIntervalMs: intervals[index],
       fanInDurationMs: 20,
-      finalGateDurationMs: 200,
+      finalVerifyDurationMs: 80,
+      finalReviewDurationMs: 120,
+      preparedSourceFingerprint: "abc",
       children: [],
       schedule: id,
     },

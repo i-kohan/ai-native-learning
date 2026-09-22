@@ -1,10 +1,9 @@
-INVALID / SUPERSEDED — each trial built its own Spec; sequential trial 1 counted as valid after Spec escalate. Do not cite as PAR01 evidence. Authoritative run: fanout-m22-par01-2026-09-22T20-48-39-502Z.
-
 Experiment m22-p03-par01-fanout
 task: P03
-generated: 2026-09-22T20:18:39.907Z
+generated: 2026-09-22T20:48:39.502Z
 contextMode: variant
 conversationStateMode: manual
+frozenSpecFingerprint: eeafb0b983c52ea7de8270e390ef6f9076e8606a23f27be3862b8e9cbb04d702
 
 A frozen two-unit FanOutPlan over genuinely independent P03 work can reduce full end-to-end wall time when scheduled in parallel, without changing product semantics, ReviewPlan, delivery, or the default Spec → one Worker architecture.
 
@@ -25,25 +24,25 @@ Default architecture remains Spec → one Worker. Fan-out is an experiment/probe
 valid: 3/3
 expected: 0/3
 correctness: 0/3
-median wall: 59199ms
-median model/tools: 11 / 24
-median tokens in/out: 47586 / 5146
-median child interval: 43835ms
-trial 1: expected=false verify=skipped review=skipped wall=26157 childInterval=0 overlap=(none) conflict=false
-trial 2: expected=false verify=FAIL review=skipped wall=67926 childInterval=47646 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
-trial 3: expected=false verify=FAIL review=skipped wall=59199 childInterval=43835 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+median wall: 49277ms
+median model/tools: 11 / 15
+median tokens in/out: 51239 / 4057
+median child interval: 47647ms
+trial 1: expected=false verify=FAIL review=skipped wall=53526 childInterval=51909 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+trial 2: expected=false verify=FAIL review=skipped wall=49277 childInterval=47647 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+trial 3: expected=false verify=FAIL review=skipped wall=46186 childInterval=44650 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
 
 ## PARALLEL A || B
 valid: 3/3
-expected: 2/3
-correctness: 2/3
-median wall: 56915ms
-median model/tools: 14 / 29
-median tokens in/out: 61487 / 5435
-median child interval: 38336ms
-trial 1: expected=true verify=PASS review=pass wall=56915 childInterval=38336 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=false
-trial 2: expected=true verify=PASS review=pass wall=47652 childInterval=25251 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=false
-trial 3: expected=false verify=FAIL review=skipped wall=103796 childInterval=83478 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+expected: 1/3
+correctness: 1/3
+median wall: 52269ms
+median model/tools: 12 / 17
+median tokens in/out: 57446 / 5445
+median child interval: 44422ms
+trial 1: expected=false verify=FAIL review=skipped wall=150936 childInterval=149373 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+trial 2: expected=false verify=FAIL review=skipped wall=33393 childInterval=31613 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true
+trial 3: expected=true verify=PASS review=pass wall=52269 childInterval=44422 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=false
 
 decision.correctnessPreserved: false
 decision.gatesSucceeded: false

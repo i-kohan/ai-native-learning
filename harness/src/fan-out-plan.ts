@@ -92,6 +92,12 @@ export function parseFanOutPlanPayload(value: unknown): ParseFanOutPlanResult {
   if (!units.ok) {
     return units;
   }
+  if (units.value.length !== FAN_OUT_MAX_PARALLEL_WORKERS) {
+    return {
+      ok: false,
+      error: `FanOutPlan must contain exactly ${FAN_OUT_MAX_PARALLEL_WORKERS} units.`,
+    };
+  }
   const integrationOrder = parseStringArray(
     value.integrationOrder,
     "integrationOrder",
@@ -247,8 +253,11 @@ function validateFanOutAgainstSpec(
     }
   }
 
-  if (plan.units.length === 0) {
-    return { ok: false, error: "FanOutPlan must contain at least one unit." };
+  if (plan.units.length !== FAN_OUT_MAX_PARALLEL_WORKERS) {
+    return {
+      ok: false,
+      error: `FanOutPlan must contain exactly ${FAN_OUT_MAX_PARALLEL_WORKERS} units.`,
+    };
   }
 
   const owned = new Set(plan.units.flatMap((unit) => unit.acceptanceRefs));

@@ -1,0 +1,574 @@
+{
+  "experimentId": "m22-p03-par01-fanout",
+  "generatedAt": "2026-09-22T20:48:39.502Z",
+  "taskId": "P03",
+  "contextMode": "variant",
+  "conversationStateMode": "manual",
+  "hypothesis": "A frozen two-unit FanOutPlan over genuinely independent P03 work can reduce full end-to-end wall time when scheduled in parallel, without changing product semantics, ReviewPlan, delivery, or the default Spec → one Worker architecture.",
+  "decisionRule": "PAR01 predefined decision rule (frozen before any final trials):\nPAR01 is supported only if:\n1. correctness is preserved in every valid trial;\n2. all child VERIFY gates, deterministic fan-in, final VERIFY, and independent REVIEW succeed;\n3. there are no unresolved integration conflicts or lost changes;\n4. median full end-to-end wall time of parallel is at least 20% lower than sequential;\n5. available median cost metrics do not materially regress by more than 20%.\nThe 20% threshold is a practical precommitted material-difference threshold, not a universal law.\nFull trial wall clock starts before workspace setup and runs through final VERIFY + independent REVIEW.\nDo not manufacture a positive conclusion merely because the child execution interval became shorter.\nAllowed conclusions: supported | not_worth_current_workload | inconclusive.\nDefault architecture remains Spec → one Worker. Fan-out is an experiment/probe layer only.",
+  "sequential": {
+    "id": "sequential",
+    "label": "SEQUENTIAL A → B",
+    "schedule": "sequential",
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "expectedMet": 0,
+    "correctnessPreserved": 0,
+    "trials": [
+      {
+        "arm": "sequential",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P03-fanout-sequential-1-2026-09-22T20-48-39-502Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P03-fanout-sequential-1-2026-09-22T20-48-39-502Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": false,
+          "workflowStatus": "failure",
+          "finalVerification": "FAIL",
+          "finalReviewerOutcome": "skipped",
+          "childVerificationPassed": true,
+          "fanInOk": false,
+          "integrationConflicts": true,
+          "lostChanges": [],
+          "writeSetOverlap": [
+            "target-app/src/tasks/task-routes.ts",
+            "target-app/src/tasks/task-service.ts"
+          ],
+          "childChangedFiles": {
+            "A": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ],
+            "B": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ]
+          },
+          "finalChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts"
+          ],
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "modelCalls": 10,
+          "toolCalls": 15,
+          "inputTokens": 45574,
+          "outputTokens": 4057,
+          "wallTimeMs": 53526,
+          "childADurationMs": 28755,
+          "childBDurationMs": 22819,
+          "childDurationSumMs": 51574,
+          "childIntervalMs": 51909,
+          "fanInDurationMs": 145,
+          "finalVerifyDurationMs": null,
+          "finalReviewDurationMs": null,
+          "preparedSourceFingerprint": "d71e8d5c9253c567b004c41d61be830f5fda78696d93d23a5e1c23b19d9f9e50",
+          "children": [
+            {
+              "unitId": "A",
+              "durationMs": 28755,
+              "modelCalls": 5,
+              "toolCalls": 7,
+              "inputTokens": 22823,
+              "outputTokens": 2210,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            },
+            {
+              "unitId": "B",
+              "durationMs": 22819,
+              "modelCalls": 5,
+              "toolCalls": 8,
+              "inputTokens": 22751,
+              "outputTokens": 1847,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            }
+          ],
+          "schedule": "sequential"
+        }
+      },
+      {
+        "arm": "sequential",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P03-fanout-sequential-2-2026-09-22T20-49-33-194Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P03-fanout-sequential-2-2026-09-22T20-49-33-194Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": false,
+          "workflowStatus": "failure",
+          "finalVerification": "FAIL",
+          "finalReviewerOutcome": "skipped",
+          "childVerificationPassed": true,
+          "fanInOk": false,
+          "integrationConflicts": true,
+          "lostChanges": [],
+          "writeSetOverlap": [
+            "target-app/src/tasks/task-routes.ts",
+            "target-app/src/tasks/task-service.ts"
+          ],
+          "childChangedFiles": {
+            "A": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ],
+            "B": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ]
+          },
+          "finalChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts"
+          ],
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "modelCalls": 11,
+          "toolCalls": 16,
+          "inputTokens": 51545,
+          "outputTokens": 4090,
+          "wallTimeMs": 49277,
+          "childADurationMs": 25251,
+          "childBDurationMs": 22137,
+          "childDurationSumMs": 47388,
+          "childIntervalMs": 47647,
+          "fanInDurationMs": 146,
+          "finalVerifyDurationMs": null,
+          "finalReviewDurationMs": null,
+          "preparedSourceFingerprint": "d71e8d5c9253c567b004c41d61be830f5fda78696d93d23a5e1c23b19d9f9e50",
+          "children": [
+            {
+              "unitId": "A",
+              "durationMs": 25251,
+              "modelCalls": 6,
+              "toolCalls": 8,
+              "inputTokens": 28687,
+              "outputTokens": 2156,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            },
+            {
+              "unitId": "B",
+              "durationMs": 22137,
+              "modelCalls": 5,
+              "toolCalls": 8,
+              "inputTokens": 22858,
+              "outputTokens": 1934,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            }
+          ],
+          "schedule": "sequential"
+        }
+      },
+      {
+        "arm": "sequential",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P03-fanout-sequential-3-2026-09-22T20-50-22-640Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P03-fanout-sequential-3-2026-09-22T20-50-22-640Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": false,
+          "workflowStatus": "failure",
+          "finalVerification": "FAIL",
+          "finalReviewerOutcome": "skipped",
+          "childVerificationPassed": true,
+          "fanInOk": false,
+          "integrationConflicts": true,
+          "lostChanges": [],
+          "writeSetOverlap": [
+            "target-app/src/tasks/task-routes.ts",
+            "target-app/src/tasks/task-service.ts"
+          ],
+          "childChangedFiles": {
+            "A": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ],
+            "B": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ]
+          },
+          "finalChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts"
+          ],
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "modelCalls": 11,
+          "toolCalls": 15,
+          "inputTokens": 51239,
+          "outputTokens": 3869,
+          "wallTimeMs": 46186,
+          "childADurationMs": 25374,
+          "childBDurationMs": 19011,
+          "childDurationSumMs": 44385,
+          "childIntervalMs": 44650,
+          "fanInDurationMs": 86,
+          "finalVerifyDurationMs": null,
+          "finalReviewDurationMs": null,
+          "preparedSourceFingerprint": "d71e8d5c9253c567b004c41d61be830f5fda78696d93d23a5e1c23b19d9f9e50",
+          "children": [
+            {
+              "unitId": "A",
+              "durationMs": 25374,
+              "modelCalls": 6,
+              "toolCalls": 8,
+              "inputTokens": 28837,
+              "outputTokens": 2130,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            },
+            {
+              "unitId": "B",
+              "durationMs": 19011,
+              "modelCalls": 5,
+              "toolCalls": 7,
+              "inputTokens": 22402,
+              "outputTokens": 1739,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            }
+          ],
+          "schedule": "sequential"
+        }
+      }
+    ],
+    "contaminated": [],
+    "medians": {
+      "wallTimeMs": 49277,
+      "modelCalls": 11,
+      "toolCalls": 15,
+      "inputTokens": 51239,
+      "outputTokens": 4057,
+      "childIntervalMs": 47647
+    }
+  },
+  "parallel": {
+    "id": "parallel",
+    "label": "PARALLEL A || B",
+    "schedule": "parallel",
+    "attemptedTrials": 3,
+    "validTrials": 3,
+    "expectedMet": 1,
+    "correctnessPreserved": 1,
+    "trials": [
+      {
+        "arm": "parallel",
+        "attempt": 1,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P03-fanout-parallel-1-2026-09-22T20-51-09-019Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P03-fanout-parallel-1-2026-09-22T20-51-09-019Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": false,
+          "workflowStatus": "failure",
+          "finalVerification": "FAIL",
+          "finalReviewerOutcome": "skipped",
+          "childVerificationPassed": true,
+          "fanInOk": false,
+          "integrationConflicts": true,
+          "lostChanges": [],
+          "writeSetOverlap": [
+            "target-app/src/tasks/task-routes.ts",
+            "target-app/src/tasks/task-service.ts"
+          ],
+          "childChangedFiles": {
+            "A": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ],
+            "B": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ]
+          },
+          "finalChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts"
+          ],
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "modelCalls": 13,
+          "toolCalls": 18,
+          "inputTokens": 68053,
+          "outputTokens": 5477,
+          "wallTimeMs": 150936,
+          "childADurationMs": 149373,
+          "childBDurationMs": 22133,
+          "childDurationSumMs": 171506,
+          "childIntervalMs": 149373,
+          "fanInDurationMs": 163,
+          "finalVerifyDurationMs": null,
+          "finalReviewDurationMs": null,
+          "preparedSourceFingerprint": "d71e8d5c9253c567b004c41d61be830f5fda78696d93d23a5e1c23b19d9f9e50",
+          "children": [
+            {
+              "unitId": "A",
+              "durationMs": 149373,
+              "modelCalls": 8,
+              "toolCalls": 10,
+              "inputTokens": 44608,
+              "outputTokens": 3597,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            },
+            {
+              "unitId": "B",
+              "durationMs": 22133,
+              "modelCalls": 5,
+              "toolCalls": 8,
+              "inputTokens": 23445,
+              "outputTokens": 1880,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            }
+          ],
+          "schedule": "parallel"
+        }
+      },
+      {
+        "arm": "parallel",
+        "attempt": 2,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P03-fanout-parallel-2-2026-09-22T20-53-40-130Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P03-fanout-parallel-2-2026-09-22T20-53-40-130Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": false,
+          "workflowStatus": "failure",
+          "finalVerification": "FAIL",
+          "finalReviewerOutcome": "skipped",
+          "childVerificationPassed": true,
+          "fanInOk": false,
+          "integrationConflicts": true,
+          "lostChanges": [],
+          "writeSetOverlap": [
+            "target-app/src/tasks/task-routes.ts",
+            "target-app/src/tasks/task-service.ts"
+          ],
+          "childChangedFiles": {
+            "A": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ],
+            "B": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ]
+          },
+          "finalChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts"
+          ],
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "modelCalls": 10,
+          "toolCalls": 14,
+          "inputTokens": 44959,
+          "outputTokens": 3805,
+          "wallTimeMs": 33393,
+          "childADurationMs": 31613,
+          "childBDurationMs": 19202,
+          "childDurationSumMs": 50815,
+          "childIntervalMs": 31613,
+          "fanInDurationMs": 151,
+          "finalVerifyDurationMs": null,
+          "finalReviewDurationMs": null,
+          "preparedSourceFingerprint": "d71e8d5c9253c567b004c41d61be830f5fda78696d93d23a5e1c23b19d9f9e50",
+          "children": [
+            {
+              "unitId": "A",
+              "durationMs": 31613,
+              "modelCalls": 5,
+              "toolCalls": 7,
+              "inputTokens": 22600,
+              "outputTokens": 2058,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            },
+            {
+              "unitId": "B",
+              "durationMs": 19202,
+              "modelCalls": 5,
+              "toolCalls": 7,
+              "inputTokens": 22359,
+              "outputTokens": 1747,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            }
+          ],
+          "schedule": "parallel"
+        }
+      },
+      {
+        "arm": "parallel",
+        "attempt": 3,
+        "valid": true,
+        "validity": {
+          "valid": true,
+          "reason": "valid"
+        },
+        "runId": "P03-fanout-parallel-3-2026-09-22T20-54-13-717Z",
+        "tracePath": "/Users/i.kohanvs/Desktop/ai-native/traces/P03-fanout-parallel-3-2026-09-22T20-54-13-717Z.jsonl",
+        "metrics": {
+          "expectedOutcomeMet": true,
+          "workflowStatus": "success",
+          "finalVerification": "PASS",
+          "finalReviewerOutcome": "pass",
+          "childVerificationPassed": true,
+          "fanInOk": true,
+          "integrationConflicts": false,
+          "lostChanges": [],
+          "writeSetOverlap": [
+            "target-app/src/tasks/task-routes.ts",
+            "target-app/src/tasks/task-service.ts"
+          ],
+          "childChangedFiles": {
+            "A": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ],
+            "B": [
+              "target-app/src/tasks/task-routes.ts",
+              "target-app/src/tasks/task-service.ts"
+            ]
+          },
+          "finalChangedFiles": [
+            "tasks/task-routes.ts",
+            "tasks/task-service.ts"
+          ],
+          "verificationRepairAttempts": 0,
+          "reviewRepairAttempts": 0,
+          "modelCalls": 12,
+          "toolCalls": 17,
+          "inputTokens": 57446,
+          "outputTokens": 5445,
+          "wallTimeMs": 52269,
+          "childADurationMs": 36046,
+          "childBDurationMs": 43947,
+          "childDurationSumMs": 79993,
+          "childIntervalMs": 44422,
+          "fanInDurationMs": 173,
+          "finalVerifyDurationMs": 244,
+          "finalReviewDurationMs": 3754,
+          "preparedSourceFingerprint": "d71e8d5c9253c567b004c41d61be830f5fda78696d93d23a5e1c23b19d9f9e50",
+          "children": [
+            {
+              "unitId": "A",
+              "durationMs": 36046,
+              "modelCalls": 6,
+              "toolCalls": 8,
+              "inputTokens": 30333,
+              "outputTokens": 3397,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            },
+            {
+              "unitId": "B",
+              "durationMs": 43947,
+              "modelCalls": 5,
+              "toolCalls": 8,
+              "inputTokens": 23344,
+              "outputTokens": 1796,
+              "changedFiles": [
+                "target-app/src/tasks/task-routes.ts",
+                "target-app/src/tasks/task-service.ts"
+              ],
+              "verificationPassed": true,
+              "repairAttempts": 0
+            }
+          ],
+          "schedule": "parallel"
+        }
+      }
+    ],
+    "contaminated": [],
+    "medians": {
+      "wallTimeMs": 52269,
+      "modelCalls": 12,
+      "toolCalls": 17,
+      "inputTokens": 57446,
+      "outputTokens": 5445,
+      "childIntervalMs": 44422
+    }
+  },
+  "decision": {
+    "correctnessPreserved": false,
+    "gatesSucceeded": false,
+    "noConflictsOrLostChanges": false,
+    "wallTimeImproved": false,
+    "costRegressed": true,
+    "childIntervalShorter": false,
+    "conclusion": "not_worth_current_workload",
+    "defaultUnchanged": true,
+    "notes": [
+      "Correctness, child/final gates, or deterministic integration was not preserved on every valid trial."
+    ]
+  },
+  "frozenSpecFingerprint": "eeafb0b983c52ea7de8270e390ef6f9076e8606a23f27be3862b8e9cbb04d702",
+  "report": "Experiment m22-p03-par01-fanout\ntask: P03\ngenerated: 2026-09-22T20:48:39.502Z\ncontextMode: variant\nconversationStateMode: manual\nfrozenSpecFingerprint: eeafb0b983c52ea7de8270e390ef6f9076e8606a23f27be3862b8e9cbb04d702\n\nA frozen two-unit FanOutPlan over genuinely independent P03 work can reduce full end-to-end wall time when scheduled in parallel, without changing product semantics, ReviewPlan, delivery, or the default Spec → one Worker architecture.\n\nPAR01 predefined decision rule (frozen before any final trials):\nPAR01 is supported only if:\n1. correctness is preserved in every valid trial;\n2. all child VERIFY gates, deterministic fan-in, final VERIFY, and independent REVIEW succeed;\n3. there are no unresolved integration conflicts or lost changes;\n4. median full end-to-end wall time of parallel is at least 20% lower than sequential;\n5. available median cost metrics do not materially regress by more than 20%.\nThe 20% threshold is a practical precommitted material-difference threshold, not a universal law.\nFull trial wall clock starts before workspace setup and runs through final VERIFY + independent REVIEW.\nDo not manufacture a positive conclusion merely because the child execution interval became shorter.\nAllowed conclusions: supported | not_worth_current_workload | inconclusive.\nDefault architecture remains Spec → one Worker. Fan-out is an experiment/probe layer only.\n\n## SEQUENTIAL A → B\nvalid: 3/3\nexpected: 0/3\ncorrectness: 0/3\nmedian wall: 49277ms\nmedian model/tools: 11 / 15\nmedian tokens in/out: 51239 / 4057\nmedian child interval: 47647ms\ntrial 1: expected=false verify=FAIL review=skipped wall=53526 childInterval=51909 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true\ntrial 2: expected=false verify=FAIL review=skipped wall=49277 childInterval=47647 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true\ntrial 3: expected=false verify=FAIL review=skipped wall=46186 childInterval=44650 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true\n\n## PARALLEL A || B\nvalid: 3/3\nexpected: 1/3\ncorrectness: 1/3\nmedian wall: 52269ms\nmedian model/tools: 12 / 17\nmedian tokens in/out: 57446 / 5445\nmedian child interval: 44422ms\ntrial 1: expected=false verify=FAIL review=skipped wall=150936 childInterval=149373 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true\ntrial 2: expected=false verify=FAIL review=skipped wall=33393 childInterval=31613 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=true\ntrial 3: expected=true verify=PASS review=pass wall=52269 childInterval=44422 overlap=target-app/src/tasks/task-routes.ts,target-app/src/tasks/task-service.ts conflict=false\n\ndecision.correctnessPreserved: false\ndecision.gatesSucceeded: false\ndecision.noConflictsOrLostChanges: false\ndecision.wallTimeImproved: false\ndecision.costRegressed: true\ndecision.childIntervalShorter: false\ndecision.conclusion: not_worth_current_workload\ndecision.defaultUnchanged: true\n- Correctness, child/final gates, or deterministic integration was not preserved on every valid trial."
+}

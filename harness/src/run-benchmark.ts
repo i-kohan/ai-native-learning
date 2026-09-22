@@ -1,48 +1,51 @@
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import type { ContextMode } from "./context.ts";
-import type { HarnessConfig } from "./config.ts";
-import { REPO_ROOT, loadConfig } from "./config.ts";
-import { snapshotDirectory } from "./diff.ts";
 import {
-  printHarnessResult,
-  runV1Harness,
-  type HarnessRunResult,
-} from "./run.ts";
+  isExpectedCHK01Outcome,
+  printCheckpointProbeSummary,
+  runCheckpointProbe,
+} from "./checkpoint-probe.ts";
+import type { HarnessConfig } from "./config.ts";
+import { loadConfig, REPO_ROOT } from "./config.ts";
+import { buildRepositoryMap, type ContextMode } from "./context.ts";
+import {
+  bindP02ReviewPlan,
+  type DecompositionArmId,
+  type DecompositionProbeAttempt,
+  isExpectedP02Outcome,
+  P02_REVIEW_UNIT_TEMPLATES,
+  runDecompositionExperiment,
+  writeDecompositionExperimentArtifact,
+} from "./decomposition-experiment.ts";
+import { fingerprintDirectory, snapshotDirectory } from "./diff.ts";
+import {
+  isExpectedDUR01Outcome,
+  printDurabilityProbeSummary,
+  runDurabilityProbe,
+} from "./durability-probe.ts";
 import { aggregateRuns } from "./eval/aggregate.ts";
 import { HOLDOUT_GRADER_CONTRACTS } from "./eval/calibrate.ts";
 import { workspaceContainsGraderFiles } from "./eval/grader.ts";
 import { normalizeRun } from "./eval/normalize.ts";
 import {
   gradeHoldoutWorkspace,
+  type HoldoutTrialAttempt,
   runQualificationProtocol,
   writeQualificationArtifact,
-  type HoldoutTrialAttempt,
 } from "./eval/qualification-run.ts";
 import type { EvalResult, FixedTaskId, HoldoutTaskId } from "./eval/types.ts";
 import { writeEvalArtifact } from "./eval/write.ts";
-import type { ConversationStateMode } from "./loop.ts";
+import { cleanupFanOutWorkspaces, createFanOutWorkspaces } from "./fan-out.ts";
 import {
-  isExpectedCHK01Outcome,
-  printCheckpointProbeSummary,
-  runCheckpointProbe,
-} from "./checkpoint-probe.ts";
-import {
-  isExpectedRET01Outcome,
-  printRetryProbeSummary,
-  runRetryProbe,
-} from "./retry-probe.ts";
-import {
-  isExpectedDUR01Outcome,
-  printDurabilityProbeSummary,
-  runDurabilityProbe,
-} from "./durability-probe.ts";
-import {
-  isExpectedOWN01Outcome,
-  printOwnershipProbeSummary,
-  runOwnershipProbe,
-} from "./ownership-probe.ts";
+  bindP03FanOutPlan,
+  type FanOutArmId,
+  type FanOutProbeAttempt,
+  isExpectedP03Outcome,
+  runFanOutExperiment,
+  writeFanOutExperimentArtifact,
+} from "./fanout-experiment.ts";
 import {
   isExpectedCi01Outcome,
   isExpectedGhi01Outcome,
@@ -55,63 +58,65 @@ import {
   printIsolationProbeSummary,
   runIsolationProbe,
 } from "./iso01.ts";
+import type { ConversationStateMode } from "./loop.ts";
 import {
-  isExpectedSEC01Outcome,
-  printSecurityProbeSummary,
-  runSecurityProbe,
-} from "./sec01.ts";
+  type OrchestrationArmId,
+  runOrchestrationExperiment,
+  writeOrchestrationExperimentArtifact,
+} from "./orchestration-experiment.ts";
+import {
+  isExpectedOWN01Outcome,
+  printOwnershipProbeSummary,
+  runOwnershipProbe,
+} from "./ownership-probe.ts";
+import {
+  isExpectedP01Outcome,
+  type PlanningArmId,
+  type PlanningProbeAttempt,
+  runPlanningExperiment,
+  writePlanningExperimentArtifact,
+} from "./planning-experiment.ts";
 import { injectMissingTask500Fault } from "./r01-fault.ts";
+import {
+  isExpectedRET01Outcome,
+  printRetryProbeSummary,
+  runRetryProbe,
+} from "./retry-probe.ts";
 import { injectArch01CompleteTaskFault } from "./rev01-fault.ts";
 import { ARCH_01, isIntendedArch01Finding } from "./review.ts";
 import {
   ROUTING_DEFAULT_MODEL,
   ROUTING_REPAIR_CANDIDATE,
-  runRoutingExperiment,
-  writeRoutingExperimentArtifact,
   type RoutingArmId,
   type RoutingProbeAttempt,
+  runRoutingExperiment,
+  writeRoutingExperimentArtifact,
 } from "./routing-experiment.ts";
 import {
-  runOrchestrationExperiment,
-  writeOrchestrationExperimentArtifact,
-  type OrchestrationArmId,
-} from "./orchestration-experiment.ts";
+  type HarnessRunResult,
+  printHarnessResult,
+  runV1Harness,
+} from "./run.ts";
 import {
-  isExpectedP01Outcome,
-  runPlanningExperiment,
-  writePlanningExperimentArtifact,
-  type PlanningArmId,
-  type PlanningProbeAttempt,
-} from "./planning-experiment.ts";
+  isExpectedSEC01Outcome,
+  printSecurityProbeSummary,
+  runSecurityProbe,
+} from "./sec01.ts";
+import type { SpecDecision } from "./spec.ts";
+import { buildSpec } from "./spec-phase.ts";
 import {
   runSubagentsExperiment,
-  writeSubagentsExperimentArtifact,
   type SubagentsArmId,
   type SubagentsProbeAttempt,
+  writeSubagentsExperimentArtifact,
 } from "./subagents-experiment.ts";
-import {
-  runDecompositionExperiment,
-  writeDecompositionExperimentArtifact,
-  isExpectedP02Outcome,
-  bindP02ReviewPlan,
-  P02_REVIEW_UNIT_TEMPLATES,
-  type DecompositionArmId,
-  type DecompositionProbeAttempt,
-} from "./decomposition-experiment.ts";
-import {
-  bindP03FanOutPlan,
-  isExpectedP03Outcome,
-  runFanOutExperiment,
-  writeFanOutExperimentArtifact,
-  type FanOutArmId,
-  type FanOutProbeAttempt,
-} from "./fanout-experiment.ts";
-import { cleanupFanOutWorkspaces, createFanOutWorkspaces } from "./fan-out.ts";
+import { Tracer } from "./trace.ts";
 import { runFinalVerification } from "./verify.ts";
 import {
   bindConfig,
   cleanupWorkspace,
   createWorkspace,
+  resolveBaseRevision,
   type Workspace,
 } from "./workspace.ts";
 
@@ -795,6 +800,8 @@ export async function runP02DecompositionExperiment() {
 export async function executeP03FanOutTrial(options: {
   arm: FanOutArmId;
   runId: string;
+  admittedSpec: Extract<SpecDecision, { status: "executable" }>;
+  frozenSpecPhase?: Parameters<typeof runV1Harness>[0]["frozenSpecPhase"];
 }): Promise<FanOutProbeAttempt> {
   const trialStartedAt = Date.now();
   const workspaces = createFanOutWorkspaces({
@@ -804,9 +811,24 @@ export async function executeP03FanOutTrial(options: {
   try {
     const base = loadConfig();
     const integrationConfig = bindConfig(base, workspaces.integration);
+    const childAConfig = bindConfig(base, workspaces.children.A);
+    const childBConfig = bindConfig(base, workspaces.children.B);
     const prep = prepareP03(integrationConfig);
-    prepareP03(bindConfig(base, workspaces.children.A));
-    prepareP03(bindConfig(base, workspaces.children.B));
+    prepareP03(childAConfig);
+    prepareP03(childBConfig);
+    const prepared = samePreparedP03SourceState([
+      integrationConfig.targetSrcRoot,
+      childAConfig.targetSrcRoot,
+      childBConfig.targetSrcRoot,
+    ]);
+    if (!prepared.ok) {
+      return {
+        fixtureApplied: false,
+        result: null,
+        error: prepared.error ?? null,
+        trialWallTimeMs: Date.now() - trialStartedAt,
+      };
+    }
     if (prep.initialTestsPassed) {
       return {
         fixtureApplied: false,
@@ -814,12 +836,14 @@ export async function executeP03FanOutTrial(options: {
         error:
           "P03: expected initial tests to FAIL after title/deletion tests were added, but they passed.",
         trialWallTimeMs: Date.now() - trialStartedAt,
+        preparedSourceFingerprint: prepared.fingerprint,
       };
     }
     console.log(
       `\n=== Preparing P03 (${options.arm}) integration=${workspaces.integration.id} ===`,
     );
     console.log("initial_tests: FAIL (P03 tests added to green fixture)");
+    console.log(`prepared_source_fingerprint: ${prepared.fingerprint}`);
     const beforeSnapshot = snapshotDirectory(integrationConfig.targetSrcRoot);
     const result = await runV1Harness({
       config: integrationConfig,
@@ -829,6 +853,8 @@ export async function executeP03FanOutTrial(options: {
       contextMode: "variant",
       conversationStateMode: "manual",
       workspace: workspaces.integration,
+      admittedSpec: options.admittedSpec,
+      frozenSpecPhase: options.frozenSpecPhase,
       bindFanOutPlan: (spec) =>
         bindP03FanOutPlan(spec, workspaces.baseRevision),
       fanOutSchedule: options.arm,
@@ -844,6 +870,8 @@ export async function executeP03FanOutTrial(options: {
       result,
       error: null,
       trialWallTimeMs: result.durationMs,
+      preparedSourceFingerprint: prepared.fingerprint,
+      expectedSchedule: options.arm,
     };
   } catch (error) {
     return {
@@ -857,9 +885,106 @@ export async function executeP03FanOutTrial(options: {
   }
 }
 
+export function samePreparedP03SourceState(targetSrcRoots: string[]): {
+  ok: boolean;
+  fingerprint: string;
+  error?: string;
+} {
+  if (targetSrcRoots.length === 0) {
+    return { ok: false, fingerprint: "", error: "no prepared source roots" };
+  }
+  const fingerprints = targetSrcRoots.map((root) => fingerprintDirectory(root));
+  const fingerprint = fingerprints[0];
+  if (fingerprints.some((item) => item !== fingerprint)) {
+    return {
+      ok: false,
+      fingerprint,
+      error:
+        "Prepared P03 source state is not identical across child and integration workspaces.",
+    };
+  }
+  return { ok: true, fingerprint };
+}
+
+export async function resolveP03SpecOnce(): Promise<
+  | {
+      ok: true;
+      decision: Extract<SpecDecision, { status: "executable" }>;
+      specPhase: NonNullable<
+        Parameters<typeof runV1Harness>[0]["frozenSpecPhase"]
+      >;
+      fingerprint: string;
+    }
+  | { ok: false; error: string }
+> {
+  const runId = `P03-fanout-frozen-spec-${timestamp()}`;
+  const workspace = createWorkspace({
+    hostRepoRoot: REPO_ROOT,
+    id: runId,
+    ref: resolveBaseRevision(REPO_ROOT),
+  });
+  try {
+    const config = bindConfig(loadConfig(), workspace);
+    const prep = prepareP03(config);
+    const tracer = new Tracer(config.tracesDir, runId);
+    const context = buildRepositoryMap(config);
+    const specPhase = await buildSpec({
+      config,
+      task: prep.task,
+      tracer,
+      contextMode: "variant",
+      repositoryMap: context.map,
+    });
+    await tracer.close();
+    if (specPhase.decision?.status !== "executable") {
+      return {
+        ok: false,
+        error:
+          specPhase.decision?.status === "needs_human_judgment"
+            ? "Frozen P03 Spec is not executable."
+            : (specPhase.failureReason ?? "Frozen P03 Spec failed."),
+      };
+    }
+    return {
+      ok: true,
+      decision: specPhase.decision,
+      specPhase,
+      fingerprint: fingerprintSpec(specPhase.decision.spec),
+    };
+  } finally {
+    cleanupWorkspace({ hostRepoRoot: REPO_ROOT, workspace });
+  }
+}
+
+function fingerprintSpec(spec: { acceptance: string[] } & object): string {
+  return createHash("sha256").update(JSON.stringify(spec)).digest("hex");
+}
+
 export async function runP03FanOutExperiment() {
+  const frozen = await resolveP03SpecOnce();
+  if (!frozen.ok) {
+    console.error(`frozen_spec: failed (${frozen.error})`);
+    return runFanOutExperiment({
+      frozenSpecFingerprint: null,
+      runTrial: async () => ({
+        fixtureApplied: false,
+        result: null,
+        error: frozen.error,
+        trialWallTimeMs: 0,
+      }),
+      scoreExpected: isExpectedP03Outcome,
+    });
+  }
+  console.log(`frozen_spec: executable fingerprint=${frozen.fingerprint}`);
   return runFanOutExperiment({
-    runTrial: (arm, runId) => executeP03FanOutTrial({ arm, runId }),
+    frozenSpecFingerprint: frozen.fingerprint,
+    runTrial: (arm, runId) =>
+      executeP03FanOutTrial({
+        arm,
+        runId,
+        admittedSpec: frozen.decision,
+        frozenSpecPhase: frozen.specPhase,
+      }),
     scoreExpected: isExpectedP03Outcome,
   });
 }
@@ -1880,7 +2005,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const ids = all ? [...TASK_IDS] : [taskId!];
+  const ids = all ? [...TASK_IDS] : taskId ? [taskId] : [];
   const results: HarnessRunResult[] = [];
 
   for (const id of ids) {

@@ -40,4 +40,17 @@ describe("task title mutation", () => {
     });
     assert.equal(patched.status, 404);
   });
+
+  it("returns 404 for an unknown task even when the title is invalid", () => {
+    const app = createApp();
+    assert.equal(
+      request(app, "PATCH", "/tasks/missing/title", { title: "   " }).status,
+      404,
+    );
+    assert.equal(request(app, "PATCH", "/tasks/missing/title", {}).status, 404);
+    assert.equal(
+      request(app, "PATCH", "/tasks/missing/title", { title: 1 }).status,
+      404,
+    );
+  });
 });

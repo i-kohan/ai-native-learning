@@ -92,7 +92,7 @@ import {
   summarizeAmbiguities,
   writeSpecArtifact,
 } from "./spec.ts";
-import { buildSpec } from "./spec-phase.ts";
+import { buildSpec, type SpecPhaseResult } from "./spec-phase.ts";
 import { Tracer } from "./trace.ts";
 import {
   runFinalVerification,
@@ -287,6 +287,12 @@ export async function runV1Harness(options: {
   fanOutSchedule?: FanOutSchedule;
   fanOutChildWorkspaces?: Record<string, Workspace>;
   prepareFanOutWorkspace?: (config: HarnessConfig) => void;
+  /**
+   * Experiment-only. Skip a live Spec model call and continue from this
+   * already-admitted executable Spec. Default runV1Harness still builds Spec.
+   */
+  admittedSpec?: Extract<SpecDecision, { status: "executable" }>;
+  frozenSpecPhase?: SpecPhaseResult;
   /** Benchmark-only hook. Production runs must not pass this. */
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
@@ -343,6 +349,8 @@ async function executeV1Harness(options: {
   fanOutSchedule?: FanOutSchedule;
   fanOutChildWorkspaces?: Record<string, Workspace>;
   prepareFanOutWorkspace?: (config: HarnessConfig) => void;
+  admittedSpec?: Extract<SpecDecision, { status: "executable" }>;
+  frozenSpecPhase?: SpecPhaseResult;
   afterImplementationEpisode?: () => void;
   workspace?: Workspace;
   architectureConstraints?: ArchitectureConstraint[];
@@ -500,6 +508,57 @@ async function executeV1Harness(options: {
         }
       : {}),
   });
+
+  if (options.admittedSpec) {
+    if (options.admittedSpec.status !== "executable") {
+      throw new Error(
+        "admittedSpec is experiment-only and must be executable.",
+      );
+    }
+    tracer.record("spec_phase_skipped", {
+      reason: "experiment_frozen_spec",
+      implementationStarted: false,
+    });
+    const specPhase = options.frozenSpecPhase
+      ? {
+          ...options.frozenSpecPhase,
+          decision: options.admittedSpec,
+          turns: 0,
+          modelCalls: 0,
+          toolCalls: 0,
+          durationMs: 0,
+          tokenUsage: null,
+        }
+      : emptyFrozenSpecPhase(options.admittedSpec);
+    return continueAfterAdmittedSpec({
+      config,
+      task,
+      runId,
+      tracer,
+      startedAt,
+      beforeSnapshot,
+      decision: options.admittedSpec,
+      specPhase,
+      contextMode,
+      conversationStateMode,
+      contextPreparation,
+      repositoryMap,
+      planningEnabled,
+      subagentsEnabled,
+      architectureConstraints: options.architectureConstraints,
+      bindReviewPlan: options.bindReviewPlan,
+      reviewUnitTemplates: options.reviewUnitTemplates,
+      bindFanOutPlan: options.bindFanOutPlan,
+      fanOutSchedule: options.fanOutSchedule,
+      fanOutChildWorkspaces: options.fanOutChildWorkspaces,
+      prepareFanOutWorkspace: options.prepareFanOutWorkspace,
+      afterImplementationEpisode: options.afterImplementationEpisode,
+      workspace,
+      durable,
+      workflow,
+      specSkipped: false,
+    });
+  }
 
   const specPhase = await buildSpec({
     config,
@@ -1109,8 +1168,7 @@ async function continueAfterAdmittedSpec(options: {
   let lastRetryDecision: RetryDecision | undefined;
   const skillLoads: SkillLoadRecord[] = collectedSkillLoads(implementation);
 
-  const fanOutBlocked =
-    fanOutEvidence !== null && fanOutEvidence.ok === false;
+  const fanOutBlocked = fanOutEvidence !== null && fanOutEvidence.ok === false;
   if (fanOutEvidence && fanOutEvidence.ok === false) {
     failureReason = fanOutFailureReason(fanOutEvidence);
     modelFinalResponse = fanOutFailureMessage(fanOutEvidence);
@@ -1154,9 +1212,7 @@ async function continueAfterAdmittedSpec(options: {
     verified !== null &&
     shouldStartReview(verified.finalVerificationPassed) &&
     verified.workflowStatus === "success";
-  const lastPassedVerification = canReview
-    ? verified.finalVerification
-    : null;
+  const lastPassedVerification = canReview ? verified.finalVerification : null;
 
   if (
     verified &&
@@ -3118,6 +3174,7 @@ function assertDurableModeSupported(options: {
   subagentsEnabled?: boolean;
   bindReviewPlan?: unknown;
   bindFanOutPlan?: unknown;
+  admittedSpec?: unknown;
 }): void {
   if (options.planningEnabled) {
     throw new WorkflowError(
@@ -3141,6 +3198,12 @@ function assertDurableModeSupported(options: {
     throw new WorkflowError(
       "unsupported_mode",
       "Durable execution does not support FanOutPlan.",
+    );
+  }
+  if (options.admittedSpec) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "Durable execution does not support pre-admitted Spec injection.",
     );
   }
 }
@@ -3685,6 +3748,27 @@ function resumedImplementationStub(
 
 function pathMismatch(left: string, right: string): boolean {
   return path.resolve(left) !== path.resolve(right);
+}
+
+function emptyFrozenSpecPhase(
+  decision: Extract<SpecDecision, { status: "executable" }>,
+): SpecPhaseResult {
+  return {
+    decision,
+    turns: 0,
+    modelCalls: 0,
+    toolCalls: 0,
+    modelFinalResponse: "",
+    durationMs: 0,
+    inspectedPaths: { readFiles: [], listedPaths: [] },
+    discovery: {
+      listFilesCalls: 0,
+      readFileCalls: 0,
+      readFilePaths: [],
+      listedPaths: [],
+    },
+    tokenUsage: null,
+  };
 }
 
 function emptyPlannerPhase(): PlannerPhaseResult {

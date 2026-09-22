@@ -4,6 +4,23 @@ import path from "node:path";
 
 export type FileSnapshot = Map<string, string>;
 
+export function fingerprintSnapshot(snapshot: FileSnapshot): string {
+  const hash = createHash("sha256");
+  for (const [file, content] of [...snapshot.entries()].sort(
+    ([left], [right]) => left.localeCompare(right),
+  )) {
+    hash.update(file);
+    hash.update("\0");
+    hash.update(content);
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
+export function fingerprintDirectory(root: string): string {
+  return fingerprintSnapshot(snapshotDirectory(root));
+}
+
 export function snapshotDirectory(root: string): FileSnapshot {
   const snapshot: FileSnapshot = new Map();
   walk(root, root, snapshot);
