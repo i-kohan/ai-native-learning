@@ -2,7 +2,7 @@
 
 Практический журнал Module 22. Conceptual material: [`theory.md`](./theory.md). Принятие — Topic Chat / Master.
 
-**Status:** implemented + PAR01 recorded. **Not closed.** Default remains Spec → one Worker.
+**Status:** ✅ CLOSED by Topic Chat on 2026-09-23. PAR01 recorded; default remains Spec → one Worker.
 
 ## Что построили
 
@@ -93,6 +93,6 @@ Evidence: `traces/fanout-m22-par01-2026-09-22T21-10-55-910Z.txt`
 
 PAR01 timing начинается с setup конкретного scheduling trial и не включает live Spec generation: Spec был один раз разрешён до 3×2 и затем переиспользован неизменно, чтобы не смешивать Spec variance с эффектом scheduling. Для production economics Spec/planning overhead всё равно нужно учитывать на более широком e2e уровне.
 
-## Open
+## Closure
 
-Topic Chat / Master владеют закрытием. Не принимать fan-out в default с этого P03.
+Topic Chat closed Module 22 on 2026-09-23 after the final understanding check. See [`closure.md`](./closure.md). Do not adopt fan-out by default from this P03 result; revisit only for semantically independent work with low integration coupling and measured end-to-end benefit.
