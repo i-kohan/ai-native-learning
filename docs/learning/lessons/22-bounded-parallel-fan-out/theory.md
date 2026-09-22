@@ -4,7 +4,7 @@
 
 > Can a frozen two-unit split of genuinely independent work reduce **full end-to-end wall time** when scheduled in parallel, without changing product semantics or the default Spec → one Worker path?
 
-Optimization target: wall-clock of the whole trial (setup → Spec → children → fan-in → final VERIFY → REVIEW).
+Optimization target for PAR01: wall-clock of each **scheduling trial** (workspace/fixture setup → children + scoped VERIFY → fan-in → final VERIFY → REVIEW). The executable Spec is resolved once before the 3×2 comparison and reused unchanged, so Spec-generation variance is intentionally outside the per-trial timing window. In a production decision, one-time planning/spec overhead would still belong in broader end-to-end economics.
 
 Not: shorter child interval alone, more agents, or “files were edited in parallel.”
 
@@ -17,7 +17,7 @@ schedule                 = sequential | parallel   (clock only)
 child worktree           = isolated HOW for one unit, same exact base SHA
 fan-in                   = deterministic Git 3-way of child source deltas
 file overlap             ≠ conflict
-incompatible hunks       = conflict
+non-composable deltas      = integration conflict
 ```
 
 FanOutPlan is not Spec, not ReviewPlan, and not a second product contract.
@@ -45,7 +45,7 @@ Child success is harness VERIFY, not a Worker claim. Parallel settles both child
 ## 3. Boundaries
 
 - Default architecture stays Spec → one Worker.
-- Units must be independent (`dependsOn` empty). `maxParallelWorkers` is 2.
+- Admission requires `dependsOn` empty and exactly two units, but that only proves **declared** independence. Semantic independence is a workload/design judgment; the harness does not infer it automatically. `maxParallelWorkers` is 2.
 - Integration order is a frozen permutation, not an LLM merge.
 - Write-set overlap is allowed. Fail only on real 3-way conflict or lost changes.
 - Spec gate still wins: `needs_human_judgment` never starts children.
@@ -62,13 +62,13 @@ Child success is harness VERIFY, not a Worker claim. Parallel settles both child
 
 1. Shared acceptance (both units get the whole Spec list) unblocked bind; scope stayed intent + test files.
 2. Syncing index to disk before apply removed false `does not match index` failures.
-3. P03 title + delete is product-independent and file-coupled: children often PASS, then conflict in `task-service.ts`.
+3. P03 title + delete is semantically independent but integration-coupled: children PASS their scoped VERIFY, yet their source deltas frequently cannot be composed cleanly in `task-service.ts`.
 4. First PAR01 had a fresh Spec per trial; the next froze Spec but still resolved HEAD per trial. Current PAR01: one frozen SHA + one Spec, sequential 0/3, parallel 0/3, wall ~56s vs ~38s, parallel more expensive → `not_worth_current_workload`.
 
 ## 6. Takeaways
 
 - One Spec, two workers, one schedule seam. Not two Specs.
 - Schedule changes the clock, not the merge rule (always A, then B).
-- File overlap is normal; hunk conflict is the stop.
+- File overlap is normal; the stop condition is a real deterministic integration conflict or lost change, not overlap by itself.
 - Mechanism working ≠ adopt it.
 - This P03 workload does not justify making fan-out the default.
