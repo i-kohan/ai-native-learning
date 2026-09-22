@@ -2126,4 +2126,4 @@ All six trials used the same frozen SHA and started both children. Sequential 3/
 
 **`not_worth_current_workload`.** Wall time now meets the 20% bar, but correctness is 0/6 and cost regresses. Default unchanged.
 
-Module 22 experiment recorded; Topic Chat / Master own formal closure.
+Module 22 experiment recorded and closed by Topic Chat on 2026-09-23. PAR01 remains workload-bounded evidence; default remains Spec → one Worker.
