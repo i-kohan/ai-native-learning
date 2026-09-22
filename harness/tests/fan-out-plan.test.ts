@@ -520,6 +520,75 @@ describe("PAR01 trial validity", () => {
     }
   });
 
+  it("reports final VERIFY as skipped when fan-in stops before the verifier", () => {
+    const metrics = metricsFromP03Run(
+      {
+        workflowStatus: "failure",
+        failureReason: "fan_in_conflict",
+        specDecision: { status: "executable", spec: sampleSpec([]) },
+        implementationStarted: true,
+        finalVerificationPassed: false,
+        finalVerification: null,
+        finalReviewerOutcome: "skipped",
+        repairAttempts: 0,
+        reviewRepairAttempts: 0,
+        modelCalls: 2,
+        toolCalls: 4,
+        changedFiles: [],
+        durationMs: 100,
+        contextMetrics: { tokenUsage: null },
+        verifications: [],
+        reviews: [],
+        fanOut: {
+          schedule: "parallel",
+          children: [
+            {
+              unitId: "A",
+              durationMs: 10,
+              modelCalls: 1,
+              toolCalls: 1,
+              tokenUsage: null,
+              changedFiles: [],
+              verificationPassed: true,
+              repairAttempts: 0,
+            },
+            {
+              unitId: "B",
+              durationMs: 10,
+              modelCalls: 1,
+              toolCalls: 1,
+              tokenUsage: null,
+              changedFiles: [],
+              verificationPassed: true,
+              repairAttempts: 0,
+            },
+          ],
+          fanIn: {
+            ok: false,
+            durationMs: 5,
+            conflict: {
+              failedUnitId: "B",
+              evidence: "merge conflict",
+              appliedUnitIds: ["A"],
+            },
+            lostChanges: [],
+          },
+          writeSetOverlap: [],
+          childDurationSumMs: 20,
+          childIntervalMs: 10,
+        },
+      } as HarnessRunResult,
+      false,
+      100,
+      "fp",
+      SHA,
+    );
+
+    assert.equal(metrics.finalVerification, "skipped");
+    assert.equal(metrics.finalVerifyDurationMs, null);
+    assert.equal(metrics.finalReviewerOutcome, "skipped");
+  });
+
   it("measures final VERIFY and REVIEW from real phase durations", () => {
     const metrics = metricsFromP03Run(
       {
