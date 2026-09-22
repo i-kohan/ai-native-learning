@@ -477,8 +477,8 @@ export function metricsFromP03Run(
   return {
     expectedOutcomeMet,
     workflowStatus: result.workflowStatus,
-    finalVerification: result.implementationStarted
-      ? result.finalVerificationPassed
+    finalVerification: result.finalVerification
+      ? result.finalVerification.passed
         ? "PASS"
         : "FAIL"
       : "skipped",
