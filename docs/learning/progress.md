@@ -25,7 +25,7 @@ Completed modules:
 19. ✅ 19 — Orchestration as Distributed Systems (closed by Topic Chat on 2026-09-18)
 20. ✅ 20 — GitHub / CI Integration (closed by Master on 2026-09-20; live GHI01 + CI01 PASS)
 21. ⏭ 21 — Optional Browser QA (skipped / not applicable on current non-UI capstone; revisit only for a real UI workload)
-22. ✅ 22 — Bounded Parallel Fan-Out (closed by Topic Chat on 2026-09-23; PAR01 = `not_worth_current_workload`)
+22. ✅ 22 — Bounded Parallel Fan-Out (closed by Master on 2026-09-23; PAR01 = `not_worth_current_workload`)
 
 Next module: **23 — MCP Deeper Dive**.
 
