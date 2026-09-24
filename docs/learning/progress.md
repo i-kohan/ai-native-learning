@@ -27,7 +27,7 @@ Completed modules:
 21. ⏭ 21 — Optional Browser QA (skipped / not applicable on current non-UI capstone; revisit only for a real UI workload)
 22. ✅ 22 — Bounded Parallel Fan-Out (closed by Master on 2026-09-23; PAR01 = `not_worth_current_workload`)
 
-Next module: **23 — MCP Deeper Dive** (MCP01 implemented; not closed).
+Next module: **23 — MCP Deeper Dive** (MCP01 implementation reviewed PASS; pending final understanding check / closure).
 
 ---
 
@@ -51,6 +51,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - opt-in single-machine workflow lease + fencing token for authoritative WorkflowState writes (Module 19). Default `runV1Harness()` remains in-memory unless `durable` is passed. Experimental Planner/Subagent/ReviewPlan paths are explicitly unsupported on the durable path;
 - opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence is recorded; formal closure remains with Topic Chat / Master.
 - optional bounded fan-out behind an explicit `FanOutPlan` binder (Module 22). Same exact-base worktrees, schedule `sequential | parallel`, Git 3-way fan-in. Default remains Spec → one Worker; corrected PAR01 on P03 (one frozen Spec, 3×2 valid scheduling trials) was `not_worth_current_workload`.
+- optional MCP repository-read mechanism behind `mcpRepoReadEnabled` (Module 23). Implementation Worker can replace direct `read_file` with Host-admitted `repo_read_file` over a real local stdio MCP boundary. Default remains direct `read_file`; MCP does not own Spec, writes, VERIFY, REVIEW, retry, or workflow success.
 
 Conceptual default flow:
 
@@ -74,7 +75,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 23 — MCP Deeper Dive
 
-**Status:** implemented, pending Topic Chat review. Not completed. MCP01 **PASS** as a mechanism probe. Default harness path unchanged (`mcpRepoReadEnabled` off).
+**Status:** implementation reviewed by Topic Chat; MCP01 **PASS** as a mechanism probe. Pending final understanding check / formal closure. Default harness path unchanged (`mcpRepoReadEnabled` off).
 
 Theory:
 
@@ -101,7 +102,7 @@ The model supplies `path` only. `MCP_ALLOWED_ROOT` is host configuration. `resol
 
 ## Important design decisions
 
-Host allowlist is separate from `listTools()`. A discovered `repo_read_file` is not executable when the allowlist excludes it. Schema admission also rejects a matching name that exposes root or credential arguments.
+Host allowlist is separate from `listTools()`. A discovered `repo_read_file` is not executable when the allowlist excludes it. Schema admission requires the expected narrow `path: string` contract with `additionalProperties: false` and rejects model-controlled root or credential arguments.
 
 The MCP child gets the SDK safe/default inherited environment plus `MCP_ALLOWED_ROOT`. It does not receive the parent environment, including `OPENAI_API_KEY`.
 
@@ -113,9 +114,11 @@ Harness unit tests: **287 passed**.
 
 MCP01 DEV run (T01, variant, one trial): implementation called `repo_read_file` twice and `write_file` once; no implementation `read_file`. VERIFY PASS. Independent REVIEW `pass`. Evidence: `docs/learning/lessons/23-mcp/traces/mcp01-t01-2026-09-24T09-05-18-835Z.txt`.
 
-## Failures / open questions
+## Review / adoption decision
 
-Topic Chat has not reviewed the implementation. This does not show that MCP improves model quality. Default reads stay direct until that review.
+Topic Chat implementation review: **PASS**. No architecture or methodology blockers remain. This does not show that MCP improves model quality.
+
+Default repository reads stay direct: one local tightly-coupled read does not justify MCP process/protocol/discovery overhead. Keep MCP as an opt-in mechanism/pattern for future reusable or externally owned capability boundaries. Formal Module 23 closure is pending the final understanding check.
 
 ---
 
