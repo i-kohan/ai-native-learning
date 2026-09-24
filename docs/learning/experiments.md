@@ -2183,4 +2183,20 @@ Spec still used direct `read_file`. Repair was not needed.
 
 **PASS.** Real current-protocol MCP path, Host admission, closed failures, no model control of the root, no parent API key on the child, one Worker consumed an MCP read, writes stayed direct, VERIFY and independent REVIEW stayed authoritative.
 
-Not a quality claim. Default read path stays direct until Topic Chat reviews the module. Module 23 is not marked complete.
+### Topic Chat review / adoption decision
+
+Implementation review after the MCP01 cleanup: **PASS**. No architecture or methodology blockers remain.
+
+This is not a quality claim. The current local repository read stays direct by default because MCP adds process/protocol/discovery overhead without solving a present interoperability problem.
+
+Adoption rule:
+
+```text
+internal tightly-coupled capability
+→ prefer direct function / SDK
+
+reusable or externally owned capability boundary
+→ MCP is a strong candidate
+```
+
+Module 23 remains open only for the final understanding check / formal closure.
