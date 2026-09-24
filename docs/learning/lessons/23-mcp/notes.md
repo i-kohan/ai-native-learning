@@ -1,6 +1,6 @@
 # 23 — MCP01 notes
 
-Status: implementation reviewed by Topic Chat; MCP01 **PASS**. Module 23 is pending the final understanding check and is not yet closed.
+Status: **✅ COMPLETED — closed by Topic Chat on 2026-09-24.** MCP01 **PASS**. Default repository reads remain direct.
 
 ## Purpose
 
@@ -261,3 +261,8 @@ MCP01 intentionally did not add:
 - generic GitHub MCP integration;
 - whole-harness MCP conversion;
 - 3×3 qualification.
+
+
+## Closure
+
+Final understanding check passed. Two terminology corrections: MCP standardizes the broader integration/protocol surface, not Tools alone; and schema validity proves request shape, not safety/authorization. See `docs/learning/lessons/23-mcp/closure.md`.
