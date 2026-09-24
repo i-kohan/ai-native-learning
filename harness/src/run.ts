@@ -211,6 +211,7 @@ export type HarnessRunResult = {
   plannerToolCalls: number;
   plannerDurationMs: number;
   subagentsEnabled: boolean;
+  mcpRepoReadEnabled?: boolean;
   reviewPlan: ReviewPlan | null;
   reviewUnits: ReviewUnitReport[];
   reviewabilityReportPath: string | null;
@@ -273,6 +274,11 @@ export async function runV1Harness(options: {
   planningEnabled?: boolean;
   /** Experiment-only. Default architecture does not expose Worker subagents. */
   subagentsEnabled?: boolean;
+  /**
+   * Experiment-only. Implementation Worker repository reads go through
+   * admitted MCP repo_read_file. Repair and review stay on direct tools.
+   */
+  mcpRepoReadEnabled?: boolean;
   /**
    * Experiment-only advisory ReviewPlan. Default architecture remains one Worker.
    * The binder is harness-owned and must not be an LLM Review Planner.
@@ -343,6 +349,7 @@ async function executeV1Harness(options: {
   conversationStateMode?: ConversationStateMode;
   planningEnabled?: boolean;
   subagentsEnabled?: boolean;
+  mcpRepoReadEnabled?: boolean;
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
   reviewUnitTemplates?: ChangeUnitTemplate[];
   bindFanOutPlan?: (spec: Spec) => ParseFanOutPlanResult;
@@ -399,6 +406,7 @@ async function executeV1Harness(options: {
   const subagentsEnabled = shouldEnableSubagents(
     options.subagentsEnabled === true,
   );
+  const mcpRepoReadEnabled = options.mcpRepoReadEnabled === true;
   const conversationStateMode: ConversationStateMode =
     options.conversationStateMode ?? "manual";
   const startedAt = Date.now();
@@ -441,6 +449,7 @@ async function executeV1Harness(options: {
       conversationStateMode,
       planningEnabled,
       subagentsEnabled,
+      mcpRepoReadEnabled,
       architectureConstraints: options.architectureConstraints,
       bindReviewPlan: options.bindReviewPlan,
       reviewUnitTemplates: options.reviewUnitTemplates,
@@ -545,6 +554,7 @@ async function executeV1Harness(options: {
       repositoryMap,
       planningEnabled,
       subagentsEnabled,
+      mcpRepoReadEnabled,
       architectureConstraints: options.architectureConstraints,
       bindReviewPlan: options.bindReviewPlan,
       reviewUnitTemplates: options.reviewUnitTemplates,
@@ -586,6 +596,7 @@ async function executeV1Harness(options: {
       plannerPhase: emptyPlannerPhase(),
       planningEnabled,
       subagentsEnabled,
+      mcpRepoReadEnabled,
       contextMode,
       conversationStateMode,
       contextPreparation,
@@ -642,6 +653,7 @@ async function executeV1Harness(options: {
       plannerPhase: emptyPlannerPhase(),
       planningEnabled,
       subagentsEnabled,
+      mcpRepoReadEnabled,
       contextMode,
       conversationStateMode,
       contextPreparation,
@@ -712,6 +724,7 @@ async function executeV1Harness(options: {
     repositoryMap,
     planningEnabled,
     subagentsEnabled,
+    mcpRepoReadEnabled,
     architectureConstraints: options.architectureConstraints,
     bindReviewPlan: options.bindReviewPlan,
     reviewUnitTemplates: options.reviewUnitTemplates,
@@ -749,6 +762,7 @@ async function continueAfterAdmittedSpec(options: {
   repositoryMap?: ReusableContext["repositoryMap"];
   planningEnabled: boolean;
   subagentsEnabled: boolean;
+  mcpRepoReadEnabled: boolean;
   architectureConstraints?: ArchitectureConstraint[];
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
   reviewUnitTemplates?: ChangeUnitTemplate[];
@@ -773,6 +787,7 @@ async function continueAfterAdmittedSpec(options: {
     conversationStateMode,
     planningEnabled,
     subagentsEnabled,
+    mcpRepoReadEnabled,
     durable,
   } = options;
   let { repositoryMap } = options;
@@ -811,6 +826,7 @@ async function continueAfterAdmittedSpec(options: {
       conversationStateMode,
       planningEnabled,
       subagentsEnabled,
+      mcpRepoReadEnabled,
       repoRoot: config.repoRoot,
       targetAppRoot: config.targetAppRoot,
       targetSrcRoot: config.targetSrcRoot,
@@ -973,6 +989,11 @@ async function continueAfterAdmittedSpec(options: {
   }
 
   let fanOutPlan: FanOutPlan | null = null;
+  if (mcpRepoReadEnabled && (options.bindFanOutPlan || options.bindReviewPlan)) {
+    throw new Error(
+      "mcpRepoReadEnabled is only supported for the single implementation Worker.",
+    );
+  }
   if (options.bindFanOutPlan && options.bindReviewPlan) {
     return abortInvalidFanOutPlan({
       task,
@@ -1137,6 +1158,7 @@ async function continueAfterAdmittedSpec(options: {
       phase: "implementation",
       conversationStateMode,
       subagentsEnabled,
+      mcpRepoReadEnabled,
     });
   }
 
@@ -1352,6 +1374,7 @@ async function continueAfterAdmittedSpec(options: {
     plannerPhase,
     planningEnabled,
     subagentsEnabled,
+    mcpRepoReadEnabled,
     reviewPlan,
     reviewUnits,
     reviewabilityReportPath,
@@ -1411,6 +1434,7 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(`spec_decision: ${result.specDecision?.status ?? "(none)"}`);
   console.log(`planning_enabled: ${result.planningEnabled}`);
   console.log(`subagents_enabled: ${result.subagentsEnabled}`);
+  console.log(`mcp_repo_read_enabled: ${result.mcpRepoReadEnabled === true}`);
   console.log(
     `review_plan: ${result.reviewPlan ? result.reviewPlan.decision : "(none)"}`,
   );
@@ -2791,6 +2815,7 @@ function baseResult(fields: {
   };
   planningEnabled: boolean;
   subagentsEnabled: boolean;
+  mcpRepoReadEnabled?: boolean;
   reviewPlan?: ReviewPlan | null;
   reviewUnits?: ReviewUnitReport[];
   reviewabilityReportPath?: string | null;
@@ -2942,6 +2967,7 @@ function baseResult(fields: {
     plannerToolCalls: fields.plannerPhase.toolCalls,
     plannerDurationMs: fields.plannerPhase.durationMs,
     subagentsEnabled: fields.subagentsEnabled,
+    mcpRepoReadEnabled: fields.mcpRepoReadEnabled === true,
     reviewPlan: fields.reviewPlan ?? null,
     reviewUnits: fields.reviewUnits ?? [],
     reviewabilityReportPath: fields.reviewabilityReportPath ?? null,
@@ -3172,6 +3198,7 @@ async function finishRun(
 function assertDurableModeSupported(options: {
   planningEnabled?: boolean;
   subagentsEnabled?: boolean;
+  mcpRepoReadEnabled?: boolean;
   bindReviewPlan?: unknown;
   bindFanOutPlan?: unknown;
   admittedSpec?: unknown;
@@ -3186,6 +3213,12 @@ function assertDurableModeSupported(options: {
     throw new WorkflowError(
       "unsupported_mode",
       "Durable execution does not support subagentsEnabled.",
+    );
+  }
+  if (options.mcpRepoReadEnabled) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "Durable execution does not support mcpRepoReadEnabled.",
     );
   }
   if (options.bindReviewPlan) {

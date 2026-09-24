@@ -194,7 +194,10 @@ export class DiscoveryTracker {
     if (toolName === "list_files" && pathArg) {
       this.listFilesCalls += 1;
       this.listedPaths.push(normalizeRepoPath(pathArg));
-    } else if (toolName === "read_file" && pathArg) {
+    } else if (
+      (toolName === "read_file" || toolName === "repo_read_file") &&
+      pathArg
+    ) {
       this.readFileCalls += 1;
       this.readFilePaths.push(normalizeRepoPath(pathArg));
     }
@@ -206,7 +209,9 @@ export class DiscoveryTracker {
       }
       if (
         !this.implFirstWriteSeen &&
-        (toolName === "list_files" || toolName === "read_file")
+        (toolName === "list_files" ||
+          toolName === "read_file" ||
+          toolName === "repo_read_file")
       ) {
         this.implNavCallsSeen += 1;
         this.implNavCallsBeforeFirstWrite = this.implNavCallsSeen;

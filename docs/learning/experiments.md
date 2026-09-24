@@ -2127,3 +2127,60 @@ All six trials used the same frozen SHA and started both children. Sequential 3/
 **`not_worth_current_workload`.** Wall time now meets the 20% bar, but correctness is 0/6 and cost regresses. Default unchanged.
 
 Module 22 experiment recorded and closed by Topic Chat on 2026-09-23. PAR01 remains workload-bounded evidence; default remains Spec → one Worker.
+
+---
+
+## Module 23 — MCP01 bounded repository read
+
+### Hypothesis
+
+The existing harness can consume one repository-read capability through a real MCP Client ↔ Server boundary without moving Spec, VERIFY, REVIEW, repair, writes, or workspace ownership onto MCP.
+
+This is a mechanism probe, not a quality comparison and not a harness migration.
+
+### Variant
+
+Default remains direct `read_file`.
+
+Experiment-only `mcpRepoReadEnabled` on the single implementation Worker:
+
+```text
+direct read_file        → not exposed
+admitted repo_read_file → exposed
+list_files / write_file / run_command → unchanged
+```
+
+Client pin `2026-07-28`. Server `serveStdio(..., { legacy: "reject" })`. Allowed root is `MCP_ALLOWED_ROOT`, checked with `resolveWithin()`.
+
+### Deterministic contract
+
+`npm test`: **287 passed**.
+
+Covered: real stdio discovery and read; traversal and absolute paths fail closed; empty Host allowlist discovers `repo_read_file` and denies the call; schema requires string `path` and rejects `allowedRoot`; MCP child does not receive `OPENAI_API_KEY`.
+
+### Bounded DEV run
+
+Command: `npm run benchmark:mcp01`
+
+Task: T01. Context: `variant`. One trial. No 3×3.
+
+Evidence: `docs/learning/lessons/23-mcp/traces/mcp01-t01-2026-09-24T09-05-18-835Z.txt`
+
+| Check | Result |
+| ----- | ------ |
+| protocol | `2026-07-28` / modern |
+| implementation `repo_read_file` | 2 |
+| implementation `read_file` | 0 |
+| implementation `write_file` | 1 |
+| VERIFY | PASS |
+| REVIEW | pass (1 attempt) |
+| workflow | success |
+| wall | ~34s |
+
+Spec still used direct `read_file`. Repair was not needed.
+
+### MCP01 rule
+
+**PASS.** Real current-protocol MCP path, Host admission, closed failures, no model control of the root, no parent API key on the child, one Worker consumed an MCP read, writes stayed direct, VERIFY and independent REVIEW stayed authoritative.
+
+Not a quality claim. Default read path stays direct until Topic Chat reviews the module. Module 23 is not marked complete.

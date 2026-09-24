@@ -27,7 +27,7 @@ Completed modules:
 21. ⏭ 21 — Optional Browser QA (skipped / not applicable on current non-UI capstone; revisit only for a real UI workload)
 22. ✅ 22 — Bounded Parallel Fan-Out (closed by Master on 2026-09-23; PAR01 = `not_worth_current_workload`)
 
-Next module: **23 — MCP Deeper Dive**.
+Next module: **23 — MCP Deeper Dive** (MCP01 implemented; not closed).
 
 ---
 
@@ -69,6 +69,53 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 23 — MCP Deeper Dive
+
+**Status:** implemented, pending Topic Chat review. Not completed. MCP01 **PASS** as a mechanism probe. Default harness path unchanged (`mcpRepoReadEnabled` off).
+
+Theory:
+
+`docs/learning/lessons/23-mcp/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/23-mcp/notes.md`
+
+## What was implemented
+
+Opt-in bounded repository read across a real MCP stdio boundary:
+
+```text
+Implementation Worker
+→ Host admission
+→ MCP Client (pin 2026-07-28)
+→ stdio
+→ local server
+→ repo_read_file(path)
+```
+
+The model supplies `path` only. `MCP_ALLOWED_ROOT` is host configuration. `resolveWithin()` remains the containment check. Writes, VERIFY, REVIEW, repair, and workspace ownership stay on the existing path.
+
+## Important design decisions
+
+Host allowlist is separate from `listTools()`. A discovered `repo_read_file` is not executable when the allowlist excludes it. Schema admission also rejects a matching name that exposes root or credential arguments.
+
+The MCP child gets the SDK default inherited environment plus `MCP_ALLOWED_ROOT`. It does not receive the parent environment, including `OPENAI_API_KEY`.
+
+Repair and review-repair are not migrated.
+
+## Current result
+
+Harness unit tests: **287 passed**.
+
+MCP01 DEV run (T01, variant, one trial): implementation called `repo_read_file` twice and `write_file` once; no implementation `read_file`. VERIFY PASS. Independent REVIEW `pass`. Evidence: `docs/learning/lessons/23-mcp/traces/mcp01-t01-2026-09-24T09-05-18-835Z.txt`.
+
+## Failures / open questions
+
+Topic Chat has not reviewed the implementation. This does not show that MCP improves model quality. Default reads stay direct until that review.
 
 ---
 

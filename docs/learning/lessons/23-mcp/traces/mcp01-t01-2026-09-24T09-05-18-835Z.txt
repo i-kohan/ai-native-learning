@@ -1,0 +1,18 @@
+MCP01 bounded DEV probe
+task: T01
+context: variant
+workflow_status: success
+spec: executable
+implementation_started: true
+mcp_repo_read_enabled: true
+protocol: 2026-07-28
+admitted_tools: repo_read_file
+replaced_direct_tools: read_file
+implementation_repo_read_file_calls: 2
+implementation_read_file_calls: 0
+implementation_write_file_calls: 1
+final_verification: PASS
+review_outcome: pass
+review_attempts: 1
+expected_t01: true
+trace: /Users/i.kohanvs/Desktop/ai-native/traces/T01-variant-manual-2026-09-24T09-04-43-810Z.jsonl

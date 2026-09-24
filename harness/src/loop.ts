@@ -31,6 +31,11 @@ import {
   runResearchSubagent,
   type ResearchDelegationRecord,
 } from "./research-subagent.ts";
+import {
+  openRepoReadSession,
+  REPO_READ_TOOL_NAME,
+  type RepoReadSession,
+} from "./mcp/repo-read-host.ts";
 import { executeTool } from "./tools.ts";
 import { Tracer } from "./trace.ts";
 import { diffSnapshots, snapshotDirectory, type FileSnapshot } from "./diff.ts";
@@ -125,6 +130,11 @@ export async function runAgentLoop(options: {
   conversationStateMode?: ConversationStateMode;
   /** Experiment-only Worker capability. Default architecture does not expose it. */
   subagentsEnabled?: boolean;
+  /**
+   * Experiment-only. Implementation Worker reads files through admitted MCP
+   * repo_read_file instead of direct read_file. Default remains direct tools.
+   */
+  mcpRepoReadEnabled?: boolean;
   /** Test injection only. Production uses the OpenAI Responses client. */
   responsesCreate?: ResponsesCreateFn;
 }): Promise<AgentRunResult> {
@@ -135,6 +145,8 @@ export async function runAgentLoop(options: {
   const subagentsEnabled = shouldEnableSubagents(
     options.subagentsEnabled === true,
   );
+  const mcpRepoReadEnabled =
+    options.mcpRepoReadEnabled === true && phase === "implementation";
   const startedAt = Date.now();
   const nested = Boolean(options.tracer);
   const tracer = options.tracer ?? new Tracer(config.tracesDir, runId);
@@ -143,7 +155,8 @@ export async function runAgentLoop(options: {
   const discovery = new DiscoveryTracker();
   let tokenUsage: TokenUsageSummary | null = null;
   const selection = resolveModel(phase, config);
-  const tools = workerToolsForEpisode({ phase, subagentsEnabled });
+  let tools = workerToolsForEpisode({ phase, subagentsEnabled });
+  let mcpSession: RepoReadSession | null = null;
   const researchDelegations: ResearchDelegationRecord[] = [];
   let remainingDelegations =
     subagentsEnabled && phase === "implementation"
@@ -152,7 +165,11 @@ export async function runAgentLoop(options: {
 
   const createResponse =
     options.responsesCreate ?? defaultResponsesCreate(config.apiKey);
-  const instructions = episodeInstructions(phase, subagentsEnabled);
+  const instructions = episodeInstructions(
+    phase,
+    subagentsEnabled,
+    mcpRepoReadEnabled,
+  );
 
   const selectedSkillId = skillIdForPhase(phase);
   const loadedSkill = selectedSkillId
@@ -207,6 +224,29 @@ export async function runAgentLoop(options: {
   }
 
   try {
+    if (mcpRepoReadEnabled) {
+      mcpSession = await openRepoReadSession({
+        allowedRoot: config.targetAppRoot,
+      });
+      if (
+        mcpSession.tools.length !== 1 ||
+        mcpSession.tools[0]?.name !== REPO_READ_TOOL_NAME
+      ) {
+        throw new Error("MCP host admission did not expose repo_read_file.");
+      }
+      tools = workerToolsForEpisode({
+        phase,
+        subagentsEnabled,
+        mcpRepoReadTools: mcpSession.tools,
+      });
+      tracer.record("mcp_repo_read_admitted", {
+        protocolRevision: mcpSession.protocolRevision() ?? null,
+        protocolEra: mcpSession.protocolEra() ?? null,
+        admittedTools: mcpSession.tools.map((tool) => tool.name),
+        replacedDirectTools: ["read_file"],
+      });
+    }
+
     // Explicit agent loop: model → (tool → observation → model)* → final
     while (turns < config.maxTurns) {
       turns += 1;
@@ -311,6 +351,7 @@ export async function runAgentLoop(options: {
           config,
           remainingDelegations,
           subagentsEnabled,
+          mcpSession,
           name: call.name,
           argsJson: call.arguments,
           tracer,
@@ -325,6 +366,7 @@ export async function runAgentLoop(options: {
           result.ok &&
           (call.name === "list_files" ||
             call.name === "read_file" ||
+            call.name === "repo_read_file" ||
             call.name === "write_file")
         ) {
           discovery.record(call.name, call.arguments, "implementation");
@@ -373,6 +415,8 @@ export async function runAgentLoop(options: {
       { phase, message: modelFinalResponse },
       turns || undefined,
     );
+  } finally {
+    await mcpSession?.close();
   }
 
   const afterSnapshot = snapshotDirectory(config.targetSrcRoot);
@@ -536,6 +580,7 @@ export function buildResponsesRequest(options: {
 function episodeInstructions(
   phase: EpisodePhase,
   subagentsEnabled: boolean,
+  mcpRepoReadEnabled: boolean,
 ): string {
   if (phase === "repair") {
     return REPAIR_INSTRUCTIONS;
@@ -543,16 +588,20 @@ function episodeInstructions(
   if (phase === "review_repair") {
     return REVIEW_REPAIR_INSTRUCTIONS;
   }
-  if (subagentsEnabled) {
-    return `${AGENT_INSTRUCTIONS.trim()}\n${WORKER_RESEARCH_INSTRUCTIONS.trim()}\n`;
+  const base = subagentsEnabled
+    ? `${AGENT_INSTRUCTIONS.trim()}\n${WORKER_RESEARCH_INSTRUCTIONS.trim()}\n`
+    : AGENT_INSTRUCTIONS;
+  if (!mcpRepoReadEnabled) {
+    return base;
   }
-  return AGENT_INSTRUCTIONS;
+  return `${base.trim()}\nRead repository files with repo_read_file. Path is relative to target-app/. There is no read_file tool in this episode.\n`;
 }
 
 async function executeWorkerTool(options: {
   config: HarnessConfig;
   remainingDelegations: number;
   subagentsEnabled: boolean;
+  mcpSession: RepoReadSession | null;
   name: string;
   argsJson: string;
   tracer: Tracer;
@@ -563,6 +612,21 @@ async function executeWorkerTool(options: {
   output: string;
   delegation?: ResearchDelegationRecord;
 }> {
+  if (options.mcpSession && options.name === "read_file") {
+    return {
+      ok: false,
+      output: "read_file is not exposed for this episode. Use repo_read_file.",
+    };
+  }
+  if (options.name === REPO_READ_TOOL_NAME) {
+    if (!options.mcpSession) {
+      return {
+        ok: false,
+        output: "repo_read_file is not admitted for this episode.",
+      };
+    }
+    return options.mcpSession.call(options.name, options.argsJson);
+  }
   if (options.name !== "delegate_research") {
     return executeTool(options.config, options.name, options.argsJson);
   }

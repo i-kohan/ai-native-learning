@@ -22,5 +22,10 @@
     "benchmark:own01": "npm run benchmark:own01 --prefix harness",
     "benchmark:ghi01": "npm run benchmark:ghi01 --prefix harness",
     "benchmark:ci01": "npm run benchmark:ci01 --prefix harness"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.1.0",
+    "@modelcontextprotocol/server": "^2.1.0",
+    "zod": "^4.6.5"
   }
 }

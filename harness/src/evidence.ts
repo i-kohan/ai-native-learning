@@ -1,4 +1,5 @@
 import { formatSpecPhaseOrientation, type RepositoryMap } from "./context.ts";
+import type { ResponsesFunctionTool } from "./mcp/repo-read-host.ts";
 import { invalidWorkspaceRelativePath } from "./plan.ts";
 import { TOOL_DEFINITIONS } from "./tools.ts";
 
@@ -104,11 +105,19 @@ export function shouldEnableSubagents(subagentsEnabled: boolean): boolean {
 export function workerToolsForEpisode(options: {
   phase: "implementation" | "repair" | "review_repair";
   subagentsEnabled: boolean;
+  mcpRepoReadTools?: ResponsesFunctionTool[];
 }) {
-  if (options.subagentsEnabled && options.phase === "implementation") {
-    return [...TOOL_DEFINITIONS, DELEGATE_RESEARCH_TOOL];
+  const tools =
+    options.subagentsEnabled && options.phase === "implementation"
+      ? [...TOOL_DEFINITIONS, DELEGATE_RESEARCH_TOOL]
+      : [...TOOL_DEFINITIONS];
+  if (!options.mcpRepoReadTools || options.phase !== "implementation") {
+    return tools;
   }
-  return TOOL_DEFINITIONS;
+  return [
+    ...tools.filter((tool) => tool.name !== "read_file"),
+    ...options.mcpRepoReadTools,
+  ];
 }
 
 export function parseDelegateResearch(

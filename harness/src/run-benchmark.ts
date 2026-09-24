@@ -255,6 +255,7 @@ export function prepareBenchmark(
 
 export type BenchmarkRunOptions = {
   conversationStateMode?: ConversationStateMode;
+  mcpRepoReadEnabled?: boolean;
 };
 
 export async function runBenchmark(
@@ -290,6 +291,7 @@ export async function runBenchmark(
       contextMode,
       conversationStateMode,
       workspace,
+      mcpRepoReadEnabled: options.mcpRepoReadEnabled === true,
     });
 
     printHarnessResult(result);
