@@ -1,6 +1,6 @@
 # 23 — MCP Deeper Dive closure
 
-Status: **✅ COMPLETED — closed by Topic Chat on 2026-09-24.**
+Status: **✅ MASTER CLOSED on 2026-09-24.**
 
 ## Practical result
 
@@ -39,3 +39,34 @@ Module 23                    = CLOSED
 ```
 
 No further MCP work is required before returning to Master for next-module selection.
+
+
+## Master acceptance
+
+Master review confirmed the implementation and evidence:
+
+```text
+real stdio MCP Client ↔ Server boundary = yes
+2026-07-28 protocol revision            = pinned / negotiated
+tool discovery                          = real
+Host allowlist + strict schema admission= enforced
+model-controlled allowedRoot            = no
+parent OPENAI_API_KEY in MCP child       = no
+traversal / absolute path escape         = fail closed
+bounded T01 Worker MCP reads             = 2
+direct implementation read_file          = 0
+final VERIFY                             = PASS
+independent REVIEW                       = pass
+default local repo read                  = direct
+```
+
+The adoption decision is accepted:
+
+```text
+internal tightly-coupled capability → prefer direct function/SDK
+reusable/provider integration edge  → MCP is a candidate
+```
+
+MCP remains a capability/context integration boundary and does not acquire Spec, workflow, VERIFY, REVIEW, retry, or success authority.
+
+No remaining blocker for Module 23.
