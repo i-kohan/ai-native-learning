@@ -2156,7 +2156,7 @@ Client pin `2026-07-28`. Server `serveStdio(..., { legacy: "reject" })`. Allowed
 
 `npm test`: **287 passed**.
 
-Covered: real stdio discovery and read; traversal and absolute paths fail closed; empty Host allowlist discovers `repo_read_file` and denies the call; schema requires string `path` and rejects `allowedRoot`; MCP child does not receive `OPENAI_API_KEY`.
+Covered: real stdio discovery and read; traversal and absolute paths fail closed; empty Host allowlist discovers `repo_read_file` and denies the call; admission requires an object schema with plain string `path`, `additionalProperties: false`, and no model-controlled root/credential fields; MCP child does not receive `OPENAI_API_KEY`.
 
 ### Bounded DEV run
 
