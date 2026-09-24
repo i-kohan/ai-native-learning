@@ -2199,4 +2199,4 @@ reusable or externally owned capability boundary
 → MCP is a strong candidate
 ```
 
-Module 23 remains open only for the final understanding check / formal closure.
+Final understanding check passed on 2026-09-24. Topic Chat closed Module 23. Two terminology corrections were retained in the closure record: MCP standardizes a broader integration surface than Tools alone, and schema-valid does not imply safe/authorized.
