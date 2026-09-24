@@ -37,11 +37,13 @@ function createRepoReadServer(allowedRoot: string): McpServer {
     {
       description:
         "Read a UTF-8 text file inside the host-configured workspace. Path is relative. The model cannot choose the allowed root.",
-      inputSchema: z.object({
-        path: z
-          .string()
-          .describe("Relative path inside the allowed workspace root."),
-      }),
+      inputSchema: z
+        .object({
+          path: z
+            .string()
+            .describe("Relative path inside the allowed workspace root."),
+        })
+        .strict(),
     },
     async ({ path: relativePath }) => readRepoFile(allowedRoot, relativePath),
   );

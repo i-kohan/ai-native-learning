@@ -35,12 +35,12 @@ Spec, VERIFY, REVIEW, repair, writes, and workspace ownership stay on the existi
 
 - One tool. The model sends `path` only.
 - No HTTP, OAuth, prompts, resources, sampling, roots, or write tools.
-- The child environment is the SDK default inherited environment plus `MCP_ALLOWED_ROOT`. It does not receive the parent `process.env`, including `OPENAI_API_KEY`.
+- The child environment is the SDK safe/default inherited environment plus `MCP_ALLOWED_ROOT`. It does not receive the parent `process.env`, including `OPENAI_API_KEY`.
 - An empty Host allowlist discovers the tool and still refuses to call it.
 
 ## 4. Failures / trade-offs
 
-- A matching tool name is not enough. Admission also requires a string `path` and rejects model-controlled root or credential fields.
+- A matching tool name is not enough. Admission requires `type: object`, a plain string `path`, `additionalProperties: false`, and no model-controlled root or credential fields.
 - Protocol portability costs a process and a schema. It does not improve task quality by itself.
 - Repair and review still use direct `read_file`. That is intentional: MCP01 does not migrate the harness.
 

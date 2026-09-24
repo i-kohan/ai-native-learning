@@ -103,7 +103,7 @@ The model supplies `path` only. `MCP_ALLOWED_ROOT` is host configuration. `resol
 
 Host allowlist is separate from `listTools()`. A discovered `repo_read_file` is not executable when the allowlist excludes it. Schema admission also rejects a matching name that exposes root or credential arguments.
 
-The MCP child gets the SDK default inherited environment plus `MCP_ALLOWED_ROOT`. It does not receive the parent environment, including `OPENAI_API_KEY`.
+The MCP child gets the SDK safe/default inherited environment plus `MCP_ALLOWED_ROOT`. It does not receive the parent environment, including `OPENAI_API_KEY`.
 
 Repair and review-repair are not migrated.
 

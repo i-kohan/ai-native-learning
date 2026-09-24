@@ -1,7 +1,10 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/client";
-import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import {
+  getDefaultEnvironment,
+  StdioClientTransport,
+} from "@modelcontextprotocol/client/stdio";
 
 export const MCP_PROTOCOL_REVISION = "2026-07-28";
 export const REPO_READ_TOOL_NAME = "repo_read_file";
@@ -66,6 +69,7 @@ export async function openRepoReadSession(options: {
     cwd: harnessDir,
     stderr: "pipe",
     env: {
+      ...getDefaultEnvironment(),
       [MCP_ALLOWED_ROOT_ENV]: options.allowedRoot,
     },
   });
@@ -223,8 +227,8 @@ function repoReadSchemaError(schema: Record<string, unknown>): string | null {
   if (forbidden.length > 0) {
     return `schema_exposes_${forbidden.join("_")}`;
   }
-  if (schema.additionalProperties === true) {
-    return "schema_allows_arbitrary_arguments";
+  if (schema.additionalProperties !== false) {
+    return "schema_additional_properties_not_false";
   }
   const pathSchema = props.path;
   if (
@@ -234,11 +238,7 @@ function repoReadSchemaError(schema: Record<string, unknown>): string | null {
   ) {
     return "schema_missing_path";
   }
-  const pathType = (pathSchema as { type?: unknown }).type;
-  const pathIsString =
-    pathType === "string" ||
-    (Array.isArray(pathType) && pathType.includes("string"));
-  if (!pathIsString) {
+  if ((pathSchema as { type?: unknown }).type !== "string") {
     return "schema_path_not_string";
   }
   const required = schema.required;

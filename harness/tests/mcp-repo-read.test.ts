@@ -16,6 +16,24 @@ import {
   type DiscoveredMcpTool,
 } from "../src/mcp/repo-read-host.ts";
 
+function schemaTool(
+  properties: Record<string, unknown>,
+  options: { additionalProperties?: boolean } = {},
+): DiscoveredMcpTool {
+  return {
+    name: REPO_READ_TOOL_NAME,
+    description: "repo read",
+    inputSchema: {
+      type: "object",
+      properties,
+      required: Object.keys(properties),
+      ...(options.additionalProperties === undefined
+        ? {}
+        : { additionalProperties: options.additionalProperties }),
+    },
+  };
+}
+
 function workspace(): { root: string; secret: string } {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-repo-read-"));
   const secret = "mcp01-secret-file-contents";
@@ -49,10 +67,21 @@ describe("repo_read_file MCP host", () => {
       const tool = session.tools[0];
       assert.equal(tool?.type, "function");
       const parameters = tool?.parameters ?? {};
-      const properties = parameters.properties as Record<string, { type?: string }>;
+      const properties = parameters.properties as Record<
+        string,
+        { type?: string }
+      >;
+      assert.equal(parameters.type, "object");
       assert.equal(properties.path?.type, "string");
+      assert.equal(parameters.additionalProperties, false);
       assert.ok((parameters.required as string[]).includes("path"));
-      for (const key of ["root", "allowedRoot", "credential", "apiKey", "token"]) {
+      for (const key of [
+        "root",
+        "allowedRoot",
+        "credential",
+        "apiKey",
+        "token",
+      ]) {
         assert.equal(Object.hasOwn(properties, key), false);
       }
     } finally {
@@ -112,25 +141,82 @@ describe("repo_read_file MCP host", () => {
     }
   });
 
-  it("rejects a matching tool name whose schema exposes root configuration", () => {
-    const discovered: DiscoveredMcpTool[] = [
-      {
-        name: REPO_READ_TOOL_NAME,
-        description: "bad",
-        inputSchema: {
-          type: "object",
-          properties: {
-            path: { type: "string" },
-            allowedRoot: { type: "string" },
-          },
-          required: ["path", "allowedRoot"],
-          additionalProperties: false,
-        },
-      },
-    ];
-    const admission = admitDiscoveredTools(discovered, [REPO_READ_TOOL_NAME]);
-    assert.deepEqual(admission.admitted, []);
-    assert.match(admission.rejected[0]?.reason ?? "", /schema_exposes_allowedRoot/);
+  it("admits only a plain string path with additionalProperties false", () => {
+    const valid = admitDiscoveredTools(
+      [
+        schemaTool(
+          { path: { type: "string" } },
+          { additionalProperties: false },
+        ),
+      ],
+      [REPO_READ_TOOL_NAME],
+    );
+    assert.deepEqual(
+      valid.admitted.map((tool) => tool.name),
+      [REPO_READ_TOOL_NAME],
+    );
+
+    const broaderPath = admitDiscoveredTools(
+      [
+        schemaTool(
+          { path: { type: ["string", "null"] } },
+          { additionalProperties: false },
+        ),
+      ],
+      [REPO_READ_TOOL_NAME],
+    );
+    assert.deepEqual(broaderPath.admitted, []);
+    assert.equal(broaderPath.rejected[0]?.reason, "schema_path_not_string");
+
+    const openSchema = admitDiscoveredTools(
+      [
+        schemaTool(
+          { path: { type: "string" } },
+          { additionalProperties: true },
+        ),
+      ],
+      [REPO_READ_TOOL_NAME],
+    );
+    assert.deepEqual(openSchema.admitted, []);
+    assert.equal(
+      openSchema.rejected[0]?.reason,
+      "schema_additional_properties_not_false",
+    );
+
+    const missingAdditional = admitDiscoveredTools(
+      [
+        schemaTool(
+          { path: { type: "string" } },
+          { additionalProperties: undefined },
+        ),
+      ],
+      [REPO_READ_TOOL_NAME],
+    );
+    assert.deepEqual(missingAdditional.admitted, []);
+
+    for (const key of [
+      "allowedRoot",
+      "root",
+      "credentials",
+      "apiKey",
+      "token",
+      "secret",
+    ]) {
+      const exposed = admitDiscoveredTools(
+        [
+          schemaTool(
+            { path: { type: "string" }, [key]: { type: "string" } },
+            { additionalProperties: false },
+          ),
+        ],
+        [REPO_READ_TOOL_NAME],
+      );
+      assert.deepEqual(exposed.admitted, []);
+      assert.match(
+        exposed.rejected[0]?.reason ?? "",
+        new RegExp(`schema_exposes_${key}`),
+      );
+    }
   });
 
   it("does not pass OPENAI_API_KEY to the MCP child", async () => {
@@ -166,7 +252,10 @@ describe("implementation worker MCP routing", () => {
     const targetAppRoot = path.join(root, "target-app");
     const targetSrcRoot = path.join(targetAppRoot, "src");
     fs.mkdirSync(targetSrcRoot, { recursive: true });
-    fs.writeFileSync(path.join(targetSrcRoot, "app.ts"), "export const marker = 1;\n");
+    fs.writeFileSync(
+      path.join(targetSrcRoot, "app.ts"),
+      "export const marker = 1;\n",
+    );
     const config: HarnessConfig = {
       apiKey: "test",
       model: "test-model",

@@ -35,7 +35,7 @@ Packages: `@modelcontextprotocol/client`, `@modelcontextprotocol/server`, `zod`.
 - `src/ok.ts` succeeds
 - `../../../../etc/passwd`, `/etc/passwd`, and a missing file fail closed
 - empty Host allowlist discovers the tool and denies the call
-- schema must require string `path` and must not expose `allowedRoot`
+- schema must be an object with a plain string `path`, `additionalProperties: false`, and no `allowedRoot` / `root` / credential fields
 - parent `OPENAI_API_KEY` is not visible to the child (the server exits if it is present; the session still connected)
 - Worker tool list drops `read_file` and exposes admitted `repo_read_file`
 
