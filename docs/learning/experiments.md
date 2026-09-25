@@ -2166,16 +2166,16 @@ Task: T01. Context: `variant`. One trial. No 3×3.
 
 Evidence: `docs/learning/lessons/23-mcp/traces/mcp01-t01-2026-09-24T09-05-18-835Z.txt`
 
-| Check | Result |
-| ----- | ------ |
-| protocol | `2026-07-28` / modern |
-| implementation `repo_read_file` | 2 |
-| implementation `read_file` | 0 |
-| implementation `write_file` | 1 |
-| VERIFY | PASS |
-| REVIEW | pass (1 attempt) |
-| workflow | success |
-| wall | ~34s |
+| Check                           | Result                |
+| ------------------------------- | --------------------- |
+| protocol                        | `2026-07-28` / modern |
+| implementation `repo_read_file` | 2                     |
+| implementation `read_file`      | 0                     |
+| implementation `write_file`     | 1                     |
+| VERIFY                          | PASS                  |
+| REVIEW                          | pass (1 attempt)      |
+| workflow                        | success               |
+| wall                            | ~34s                  |
 
 Spec still used direct `read_file`. Repair was not needed.
 
@@ -2215,13 +2215,13 @@ This is a mechanism probe, not a memory platform and not a quality comparison.
 
 Default `runV1Harness()` has no memory store.
 
-Opt-in `memory.promote` after the terminal outcome, and `memory.retrieve` before the single implementation Worker. The caller supplies the store directory. Repository scope is `repositoryScopeOf(config.repoRoot)`, not a caller field.
+Opt-in `memory.promote` after the terminal outcome, and `memory.retrieve` before the single implementation Worker. The caller supplies the store directory. Repository scope is `repositoryScopeOf(config.repoRoot)`, not a caller field. `durable` together with `memory.promote` or `memory.retrieve` is rejected as `unsupported_mode`.
 
 ### Deterministic contract
 
-Harness tests: **303 passed**.
+Harness tests: **308 passed**.
 
-Covered: admission only from VERIFY+REVIEW evidence that matches a fresh observation; a rewritten claim is rejected; repository scope isolation; valid retrieval after a harmless byte change; stale anchor rejection with no injection and no rewrite; ambiguous multiple matches do not inject; MemoryStore load/save and rewrite refusal; WorkflowState bytes stay unchanged; the Worker hint is advisory and `list_files` / `read_file` stay available.
+Covered: admission only from VERIFY+REVIEW evidence that matches a fresh observation; a rewritten claim is rejected; repository scope isolation; valid retrieval after a harmless byte change; stale anchor rejection with no injection and no rewrite; ambiguous multiple matches do not inject; MemoryStore load/save and rewrite refusal; WorkflowState bytes stay unchanged; the Worker hint is advisory and `list_files` / `read_file` stay available; durable execution with memory promotion or retrieval is `unsupported_mode`, while durable-only, memory-only, and default runs are not.
 
 ### MEM01 run (2026-09-25)
 
@@ -2229,17 +2229,17 @@ Command: `npm run benchmark:mem01`
 
 One DEV pair. T02 promotes. T03 is a new run with `conversationStateMode=manual` and no `previous_response_id`.
 
-| Check | Result |
-| ----- | ------ |
-| T02 workflow / VERIFY / REVIEW | success / PASS / pass |
-| memory admitted | 1 (`mem-b8b23946ff9d0136`) |
-| claim | TaskService in `target-app/src/tasks/task-service.ts` |
-| wrong repository scope | retrieved 0, injected 0 |
-| T03 workflow / VERIFY / REVIEW | success / PASS / pass |
-| T03 memory | retrieved 1, validated 1, injected 1 (604 bytes) |
-| T03 `previous_response_id` | 0 |
-| T03 implementation `read_file` | 6 |
-| stale workspace | `anchor_missing`, injected 0, stored record unchanged |
+| Check                          | Result                                                |
+| ------------------------------ | ----------------------------------------------------- |
+| T02 workflow / VERIFY / REVIEW | success / PASS / pass                                 |
+| memory admitted                | 1 (`mem-b8b23946ff9d0136`)                            |
+| claim                          | TaskService in `target-app/src/tasks/task-service.ts` |
+| wrong repository scope         | retrieved 0, injected 0                               |
+| T03 workflow / VERIFY / REVIEW | success / PASS / pass                                 |
+| T03 memory                     | retrieved 1, validated 1, injected 1 (604 bytes)      |
+| T03 `previous_response_id`     | 0                                                     |
+| T03 implementation `read_file` | 6                                                     |
+| stale workspace                | `anchor_missing`, injected 0, stored record unchanged |
 
 Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T18-53-45-685Z.txt`.
 
@@ -2247,7 +2247,9 @@ Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25
 
 **PASS.** The fact came from the current tree after a verified T02 outcome. A fresh T03 run retrieved it without conversation continuity, after scope filtering and current-tree validation. The stale worktree did not receive the hint. VERIFY and independent REVIEW still decided both workflows. `WorkflowState` was not a memory record.
 
-Re-run after repository scope became harness-derived from `config.repoRoot`: **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T19-22-55-217Z.txt`.
+Re-run after repository scope became harness-derived from `config.repoRoot`: **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T19-22-55-217Z.txt` (T03 implementation `read_file` 5).
+
+Re-run after durable execution rejected memory promotion and retrieval: **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T19-31-26-267Z.txt` (T03 implementation `read_file` 4).
 
 ### Adoption
 

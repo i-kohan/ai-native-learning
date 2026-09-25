@@ -35,6 +35,7 @@ For MEM01 the claim is structural: task routes delegate domain operations to a c
 - The current repository stays the authority for what the code is.
 - VERIFY and independent REVIEW still decide the workflow.
 - Memory does not write `WorkflowState`.
+- Durable execution does not run memory promotion or retrieval. Requesting both is rejected.
 - The hint does not remove `list_files` or `read_file`.
 - Model text is not admitted as memory.
 

@@ -1414,7 +1414,6 @@ async function continueAfterAdmittedSpec(options: {
   }
 
   if (options.memory?.promote) {
-    repositoryScopeOf(config.repoRoot);
     try {
       memoryMetrics = recordVerifiedMemory({
         tracer,
@@ -3370,6 +3369,7 @@ function assertDurableModeSupported(options: {
   planningEnabled?: boolean;
   subagentsEnabled?: boolean;
   mcpRepoReadEnabled?: boolean;
+  memory?: Pick<MemoryRunOptions, "promote" | "retrieve">;
   bindReviewPlan?: unknown;
   bindFanOutPlan?: unknown;
   admittedSpec?: unknown;
@@ -3390,6 +3390,12 @@ function assertDurableModeSupported(options: {
     throw new WorkflowError(
       "unsupported_mode",
       "Durable execution does not support mcpRepoReadEnabled.",
+    );
+  }
+  if (options.memory?.promote === true || options.memory?.retrieve === true) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "Durable execution does not support verified repository memory.",
     );
   }
   if (options.bindReviewPlan) {

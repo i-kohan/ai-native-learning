@@ -108,17 +108,17 @@ Model output is not an input to admission. Promotion runs only after workflow su
 
 A file fingerprint is stored as provenance. Validation checks that the source path still exists and that the same anchor still implements the delegated operations. A byte-only change does not by itself reject the claim. If the anchor cannot be re-established, validation fails closed and the stored record is not rewritten.
 
-Memory is not a vector index, not conversation continuation, and not a workflow phase.
+Memory is not a vector index, not conversation continuation, and not a workflow phase. Durable execution does not support it: `durable` together with `memory.promote` or `memory.retrieve` is `unsupported_mode`.
 
 Repository scope is harness-owned. `runV1Harness()` derives it from the bound `config.repoRoot` with `repositoryScopeOf()`. `MemoryRunOptions` does not accept a caller scope, so a run cannot label repository B as repository A.
 
 ## Current result
 
-Harness tests: **303 passed**, including 15 memory tests.
+Harness tests: **308 passed**, including 15 memory tests and 5 durable/memory admission tests.
 
-MEM01 (T02 promote, fresh T03 retrieve, isolated stale workspace): **PASS**. Re-run after harness-owned repository scope: **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T19-22-55-217Z.txt`.
+MEM01 (T02 promote, fresh T03 retrieve, isolated stale workspace): **PASS**. Latest re-run after the durable/memory boundary: **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T19-31-26-267Z.txt`.
 
-T03 still called implementation `read_file` 6 times after the hint was injected. `implNavCallsBeforeFirstWrite` was 6. That is one observation, not a quality or cost claim.
+T03 still called implementation `read_file` 4 times after the hint was injected. `implNavCallsBeforeFirstWrite` was 4. That is one observation, not a quality or cost claim.
 
 ## Failures / open questions
 

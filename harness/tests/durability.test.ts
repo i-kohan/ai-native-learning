@@ -345,6 +345,93 @@ describe("durable run.ts gates", () => {
         error instanceof WorkflowError && error.code === "unsupported_mode",
     );
   });
+
+  it("rejects durable execution with memory retrieval", async () => {
+    const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), "wf-mem-get-"));
+    await assert.rejects(
+      () =>
+        runV1Harness({
+          config: unusedConfig(storeDir),
+          task: "task",
+          runId: "mem-retrieve",
+          memory: { storeDir, retrieve: true },
+          durable: { workflowId: "mode", storeDir },
+        }),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === "unsupported_mode" &&
+        error.message.includes("verified repository memory"),
+    );
+  });
+
+  it("rejects durable execution with memory promotion", async () => {
+    const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), "wf-mem-put-"));
+    await assert.rejects(
+      () =>
+        runV1Harness({
+          config: unusedConfig(storeDir),
+          task: "task",
+          runId: "mem-promote",
+          memory: { storeDir, promote: true },
+          durable: { workflowId: "mode", storeDir },
+        }),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === "unsupported_mode" &&
+        error.message.includes("verified repository memory"),
+    );
+  });
+
+  it("still admits durable execution when memory is absent", async () => {
+    const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), "wf-mem-off-"));
+    await assert.rejects(
+      () =>
+        runV1Harness({
+          config: unusedConfig(storeDir),
+          task: "task",
+          runId: "durable-only",
+          durable: { workflowId: "missing", storeDir },
+        }),
+      (error: unknown) =>
+        error instanceof WorkflowError && error.code === "missing_state",
+    );
+  });
+
+  it("does not reject non-durable memory as an unsupported durable mode", async () => {
+    const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), "wf-mem-only-"));
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "wf-mem-root-"));
+    await assert.rejects(
+      () =>
+        runV1Harness({
+          config: { ...unusedConfig(storeDir), repoRoot },
+          task: "task",
+          runId: "memory-only",
+          memory: { storeDir, retrieve: true },
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        !(
+          error instanceof WorkflowError && error.code === "unsupported_mode"
+        ) &&
+        error.message.includes("Repository scope cannot be established"),
+    );
+  });
+
+  it("does not reject a default run as unsupported durable memory", async () => {
+    const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), "wf-default-"));
+    const tracesDir = path.join(storeDir, "not-a-directory");
+    fs.writeFileSync(tracesDir, "x");
+    await assert.rejects(
+      () =>
+        runV1Harness({
+          config: { ...unusedConfig(storeDir), tracesDir },
+          task: "task",
+          runId: "default-run",
+        }),
+      (error: unknown) =>
+        !(error instanceof WorkflowError && error.code === "unsupported_mode"),
+    );
+  });
 });
 
 describe("durable process boundary", () => {

@@ -49,21 +49,24 @@ npm test --prefix harness
 npm run benchmark:mem01
 ```
 
-Harness tests on 2026-09-25: **301 passed**.
+Harness tests on 2026-09-25: **308 passed**.
 
 ## MEM01 (2026-09-25)
 
-| Step | Result |
-| ---- | ------ |
-| T02 | success, VERIFY PASS, REVIEW pass, 1 admitted record |
-| other scope | retrieved 0, injected 0 |
-| T03 | new manual run, 0 `previous_response_id`, retrieved 1, validated 1, injected 604 bytes |
-| stale worktree | class removed, `anchor_missing`, injected 0, record unchanged |
+| Step           | Result                                                                                 |
+| -------------- | -------------------------------------------------------------------------------------- |
+| T02            | success, VERIFY PASS, REVIEW pass, 1 admitted record                                   |
+| other scope    | retrieved 0, injected 0                                                                |
+| T03            | new manual run, 0 `previous_response_id`, retrieved 1, validated 1, injected 604 bytes |
+| stale worktree | class removed, `anchor_missing`, injected 0, record unchanged                          |
 
-T03 implementation still called `read_file` 6 times. `implNavCallsBeforeFirstWrite` was 6. No quality claim.
+Latest T03 implementation still called `read_file` 4 times. `implNavCallsBeforeFirstWrite` was 4. No quality claim.
+
+`runV1Harness()` rejects `durable` together with `memory.promote` or `memory.retrieve` as `unsupported_mode`. Resume from `review_ready` does not promote memory, so the combination is unsupported rather than partially applied.
 
 Evidence:
 
+- `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T19-31-26-267Z.txt`
 - `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T18-53-45-685Z.txt`
 - `docs/learning/lessons/24-memory-architectures/traces/mem01-store-2026-09-25T18-53-45-685Z/mem-b8b23946ff9d0136.json`
 
