@@ -92,6 +92,7 @@ import {
   runRoutingExperiment,
   writeRoutingExperimentArtifact,
 } from "./routing-experiment.ts";
+import type { MemoryRunOptions } from "./memory.ts";
 import {
   type HarnessRunResult,
   printHarnessResult,
@@ -256,6 +257,7 @@ export function prepareBenchmark(
 export type BenchmarkRunOptions = {
   conversationStateMode?: ConversationStateMode;
   mcpRepoReadEnabled?: boolean;
+  memory?: MemoryRunOptions;
 };
 
 export async function runBenchmark(
@@ -292,6 +294,7 @@ export async function runBenchmark(
       conversationStateMode,
       workspace,
       mcpRepoReadEnabled: options.mcpRepoReadEnabled === true,
+      memory: options.memory,
     });
 
     printHarnessResult(result);

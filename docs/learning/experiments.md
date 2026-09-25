@@ -2200,3 +2200,53 @@ reusable or externally owned capability boundary
 ```
 
 Final understanding check passed on 2026-09-24. Topic Chat closed Module 23. Two terminology corrections were retained in the closure record: MCP standardizes a broader integration surface than Tools alone, and schema-valid does not imply safe/authorized.
+
+---
+
+## Module 24 — MEM01 verified repository memory
+
+### Hypothesis
+
+A repository-scoped implementation-surface fact can be admitted from a verified workflow, persisted outside `WorkflowState`, retrieved by a later fresh workflow, and used only after the current tree still supports the claim.
+
+This is a mechanism probe, not a memory platform and not a quality comparison.
+
+### Variant
+
+Default `runV1Harness()` has no memory store.
+
+Opt-in `memory.promote` after the terminal outcome, and `memory.retrieve` before the single implementation Worker. Both require an explicit store directory and repository scope (`git:<origin>`).
+
+### Deterministic contract
+
+Harness tests: **301 passed**.
+
+Covered: admission only from VERIFY+REVIEW evidence that matches a fresh observation; a rewritten claim is rejected; repository scope isolation; valid retrieval after a harmless byte change; stale anchor rejection with no injection and no rewrite; ambiguous multiple matches do not inject; MemoryStore load/save and rewrite refusal; WorkflowState bytes stay unchanged; the Worker hint is advisory and `list_files` / `read_file` stay available.
+
+### MEM01 run (2026-09-25)
+
+Command: `npm run benchmark:mem01`
+
+One DEV pair. T02 promotes. T03 is a new run with `conversationStateMode=manual` and no `previous_response_id`.
+
+| Check | Result |
+| ----- | ------ |
+| T02 workflow / VERIFY / REVIEW | success / PASS / pass |
+| memory admitted | 1 (`mem-b8b23946ff9d0136`) |
+| claim | TaskService in `target-app/src/tasks/task-service.ts` |
+| wrong repository scope | retrieved 0, injected 0 |
+| T03 workflow / VERIFY / REVIEW | success / PASS / pass |
+| T03 memory | retrieved 1, validated 1, injected 1 (604 bytes) |
+| T03 `previous_response_id` | 0 |
+| T03 implementation `read_file` | 6 |
+| stale workspace | `anchor_missing`, injected 0, stored record unchanged |
+
+Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T18-53-45-685Z.txt`.
+
+### MEM01 rule
+
+**PASS.** The fact came from the current tree after a verified T02 outcome. A fresh T03 run retrieved it without conversation continuity, after scope filtering and current-tree validation. The stale worktree did not receive the hint. VERIFY and independent REVIEW still decided both workflows. `WorkflowState` was not a memory record.
+
+### Adoption
+
+Not adopted as default. T03 still discovered the repository with `read_file`. One probe does not show a navigation or quality gain. Keep the seam off until a repeated cross-run fact is worth a bounded hint.

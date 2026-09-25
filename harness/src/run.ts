@@ -124,8 +124,17 @@ import {
   bindResumedWorkspace,
   captureWorkspaceResumeEvidence,
   cleanupWorkspace,
+  resolveBaseRevision,
   type Workspace,
 } from "./workspace.ts";
+import {
+  emptyMemoryMetrics,
+  promoteVerifiedMemory,
+  retrieveWorkerMemory,
+  type MemoryRetrieval,
+  type MemoryRunMetrics,
+  type MemoryRunOptions,
+} from "./memory.ts";
 
 export type WorkflowStatus =
   | "success"
@@ -212,6 +221,7 @@ export type HarnessRunResult = {
   plannerDurationMs: number;
   subagentsEnabled: boolean;
   mcpRepoReadEnabled?: boolean;
+  memory?: MemoryRunMetrics;
   reviewPlan: ReviewPlan | null;
   reviewUnits: ReviewUnitReport[];
   reviewabilityReportPath: string | null;
@@ -279,6 +289,11 @@ export async function runV1Harness(options: {
    * admitted MCP repo_read_file. Repair and review stay on direct tools.
    */
   mcpRepoReadEnabled?: boolean;
+  /**
+   * Experiment-only verified repository memory. Default runs do not read or
+   * write memory, and memory cannot change WorkflowState.
+   */
+  memory?: MemoryRunOptions;
   /**
    * Experiment-only advisory ReviewPlan. Default architecture remains one Worker.
    * The binder is harness-owned and must not be an LLM Review Planner.
@@ -350,6 +365,7 @@ async function executeV1Harness(options: {
   planningEnabled?: boolean;
   subagentsEnabled?: boolean;
   mcpRepoReadEnabled?: boolean;
+  memory?: MemoryRunOptions;
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
   reviewUnitTemplates?: ChangeUnitTemplate[];
   bindFanOutPlan?: (spec: Spec) => ParseFanOutPlanResult;
@@ -450,6 +466,7 @@ async function executeV1Harness(options: {
       planningEnabled,
       subagentsEnabled,
       mcpRepoReadEnabled,
+      memory: options.memory,
       architectureConstraints: options.architectureConstraints,
       bindReviewPlan: options.bindReviewPlan,
       reviewUnitTemplates: options.reviewUnitTemplates,
@@ -516,6 +533,15 @@ async function executeV1Harness(options: {
           invocationId: runId,
         }
       : {}),
+    ...(options.memory
+      ? {
+          memory: {
+            promote: options.memory.promote === true,
+            retrieve: options.memory.retrieve === true,
+            repositoryScope: options.memory.repositoryScope,
+          },
+        }
+      : {}),
   });
 
   if (options.admittedSpec) {
@@ -555,6 +581,7 @@ async function executeV1Harness(options: {
       planningEnabled,
       subagentsEnabled,
       mcpRepoReadEnabled,
+      memory: options.memory,
       architectureConstraints: options.architectureConstraints,
       bindReviewPlan: options.bindReviewPlan,
       reviewUnitTemplates: options.reviewUnitTemplates,
@@ -725,6 +752,7 @@ async function executeV1Harness(options: {
     planningEnabled,
     subagentsEnabled,
     mcpRepoReadEnabled,
+    memory: options.memory,
     architectureConstraints: options.architectureConstraints,
     bindReviewPlan: options.bindReviewPlan,
     reviewUnitTemplates: options.reviewUnitTemplates,
@@ -763,6 +791,7 @@ async function continueAfterAdmittedSpec(options: {
   planningEnabled: boolean;
   subagentsEnabled: boolean;
   mcpRepoReadEnabled: boolean;
+  memory?: MemoryRunOptions;
   architectureConstraints?: ArchitectureConstraint[];
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
   reviewUnitTemplates?: ChangeUnitTemplate[];
@@ -989,9 +1018,21 @@ async function continueAfterAdmittedSpec(options: {
   }
 
   let fanOutPlan: FanOutPlan | null = null;
-  if (mcpRepoReadEnabled && (options.bindFanOutPlan || options.bindReviewPlan)) {
+  if (
+    mcpRepoReadEnabled &&
+    (options.bindFanOutPlan || options.bindReviewPlan)
+  ) {
     throw new Error(
       "mcpRepoReadEnabled is only supported for the single implementation Worker.",
+    );
+  }
+  if (
+    options.memory &&
+    (options.memory.promote === true || options.memory.retrieve === true) &&
+    (options.bindFanOutPlan || options.bindReviewPlan)
+  ) {
+    throw new Error(
+      "Verified repository memory is only supported for the single implementation Worker.",
     );
   }
   if (options.bindFanOutPlan && options.bindReviewPlan) {
@@ -1056,6 +1097,8 @@ async function continueAfterAdmittedSpec(options: {
   });
 
   let implementation: AgentRunResult;
+  let memoryMetrics: MemoryRunMetrics | undefined;
+  let memoryHint: string | null = null;
   let reviewUnits: ReviewUnitReport[] = [];
   let reviewUnitGateFailed = false;
   let stoppedReviewUnitId: string | null = null;
@@ -1147,6 +1190,16 @@ async function continueAfterAdmittedSpec(options: {
     reviewUnitGateFailed = decomposed.unitGateFailed;
     stoppedReviewUnitId = decomposed.stoppedReviewUnitId;
   } else {
+    if (options.memory?.retrieve) {
+      const retrieved = retrieveWorkerMemory({
+        storeDir: options.memory.storeDir,
+        repositoryScope: options.memory.repositoryScope,
+        repoRoot: config.repoRoot,
+      });
+      memoryMetrics = retrieved.metrics;
+      memoryHint = retrieved.hint;
+      traceMemoryRetrieval(tracer, retrieved);
+    }
     implementation = await runAgentLoop({
       config,
       task: formatWorkerTask(task, decision.spec, plannerPhase.plan),
@@ -1159,6 +1212,7 @@ async function continueAfterAdmittedSpec(options: {
       conversationStateMode,
       subagentsEnabled,
       mcpRepoReadEnabled,
+      memoryHint,
     });
   }
 
@@ -1362,6 +1416,39 @@ async function continueAfterAdmittedSpec(options: {
     );
   }
 
+  if (options.memory?.promote) {
+    try {
+      memoryMetrics = recordVerifiedMemory({
+        tracer,
+        metrics: memoryMetrics,
+        promotion: promoteVerifiedMemory({
+          storeDir: options.memory.storeDir,
+          repoRoot: config.repoRoot,
+          repositoryScope: options.memory.repositoryScope,
+          baseRevision:
+            workspace?.baseRevision ?? resolveBaseRevision(config.repoRoot),
+          originatingWorkflowId: workflow?.workflowId ?? runId,
+          originatingRunId: runId,
+          evidence: {
+            workflowStatus,
+            verificationPassed: finalVerificationPassed,
+            reviewOutcome: reviewState.finalReviewerOutcome,
+          },
+        }),
+      });
+    } catch (error) {
+      tracer.record("memory_candidate", {
+        proposed: false,
+        reason: error instanceof Error ? error.message : "promotion_failed",
+      });
+      memoryMetrics = {
+        ...(memoryMetrics ?? emptyMemoryMetrics()),
+        memoryCandidates: 0,
+        memoryAdmitted: 0,
+      };
+    }
+  }
+
   const result = baseResult({
     task,
     workflowStatus,
@@ -1404,6 +1491,7 @@ async function continueAfterAdmittedSpec(options: {
     durableRetry:
       workflow?.phase === "review_ready" ? workflow.retry : undefined,
     lastRetryDecision,
+    memory: memoryMetrics,
   });
   if (result.workflowStatus !== "paused") {
     persistDurableTerminal(durable, workflow, {
@@ -1435,6 +1523,11 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(`planning_enabled: ${result.planningEnabled}`);
   console.log(`subagents_enabled: ${result.subagentsEnabled}`);
   console.log(`mcp_repo_read_enabled: ${result.mcpRepoReadEnabled === true}`);
+  if (result.memory) {
+    console.log(
+      `memory: candidates=${result.memory.memoryCandidates} admitted=${result.memory.memoryAdmitted} retrieved=${result.memory.memoryRetrieved} validated=${result.memory.memoryValidated} rejected_stale=${result.memory.memoryRejectedStale} injected=${result.memory.memoryInjected} bytes=${result.memory.injectedBytes}`,
+    );
+  }
   console.log(
     `review_plan: ${result.reviewPlan ? result.reviewPlan.decision : "(none)"}`,
   );
@@ -2789,6 +2882,65 @@ async function runIndependentReviewLoop(options: {
   });
 }
 
+function traceMemoryRetrieval(
+  tracer: Tracer,
+  retrieval: MemoryRetrieval,
+): void {
+  tracer.record("memory_retrieved", {
+    repositoryScope: retrieval.repositoryScope,
+    ids: retrieval.retrievedIds,
+    ignoredOutOfScope: retrieval.ignoredOutOfScope,
+    count: retrieval.metrics.memoryRetrieved,
+  });
+  for (const id of retrieval.validatedIds) {
+    tracer.record("memory_validated", { id });
+  }
+  for (const rejected of retrieval.rejectedStale) {
+    tracer.record("memory_rejected_stale", rejected);
+  }
+  if (retrieval.hint) {
+    tracer.record("memory_injected", {
+      id: retrieval.validatedIds[0] ?? null,
+      bytes: retrieval.metrics.injectedBytes,
+      tokensEstimate: retrieval.metrics.injectedTokensEstimate,
+    });
+  }
+}
+
+function recordVerifiedMemory(options: {
+  tracer: Tracer;
+  metrics: MemoryRunMetrics | undefined;
+  promotion: ReturnType<typeof promoteVerifiedMemory>;
+}): MemoryRunMetrics {
+  const metrics = options.metrics ?? emptyMemoryMetrics();
+  const { promotion } = options;
+  options.tracer.record("memory_candidate", {
+    proposed: Boolean(promotion.candidate),
+    sourcePath: promotion.candidate?.sourcePath ?? null,
+    anchor: promotion.candidate?.claim.anchor ?? null,
+    originatingRunId: promotion.candidate?.originatingRunId ?? null,
+    reason: promotion.candidate ? null : promotion.reason,
+  });
+  if (promotion.record) {
+    options.tracer.record("memory_admitted", {
+      id: promotion.record.id,
+      sourcePath: promotion.record.sourcePath,
+      repositoryScope: promotion.record.repositoryScope,
+      baseRevision: promotion.record.baseRevision,
+      originatingRunId: promotion.record.originatingRunId,
+    });
+  } else if (promotion.candidate) {
+    options.tracer.record("memory_admission_rejected", {
+      reason: promotion.reason ?? "not_admitted",
+    });
+  }
+  return {
+    ...metrics,
+    memoryCandidates: promotion.candidate ? 1 : 0,
+    memoryAdmitted: promotion.record ? 1 : 0,
+  };
+}
+
 function baseResult(fields: {
   task: string;
   workflowStatus: WorkflowStatus;
@@ -2840,6 +2992,7 @@ function baseResult(fields: {
   tracePath: string;
   durationMs: number;
   skillLoads?: SkillLoadRecord[];
+  memory?: MemoryRunMetrics;
   workspace?: Workspace;
   workflowId?: string;
   durableRetry?: DurableRetryState;
@@ -3028,6 +3181,7 @@ function baseResult(fields: {
     clientInputBytesSent,
     contextMetrics,
     skillLoads: fields.skillLoads ?? [],
+    ...(fields.memory ? { memory: fields.memory } : {}),
     ...(fields.workspace ? { workspace: fields.workspace } : {}),
     ...(fields.workflowId ? { workflowId: fields.workflowId } : {}),
     ...(fields.durableRetry ? { durableRetry: fields.durableRetry } : {}),
@@ -3079,6 +3233,7 @@ async function finishRun(
     plannerToolCalls: result.plannerToolCalls,
     plannerDurationMs: result.plannerDurationMs,
     subagentsEnabled: result.subagentsEnabled,
+    ...(result.memory ? { memory: result.memory } : {}),
     reviewPlan: result.reviewPlan,
     reviewUnits: result.reviewUnits.map((unit) => ({
       id: unit.id,

@@ -27,6 +27,7 @@
     "benchmark:ghi01": "tsx src/run-benchmark.ts --ghi01",
     "benchmark:ci01": "tsx src/run-benchmark.ts --ci01",
     "benchmark:mcp01": "tsx src/mcp01-probe.ts",
+    "benchmark:mem01": "tsx src/mem01-probe.ts",
     "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },
   "dependencies": {

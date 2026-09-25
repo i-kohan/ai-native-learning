@@ -135,6 +135,11 @@ export async function runAgentLoop(options: {
    * repo_read_file instead of direct read_file. Default remains direct tools.
    */
   mcpRepoReadEnabled?: boolean;
+  /**
+   * Experiment-only advisory hint. Included only for the implementation phase.
+   * Absent on the default path.
+   */
+  memoryHint?: string | null;
   /** Test injection only. Production uses the OpenAI Responses client. */
   responsesCreate?: ResponsesCreateFn;
 }): Promise<AgentRunResult> {
@@ -176,9 +181,14 @@ export async function runAgentLoop(options: {
     ? loadSkill(config.repoRoot, selectedSkillId)
     : null;
   const skillLoad = loadedSkill ? toSkillLoadRecord(loadedSkill, phase) : null;
+  const memoryHint =
+    phase === "implementation" && options.memoryHint
+      ? options.memoryHint
+      : null;
 
   const taskContent = [
     reusableContext ? formatImplementationHints(reusableContext) : null,
+    memoryHint,
     loadedSkill ? formatProceduralContext(loadedSkill) : null,
     task,
   ]
@@ -218,6 +228,7 @@ export async function runAgentLoop(options: {
       specGoal: spec?.goal ?? null,
       requirementCount: spec?.requirements.length ?? 0,
       reusableContextProvided: Boolean(reusableContext),
+      memoryHintProvided: Boolean(memoryHint),
       conversationStateMode,
       subagentsEnabled,
     });

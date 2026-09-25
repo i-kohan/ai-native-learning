@@ -28,7 +28,7 @@ Completed modules:
 22. ✅ 22 — Bounded Parallel Fan-Out (closed by Master on 2026-09-23; PAR01 = `not_worth_current_workload`)
 23. ✅ 23 — MCP Deeper Dive (closed by Master on 2026-09-24; MCP01 PASS; default local repo read remains direct)
 
-Next module: **24 — Memory Architectures**.
+Next module: **24 — Memory Architectures** (implemented and measured; Topic Chat owns closure; not marked complete).
 
 ---
 
@@ -53,6 +53,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence is recorded; formal closure remains with Topic Chat / Master.
 - optional bounded fan-out behind an explicit `FanOutPlan` binder (Module 22). Same exact-base worktrees, schedule `sequential | parallel`, Git 3-way fan-in. Default remains Spec → one Worker; corrected PAR01 on P03 (one frozen Spec, 3×2 valid scheduling trials) was `not_worth_current_workload`.
 - optional MCP repository-read mechanism behind `mcpRepoReadEnabled` (Module 23). Implementation Worker can replace direct `read_file` with Host-admitted `repo_read_file` over a real local stdio MCP boundary. Default remains direct `read_file`; MCP does not own Spec, writes, VERIFY, REVIEW, retry, or workflow success.
+- optional verified repository memory behind explicit `memory` options (Module 24). A harness-admitted implementation-surface fact can persist outside `WorkflowState` and, after current-repository validation, enter Worker context as one advisory hint. Default `runV1Harness()` does not read or write memory.
 
 Conceptual default flow:
 
@@ -71,6 +72,55 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 24 — Memory Architectures
+
+**Status:** implemented and measured. MEM01 **PASS** as a mechanism probe. Topic Chat owns formal closure. Not marked complete. Default `runV1Harness()` does not read or write memory.
+
+Theory:
+
+`docs/learning/lessons/24-memory-architectures/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/24-memory-architectures/notes.md`
+
+## What was implemented
+
+Opt-in verified repository memory, separate from `WorkflowState`:
+
+```text
+verified workflow
+→ harness observes the current task implementation surface
+→ admit MemoryRecord
+→ later fresh workflow filters by repository scope
+→ validate the claim against the current tree
+→ one advisory Worker hint, or reject stale and inject nothing
+```
+
+The MEM01 claim is derived from `task-routes.ts` delegating to the class it imports. On this repository that observation is `TaskService` in `target-app/src/tasks/task-service.ts`.
+
+## Important design decisions
+
+Model output is not an input to admission. Promotion runs only after workflow success, VERIFY PASS, and independent REVIEW `pass`.
+
+A file fingerprint is stored as provenance. Validation checks that the source path still exists and that the same anchor still implements the delegated operations. A byte-only change does not by itself reject the claim. If the anchor cannot be re-established, validation fails closed and the stored record is not rewritten.
+
+Memory is not a vector index, not conversation continuation, and not a workflow phase.
+
+## Current result
+
+Harness tests: **301 passed**, including 13 memory tests.
+
+MEM01 (T02 promote, fresh T03 retrieve, isolated stale workspace): **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T18-53-45-685Z.txt`.
+
+T03 still called implementation `read_file` 6 times after the hint was injected. `implNavCallsBeforeFirstWrite` was 6. That is one observation, not a quality or cost claim.
+
+## Failures / open questions
+
+No mechanism failure on this probe. Adoption stays off: one advisory hint did not replace repository discovery, and always-on memory is outside this module.
 
 ---
 

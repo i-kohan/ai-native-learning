@@ -21,6 +21,7 @@
     "benchmark:ret01": "npm run benchmark:ret01 --prefix harness",
     "benchmark:own01": "npm run benchmark:own01 --prefix harness",
     "benchmark:ghi01": "npm run benchmark:ghi01 --prefix harness",
-    "benchmark:ci01": "npm run benchmark:ci01 --prefix harness"
+    "benchmark:ci01": "npm run benchmark:ci01 --prefix harness",
+    "benchmark:mem01": "npm run benchmark:mem01 --prefix harness"
   }
 }

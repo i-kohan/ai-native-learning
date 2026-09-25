@@ -117,6 +117,7 @@ Security-sensitive decisions belong here when the harness can technically enforc
 | GitHub / CI delivery        | `harness/src/delivery-state.ts`, `harness/src/delivery-store.ts`, `harness/src/delivery-run.ts`, `harness/src/github-client.ts` |
 | Retry policy                | `harness/src/retry.ts`                                                                                                          |
 | Tracing                     | `harness/src/trace.ts`                                                                                                          |
+| Verified repository memory  | `harness/src/memory.ts`, `harness/src/memory-store.ts`                                                                          |
 | Evals / qualification       | `harness/src/eval/`                                                                                                             |
 | Benchmark/probe runner      | `harness/src/run-benchmark.ts`                                                                                                  |
 
@@ -228,6 +229,20 @@ A merely advisory ReviewPlan failed to create real review surfaces. Harness-owne
 The seam exists: one Spec, frozen two-unit `FanOutPlan`, exact-base worktrees, `sequential | parallel`, Git 3-way fan-in. Authoritative PAR01 on P03 (one frozen SHA + one frozen executable Spec across 3×2 scheduling trials) was `not_worth_current_workload` (conflicts in a shared service file; wall can improve, cost higher). Earlier per-trial Spec/HEAD runs are not evidence.
 
 **Revisit when:** units are semantically independent **and** their source deltas have low integration coupling / can be composed deterministically with a low conflict rate, while e2e wall time is the scarce resource. Separate files help but are not required.
+
+### Experimental: verified repository memory
+
+**Status:** mechanism probe only. Default `runV1Harness()` does not read or write memory.
+
+One repository-scoped implementation-surface fact can be admitted after VERIFY PASS and an independent REVIEW pass, stored outside `WorkflowState`, and revalidated against the current repository before a single advisory Worker hint.
+
+Not adopted:
+
+- vector / embedding retrieval;
+- automatic extraction from traces or conversations;
+- memory that changes workflow phase, Spec, or VERIFY/REVIEW authority.
+
+**Revisit when:** a repeated cross-run fact is stale often enough that missing JIT validation causes wrong edits, and a bounded hint is cheaper than rediscovery.
 
 ### Retained routing boundary
 
