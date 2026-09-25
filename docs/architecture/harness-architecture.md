@@ -234,7 +234,7 @@ The seam exists: one Spec, frozen two-unit `FanOutPlan`, exact-base worktrees, `
 
 **Status:** mechanism probe only. Default `runV1Harness()` does not read or write memory.
 
-One repository-scoped implementation-surface fact can be admitted after VERIFY PASS and an independent REVIEW pass, stored outside `WorkflowState`, and revalidated against the current repository before a single advisory Worker hint.
+One repository-scoped implementation-surface fact can be admitted after VERIFY PASS and an independent REVIEW pass, stored outside `WorkflowState`, and revalidated against the current repository before a single advisory Worker hint. The harness derives repository scope from the bound `config.repoRoot`; the caller does not supply it.
 
 Not adopted:
 

@@ -39,7 +39,7 @@ export async function runMem01Probe(): Promise<void> {
 
   const promotion = await runBenchmark("T02", "variant", {
     conversationStateMode: "manual",
-    memory: { storeDir, repositoryScope: scope, promote: true },
+    memory: { storeDir, promote: true },
   });
   const records = listMemoryRecords(storeDir);
   const record = records[0] ?? null;
@@ -55,12 +55,12 @@ export async function runMem01Probe(): Promise<void> {
 
   const retrieval = await runBenchmark("T03", "variant", {
     conversationStateMode: "manual",
-    memory: { storeDir, repositoryScope: scope, retrieve: true },
+    memory: { storeDir, retrieve: true },
   });
 
   const promotionTrace = readTrace(promotion.tracePath);
   const retrievalTrace = readTrace(retrieval.tracePath);
-  const stale = await runStaleCase(storeDir, scope, stamp);
+  const stale = await runStaleCase(storeDir, stamp);
   const persistedAfterStale = listMemoryRecords(storeDir);
 
   const discoveryTools = TOOL_DEFINITIONS.map((tool) => tool.name);
@@ -208,7 +208,6 @@ function mem01Pass(checks: {
 
 async function runStaleCase(
   storeDir: string,
-  repositoryScope: string,
   stamp: string,
 ): Promise<{
   workspaceId: string;
@@ -227,7 +226,7 @@ async function runStaleCase(
       workspaceId: workspace.id,
       retrieval: retrieveWorkerMemory({
         storeDir,
-        repositoryScope,
+        repositoryScope: repositoryScopeOf(workspace.root),
         repoRoot: workspace.root,
       }),
     };

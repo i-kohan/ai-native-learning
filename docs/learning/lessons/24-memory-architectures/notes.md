@@ -38,7 +38,7 @@ The persisted record keeps `sourceFingerprint` as provenance. Later validation d
 
 ## Retrieval
 
-`retrieveWorkerMemory()` loads the store, keeps only `repositoryScope`, and validates each in-scope record. Exactly one valid record becomes the hint. Zero or several valid records inject nothing.
+`retrieveWorkerMemory()` loads the store, keeps only records whose `repositoryScope` matches the scope the harness derived from `config.repoRoot` (`git remote get-url origin` on that root), and validates each remaining record. A caller cannot pass a different repository's scope through `MemoryRunOptions`. Exactly one valid record becomes the hint. Zero or several valid records inject nothing.
 
 The hint says the Spec and the current tree stay authoritative, and that `list_files` / `read_file` remain available.
 

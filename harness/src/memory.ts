@@ -35,7 +35,6 @@ export type MemoryCandidate = {
 
 export type MemoryRunOptions = {
   storeDir: string;
-  repositoryScope: string;
   promote?: boolean;
   retrieve?: boolean;
 };
@@ -113,6 +112,26 @@ export function repositoryScopeOf(repoRoot: string): string {
     );
   }
   return `git:${url}`;
+}
+
+export function promoteForBoundRepository(
+  input: Omit<Parameters<typeof promoteVerifiedMemory>[0], "repositoryScope">,
+): MemoryPromotion {
+  return promoteVerifiedMemory({
+    ...input,
+    repositoryScope: repositoryScopeOf(input.repoRoot),
+  });
+}
+
+export function retrieveForBoundRepository(options: {
+  storeDir: string;
+  repoRoot: string;
+}): MemoryRetrieval {
+  return retrieveWorkerMemory({
+    storeDir: options.storeDir,
+    repoRoot: options.repoRoot,
+    repositoryScope: repositoryScopeOf(options.repoRoot),
+  });
 }
 
 export function proposeMemoryCandidate(input: {

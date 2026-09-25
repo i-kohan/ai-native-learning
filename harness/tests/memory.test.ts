@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -9,10 +10,14 @@ import {
   admitMemory,
   formatMemoryHint,
   observeImplementationSurface,
+  promoteForBoundRepository,
   promoteVerifiedMemory,
   proposeMemoryCandidate,
+  repositoryScopeOf,
+  retrieveForBoundRepository,
   retrieveWorkerMemory,
   type MemoryCandidate,
+  type MemoryRunOptions,
 } from "../src/memory.ts";
 import {
   listMemoryRecords,
@@ -352,6 +357,77 @@ describe("worker memory hint", () => {
   });
 });
 
+describe("repository scope is harness-owned", () => {
+  it("does not accept a caller-supplied repository scope on a memory run", () => {
+    const options: MemoryRunOptions = {
+      storeDir: "store",
+      promote: true,
+      retrieve: true,
+    };
+    const noCallerScope: "repositoryScope" extends keyof MemoryRunOptions
+      ? never
+      : true = true;
+    assert.equal(noCallerScope, true);
+    assert.deepEqual(Object.keys(options).sort(), [
+      "promote",
+      "retrieve",
+      "storeDir",
+    ]);
+  });
+
+  it("derives scope from the bound repository and will not select another repository", () => {
+    const originA = "git@example.com:repo-a.git";
+    const originB = "git@example.com:repo-b.git";
+    const repoA = initGitRepo(originA);
+    const repoB = initGitRepo(originB);
+    const worktree = path.join(os.tmpdir(), `mem-wt-${process.pid}`);
+    git(repoA, ["worktree", "add", "--detach", worktree, "HEAD"]);
+    try {
+      assert.equal(repositoryScopeOf(repoA), `git:${originA}`);
+      assert.equal(repositoryScopeOf(worktree), repositoryScopeOf(repoA));
+      assert.notEqual(repositoryScopeOf(repoB), repositoryScopeOf(repoA));
+
+      const store = fs.mkdtempSync(path.join(os.tmpdir(), "mem-bound-"));
+      const promoted = promoteForBoundRepository({
+        storeDir: store,
+        repoRoot: worktree,
+        baseRevision: "abc123",
+        originatingWorkflowId: "wf-a",
+        originatingRunId: "run-a",
+        observedAt: "2026-09-25T12:00:00.000Z",
+        evidence: verifiedEvidence(),
+      });
+      assert.ok(promoted.record);
+      assert.equal(promoted.record.repositoryScope, repositoryScopeOf(worktree));
+
+      const fromWorktree = retrieveForBoundRepository({
+        storeDir: store,
+        repoRoot: worktree,
+      });
+      assert.equal(fromWorktree.metrics.memoryInjected, 1);
+      assert.equal(fromWorktree.repositoryScope, `git:${originA}`);
+
+      const fromOther = retrieveForBoundRepository({
+        storeDir: store,
+        repoRoot: repoB,
+      });
+      assert.equal(fromOther.metrics.memoryRetrieved, 0);
+      assert.equal(fromOther.ignoredOutOfScope, 1);
+      assert.equal(fromOther.hint, null);
+      assert.equal(fromOther.metrics.memoryInjected, 0);
+
+      const jitOnly = retrieveWorkerMemory({
+        storeDir: store,
+        repositoryScope: repositoryScopeOf(repoA),
+        repoRoot: repoB,
+      });
+      assert.equal(jitOnly.metrics.memoryInjected, 1);
+    } finally {
+      git(repoA, ["worktree", "remove", "--force", worktree]);
+    }
+  });
+});
+
 function admittedFixture(scope: string): {
   repo: string;
   store: string;
@@ -393,6 +469,37 @@ function verifiedEvidence() {
 
 function tempRepo(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "mem-repo-"));
+}
+
+function initGitRepo(origin: string): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "mem-git-"));
+  git(root, ["init"]);
+  git(root, ["remote", "add", "origin", origin]);
+  writeSurface(root, {
+    anchor: "TaskService",
+    fileName: "task-service.ts",
+    operations: ["create", "list"],
+  });
+  git(root, ["add", "."]);
+  git(root, [
+    "-c",
+    "user.email=memory-test@example.com",
+    "-c",
+    "user.name=memory-test",
+    "commit",
+    "-m",
+    "init",
+  ]);
+  return root;
+}
+
+function git(cwd: string, args: string[]): void {
+  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  if (result.status !== 0) {
+    throw new Error(
+      `git ${args.join(" ")} failed: ${result.stderr || result.stdout}`,
+    );
+  }
 }
 
 function writeSurface(

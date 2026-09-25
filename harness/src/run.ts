@@ -129,8 +129,9 @@ import {
 } from "./workspace.ts";
 import {
   emptyMemoryMetrics,
-  promoteVerifiedMemory,
-  retrieveWorkerMemory,
+  promoteForBoundRepository,
+  repositoryScopeOf,
+  retrieveForBoundRepository,
   type MemoryRetrieval,
   type MemoryRunMetrics,
   type MemoryRunOptions,
@@ -534,13 +535,7 @@ async function executeV1Harness(options: {
         }
       : {}),
     ...(options.memory
-      ? {
-          memory: {
-            promote: options.memory.promote === true,
-            retrieve: options.memory.retrieve === true,
-            repositoryScope: options.memory.repositoryScope,
-          },
-        }
+      ? { memory: harnessMemoryTrace(config.repoRoot, options.memory) }
       : {}),
   });
 
@@ -874,6 +869,9 @@ async function continueAfterAdmittedSpec(options: {
             },
           }
         : {}),
+      ...(options.memory
+        ? { memory: harnessMemoryTrace(config.repoRoot, options.memory) }
+        : {}),
     });
     if (contextMode === "variant") {
       contextPreparation = buildRepositoryMap(config);
@@ -1191,9 +1189,8 @@ async function continueAfterAdmittedSpec(options: {
     stoppedReviewUnitId = decomposed.stoppedReviewUnitId;
   } else {
     if (options.memory?.retrieve) {
-      const retrieved = retrieveWorkerMemory({
+      const retrieved = retrieveForBoundRepository({
         storeDir: options.memory.storeDir,
-        repositoryScope: options.memory.repositoryScope,
         repoRoot: config.repoRoot,
       });
       memoryMetrics = retrieved.metrics;
@@ -1417,14 +1414,14 @@ async function continueAfterAdmittedSpec(options: {
   }
 
   if (options.memory?.promote) {
+    repositoryScopeOf(config.repoRoot);
     try {
       memoryMetrics = recordVerifiedMemory({
         tracer,
         metrics: memoryMetrics,
-        promotion: promoteVerifiedMemory({
+        promotion: promoteForBoundRepository({
           storeDir: options.memory.storeDir,
           repoRoot: config.repoRoot,
-          repositoryScope: options.memory.repositoryScope,
           baseRevision:
             workspace?.baseRevision ?? resolveBaseRevision(config.repoRoot),
           originatingWorkflowId: workflow?.workflowId ?? runId,
@@ -2882,12 +2879,30 @@ async function runIndependentReviewLoop(options: {
   });
 }
 
+function harnessMemoryTrace(
+  repoRoot: string,
+  memory: MemoryRunOptions,
+): {
+  promote: boolean;
+  retrieve: boolean;
+  repositoryScope: string;
+  repositoryScopeSource: "config.repoRoot";
+} {
+  return {
+    promote: memory.promote === true,
+    retrieve: memory.retrieve === true,
+    repositoryScope: repositoryScopeOf(repoRoot),
+    repositoryScopeSource: "config.repoRoot",
+  };
+}
+
 function traceMemoryRetrieval(
   tracer: Tracer,
   retrieval: MemoryRetrieval,
 ): void {
   tracer.record("memory_retrieved", {
     repositoryScope: retrieval.repositoryScope,
+    repositoryScopeSource: "config.repoRoot",
     ids: retrieval.retrievedIds,
     ignoredOutOfScope: retrieval.ignoredOutOfScope,
     count: retrieval.metrics.memoryRetrieved,
@@ -2910,7 +2925,7 @@ function traceMemoryRetrieval(
 function recordVerifiedMemory(options: {
   tracer: Tracer;
   metrics: MemoryRunMetrics | undefined;
-  promotion: ReturnType<typeof promoteVerifiedMemory>;
+  promotion: ReturnType<typeof promoteForBoundRepository>;
 }): MemoryRunMetrics {
   const metrics = options.metrics ?? emptyMemoryMetrics();
   const { promotion } = options;
@@ -2926,6 +2941,7 @@ function recordVerifiedMemory(options: {
       id: promotion.record.id,
       sourcePath: promotion.record.sourcePath,
       repositoryScope: promotion.record.repositoryScope,
+      repositoryScopeSource: "config.repoRoot",
       baseRevision: promotion.record.baseRevision,
       originatingRunId: promotion.record.originatingRunId,
     });

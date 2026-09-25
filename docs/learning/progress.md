@@ -53,7 +53,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - opt-in post-terminal `DeliveryState` for GitHub draft-PR delivery and exact-head CI admission (Module 20). Does not append GitHub phases to `WorkflowState`. Live GHI01 and CI01 mechanism evidence is recorded; formal closure remains with Topic Chat / Master.
 - optional bounded fan-out behind an explicit `FanOutPlan` binder (Module 22). Same exact-base worktrees, schedule `sequential | parallel`, Git 3-way fan-in. Default remains Spec → one Worker; corrected PAR01 on P03 (one frozen Spec, 3×2 valid scheduling trials) was `not_worth_current_workload`.
 - optional MCP repository-read mechanism behind `mcpRepoReadEnabled` (Module 23). Implementation Worker can replace direct `read_file` with Host-admitted `repo_read_file` over a real local stdio MCP boundary. Default remains direct `read_file`; MCP does not own Spec, writes, VERIFY, REVIEW, retry, or workflow success.
-- optional verified repository memory behind explicit `memory` options (Module 24). A harness-admitted implementation-surface fact can persist outside `WorkflowState` and, after current-repository validation, enter Worker context as one advisory hint. Default `runV1Harness()` does not read or write memory.
+- optional verified repository memory behind explicit `memory` options (Module 24). Repository scope comes from the bound `config.repoRoot`. A harness-admitted implementation-surface fact can persist outside `WorkflowState` and, after current-repository validation, enter Worker context as one advisory hint. Default `runV1Harness()` does not read or write memory.
 
 Conceptual default flow:
 
@@ -110,11 +110,13 @@ A file fingerprint is stored as provenance. Validation checks that the source pa
 
 Memory is not a vector index, not conversation continuation, and not a workflow phase.
 
+Repository scope is harness-owned. `runV1Harness()` derives it from the bound `config.repoRoot` with `repositoryScopeOf()`. `MemoryRunOptions` does not accept a caller scope, so a run cannot label repository B as repository A.
+
 ## Current result
 
-Harness tests: **301 passed**, including 13 memory tests.
+Harness tests: **303 passed**, including 15 memory tests.
 
-MEM01 (T02 promote, fresh T03 retrieve, isolated stale workspace): **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T18-53-45-685Z.txt`.
+MEM01 (T02 promote, fresh T03 retrieve, isolated stale workspace): **PASS**. Re-run after harness-owned repository scope: **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T19-22-55-217Z.txt`.
 
 T03 still called implementation `read_file` 6 times after the hint was injected. `implNavCallsBeforeFirstWrite` was 6. That is one observation, not a quality or cost claim.
 

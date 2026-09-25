@@ -2215,11 +2215,11 @@ This is a mechanism probe, not a memory platform and not a quality comparison.
 
 Default `runV1Harness()` has no memory store.
 
-Opt-in `memory.promote` after the terminal outcome, and `memory.retrieve` before the single implementation Worker. Both require an explicit store directory and repository scope (`git:<origin>`).
+Opt-in `memory.promote` after the terminal outcome, and `memory.retrieve` before the single implementation Worker. The caller supplies the store directory. Repository scope is `repositoryScopeOf(config.repoRoot)`, not a caller field.
 
 ### Deterministic contract
 
-Harness tests: **301 passed**.
+Harness tests: **303 passed**.
 
 Covered: admission only from VERIFY+REVIEW evidence that matches a fresh observation; a rewritten claim is rejected; repository scope isolation; valid retrieval after a harmless byte change; stale anchor rejection with no injection and no rewrite; ambiguous multiple matches do not inject; MemoryStore load/save and rewrite refusal; WorkflowState bytes stay unchanged; the Worker hint is advisory and `list_files` / `read_file` stay available.
 
@@ -2246,6 +2246,8 @@ Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25
 ### MEM01 rule
 
 **PASS.** The fact came from the current tree after a verified T02 outcome. A fresh T03 run retrieved it without conversation continuity, after scope filtering and current-tree validation. The stale worktree did not receive the hint. VERIFY and independent REVIEW still decided both workflows. `WorkflowState` was not a memory record.
+
+Re-run after repository scope became harness-derived from `config.repoRoot`: **PASS**. Evidence: `docs/learning/lessons/24-memory-architectures/traces/mem01-2026-09-25T19-22-55-217Z.txt`.
 
 ### Adoption
 

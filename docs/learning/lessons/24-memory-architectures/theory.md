@@ -21,7 +21,8 @@ Spec → Worker → VERIFY PASS → independent REVIEW pass
 → admit and persist one MemoryRecord
 
 later run, new episode, no previous_response_id
-→ keep records for this repository scope
+→ harness derives repository scope from config.repoRoot
+→ keep records for that scope
 → validate the claim against the current files
 → either one advisory Worker hint, or no hint
 ```

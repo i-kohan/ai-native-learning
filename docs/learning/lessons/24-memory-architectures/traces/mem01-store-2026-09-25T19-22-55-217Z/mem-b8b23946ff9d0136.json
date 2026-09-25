@@ -1,0 +1,29 @@
+{
+  "id": "mem-b8b23946ff9d0136",
+  "kind": "implementation_surface",
+  "repositoryScope": "git:git@github.com:i-kohan/ai-native-learning.git",
+  "claim": {
+    "statement": "Core task-domain operations are implemented by TaskService in target-app/src/tasks/task-service.ts",
+    "anchor": "TaskService",
+    "sourcePath": "target-app/src/tasks/task-service.ts",
+    "operations": [
+      "complete",
+      "create",
+      "get",
+      "list",
+      "reopen"
+    ]
+  },
+  "sourcePath": "target-app/src/tasks/task-service.ts",
+  "sourceFingerprint": "aa628973def8bf9626c51bd43e3b7c86a025e686768231592d5be74f88939364",
+  "baseRevision": "10e3a388003323a599c2c5c0f030666393e544fd",
+  "observedAt": "2026-09-25T19:23:25.814Z",
+  "originatingWorkflowId": "T02-variant-manual-2026-09-25T19-22-55-223Z",
+  "originatingRunId": "T02-variant-manual-2026-09-25T19-22-55-223Z",
+  "evidence": {
+    "verificationPassed": true,
+    "reviewOutcome": "pass",
+    "workflowStatus": "success"
+  },
+  "status": "admitted"
+}

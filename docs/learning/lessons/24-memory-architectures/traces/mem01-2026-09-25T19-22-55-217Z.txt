@@ -1,0 +1,62 @@
+MEM01 verified repository memory
+repository_scope: git:git@github.com:i-kohan/ai-native-learning.git
+host_anchor: TaskService
+host_source: target-app/src/tasks/task-service.ts
+host_statement: Core task-domain operations are implemented by TaskService in target-app/src/tasks/task-service.ts
+
+Process A — T02 promotion
+run: T02-variant-manual-2026-09-25T19-22-55-223Z.jsonl
+conversation_state_mode: manual
+workflow_status: success
+final_verification: PASS
+review_outcome: pass
+expected_t02: true
+memory_candidates: 1
+memory_admitted: 1
+record_id: mem-b8b23946ff9d0136
+record_status: admitted
+record_anchor: TaskService
+record_source: target-app/src/tasks/task-service.ts
+record_statement: Core task-domain operations are implemented by TaskService in target-app/src/tasks/task-service.ts
+record_base_revision: 10e3a388003323a599c2c5c0f030666393e544fd
+record_run: T02-variant-manual-2026-09-25T19-22-55-223Z
+record_evidence: success/true/pass
+trace: /Users/i.kohanvs/Desktop/ai-native/traces/T02-variant-manual-2026-09-25T19-22-55-223Z.jsonl
+
+Scope filter before Process B
+wrong_scope_retrieved: 0
+wrong_scope_ignored: 1
+wrong_scope_injected: 0
+
+Process B — fresh T03 retrieval
+run: T03-variant-manual-2026-09-25T19-23-25-891Z.jsonl
+conversation_state_mode: manual
+workflow_status: success
+final_verification: PASS
+review_outcome: pass
+expected_t03: true
+memory_retrieved: 1
+memory_validated: 1
+memory_rejected_stale: 0
+memory_injected: 1
+injected_bytes: 604
+injected_tokens_estimate: 151
+impl_nav_before_first_write: 5
+implementation_list_files: 0
+implementation_read_file: 5
+previous_response_id_events: 0
+memory_hint_provided: true
+trace: /Users/i.kohanvs/Desktop/ai-native/traces/T03-variant-manual-2026-09-25T19-23-25-891Z.jsonl
+
+Stale isolated workspace
+workspace: mem01-stale-2026-09-25T19-22-55-217Z
+retrieved: 1
+validated: 0
+rejected_stale: 1
+rejection_reason: anchor_missing
+injected: 0
+hint_present: false
+stored_record_unchanged: true
+discovery_tools: list_files,read_file
+
+store: /Users/i.kohanvs/Desktop/ai-native/docs/learning/lessons/24-memory-architectures/traces/mem01-store-2026-09-25T19-22-55-217Z
