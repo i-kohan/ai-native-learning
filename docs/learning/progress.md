@@ -27,9 +27,9 @@ Completed modules:
 21. ⏭ 21 — Optional Browser QA (skipped / not applicable on current non-UI capstone; revisit only for a real UI workload)
 22. ✅ 22 — Bounded Parallel Fan-Out (closed by Master on 2026-09-23; PAR01 = `not_worth_current_workload`)
 23. ✅ 23 — MCP Deeper Dive (closed by Master on 2026-09-24; MCP01 PASS; default local repo read remains direct)
-24. ✅ 24 — Memory Architectures (closed by Topic Chat on 2026-09-25; MEM01 PASS; memory remains opt-in/off by default)
+24. ✅ 24 — Memory Architectures (closed by Master on 2026-09-25; MEM01 PASS; memory remains opt-in/off by default)
 
-Next module: **Master selection required.** Module 24 is closed; do not auto-start Module 25 from this Topic Chat.
+Next module: **25 — A2A / Interoperability**.
 
 ---
 
