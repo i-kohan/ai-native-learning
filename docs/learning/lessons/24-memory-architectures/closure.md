@@ -1,6 +1,6 @@
 # 24 — Memory Architectures closure
 
-Status: **✅ TOPIC CHAT CLOSED on 2026-09-25.**
+Status: **✅ MASTER CLOSED on 2026-09-25.**
 
 ## Practical result
 
@@ -72,3 +72,39 @@ Explicitly out of scope / not required for closure:
 - production-grade canonicalization/redaction of credential-bearing repository origins.
 
 No further Module 24 work is required before returning to Master for next-module selection. Do not auto-start Module 25 from this Topic Chat.
+
+
+## Master acceptance
+
+Master review confirmed the intended lifecycle and authority boundaries:
+
+```text
+promotion source                  = harness-derived current repository evidence
+promotion gate                    = workflow success + VERIFY PASS + REVIEW pass
+repository scope in harness path  = derived from bound config.repoRoot
+caller-controlled repository id   = no
+fresh-run retrieval               = yes
+conversation continuity required  = no
+current-tree freshness validation = yes
+stale memory injection            = no
+stale record rewritten            = no
+WorkflowState modified by memory  = no
+durable + memory partial semantics= rejected / unsupported
+default memory                    = off
+```
+
+MEM01 is accepted as a mechanism probe, not as evidence that memory improves quality, latency, navigation cost, or token economics.
+
+The current raw Git-origin repository identity is accepted for this bounded repository because the recorded origin is non-secret. Canonicalization/redaction of credential-bearing remote URLs remains a production/generalization debt, not a Module 24 blocker.
+
+Final Master decision:
+
+```text
+verified cross-run memory lifecycle = accepted
+scope / provenance / freshness       = accepted
+stale negative case                  = accepted
+always-on memory extraction          = not adopted
+vector / embedding memory            = not needed
+normal default                       = unchanged
+remaining closure blockers           = none
+```
