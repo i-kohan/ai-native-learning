@@ -2254,3 +2254,20 @@ Re-run after durable execution rejected memory promotion and retrieval: **PASS**
 ### Adoption
 
 Not adopted as default. T03 still discovered the repository with `read_file`. One probe does not show a navigation or quality gain. Keep the seam off until a repeated cross-run fact is worth a bounded hint.
+
+### Final understanding / Topic Chat closure
+
+Final Understanding Check: **PASS with precision corrections** on 2026-09-25.
+
+Supported understanding:
+
+- session continuity continues one interaction; cross-run memory starts a fresh run and retrieves retained knowledge;
+- memory is advisory cross-run evidence, not `WorkflowState` and not eternal repository authority;
+- admission validates whether a candidate may be persisted; retrieval-time freshness validates whether it still applies now;
+- retrieval order is scope → relevance → freshness/applicability → bounded context;
+- stale memory is not injected; a newer supported replacement is conceptually **superseded** rather than silently rewriting old provenance;
+- memory must not become its own proof through a false-belief feedback loop;
+- memory can contaminate HOLDOUT evaluation by leaking prior-trial information;
+- MEM01 PASS does not justify default adoption without repeated workload evidence and measurable end-to-end value.
+
+**Topic Chat decision:** Module 24 CLOSED. Default memory remains off. Return to Master for next-module selection.

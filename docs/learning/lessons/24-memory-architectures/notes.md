@@ -1,6 +1,6 @@
 # 24 — MEM01 notes
 
-Status: implemented and measured. MEM01 **PASS**. Not closed. Default `runV1Harness()` does not read or write memory.
+Status: **✅ CLOSED by Topic Chat on 2026-09-25.** MEM01 **PASS**. Default `runV1Harness()` does not read or write memory.
 
 ## Purpose
 
@@ -79,3 +79,17 @@ Evidence:
 Leave memory off by default. The probe shows admission, scope, validation, injection, and stale rejection. It does not show that the hint replaces discovery or improves the workflow.
 
 Generic hardening remains outside this probe. `repositoryScopeOf()` currently uses the bound Git `origin`; this repository uses a non-secret SSH origin. A production/generalized implementation should canonicalize or redact credential-bearing remote URLs before persisting/tracing repository identity.
+
+## Final understanding check / closure
+
+Final Understanding Check: **PASS with precision corrections**.
+
+The learner correctly distinguished session continuity from fresh-run cross-run memory, explained admission-time vs retrieval-time validation, ordered retrieval as scope → relevance → freshness → context, rejected stale memory from Worker hints, recognized false-belief self-reinforcement, identified HOLDOUT contamination risk, and rejected default adoption without demonstrated workload value.
+
+Corrections retained:
+
+- a newer supported fact replacing an old one is **supersession**;
+- the false-belief risk is specifically `memory → biased reasoning → that same biased reasoning strengthens memory`, not merely “too many writes”;
+- default adoption requires repeated cross-run facts whose rediscovery cost is material enough for bounded validated memory to show measurable end-to-end value.
+
+Module 24 is closed. Return to Master for next-module selection; do not auto-start Module 25 here.
