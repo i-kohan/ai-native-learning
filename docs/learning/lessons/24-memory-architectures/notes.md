@@ -42,6 +42,10 @@ The persisted record keeps `sourceFingerprint` as provenance. Later validation d
 
 The hint says the Spec and the current tree stay authoritative, and that `list_files` / `read_file` remain available.
 
+MEM01 intentionally has no generic relevance/ranking layer. Retrieval is opt-in for the related probe task; within one repository, zero or several validating records inject nothing. If generalized beyond this one mechanism, add explicit task-class/tag/path relevance before ranking/injection.
+
+`baseRevision` records the workflow's starting revision. The post-run source bytes actually observed for admission are represented by the structured claim plus `sourceFingerprint`; `baseRevision` should not be read as a final committed tree containing the observation.
+
 ## Commands
 
 ```bash
@@ -73,3 +77,5 @@ Evidence:
 ## Adoption
 
 Leave memory off by default. The probe shows admission, scope, validation, injection, and stale rejection. It does not show that the hint replaces discovery or improves the workflow.
+
+Generic hardening remains outside this probe. `repositoryScopeOf()` currently uses the bound Git `origin`; this repository uses a non-secret SSH origin. A production/generalized implementation should canonicalize or redact credential-bearing remote URLs before persisting/tracing repository identity.

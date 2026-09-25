@@ -242,7 +242,7 @@ Not adopted:
 - automatic extraction from traces or conversations;
 - memory that changes workflow phase, Spec, or VERIFY/REVIEW authority.
 
-**Revisit when:** a repeated cross-run fact is stale often enough that missing JIT validation causes wrong edits, and a bounded hint is cheaper than rediscovery.
+**Revisit when:** repeated cross-run facts are common and expensive enough to rediscover that a bounded, current-state-validated hint has measurable end-to-end value.
 
 ### Retained routing boundary
 
