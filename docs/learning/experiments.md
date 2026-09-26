@@ -2323,7 +2323,7 @@ Covered: skill-missing card rejection with no `SendMessage`; incompatible protoc
 
 ### A2A01 run
 
-Three DEV runs on 2026-09-26, T01 variant, `a2aDelegationEnabled: true`. The remote key was assigned on the probe process only. No code fallback to `OPENAI_API_KEY`.
+Initial three DEV runs on 2026-09-26 used T01 variant with `a2aDelegationEnabled: true`. A fourth fresh run was executed after review fixes and is the authoritative post-fix evidence. The remote key was assigned on the probe process only. No code fallback to `OPENAI_API_KEY`.
 
 Runs 1 and 2 exited 1 in Spec (`Request timed out.`, ~32.7 s) before the Worker. They are not the measurement.
 
@@ -2384,4 +2384,4 @@ expected_t01: true
 
 ### A2A01 rule
 
-**PASS** as a mechanism probe after the review fixes. Current SDK `1.2.1` with A2A v1.0 HTTP+JSON semantics. The fresh run showed a separate remote process, card discovery, Host admission, real `SendMessage`, a completed Task whose id is not `workflowId`, a validated advisory artifact, a stored delegation record, then normal VERIFY and independent REVIEW. Invalid scope fails closed in tests. This is not a quality, latency, or cost claim, and it does not close Module 25.
+**PASS** as a mechanism probe after the review fixes. Current SDK `1.2.1` with A2A v1.0 HTTP+JSON semantics. The fresh run showed a separate remote process, card discovery, Host admission, real `SendMessage`, a completed Task whose id is not `workflowId`, a validated advisory artifact, a stored delegation record, then normal VERIFY and independent REVIEW. Invalid scope fails closed in tests. The scope fix is not a post-hoc expansion of the experiment goal: it restores the already intended bounded-authority boundary. This is not a quality, latency, or cost claim, and it does not close Module 25.
