@@ -1046,22 +1046,41 @@ These should still be understood so the landscape is complete, but they are deli
 
 ### What it is
 
-Rough distinction:
+Useful architectural distinction:
 
 ```text
 MCP ≈ agent/application ↔ capabilities/context
-A2A ≈ agent ↔ remote agent
+A2A ≈ agent system ↔ independent remote agent system
 ```
+
+The distinction is not task size. An MCP capability can be internally intelligent; A2A makes the independent autonomous-agent boundary explicit through discovery, task lifecycle, messages, and artifacts.
 
 ### Why last
 
-Useful mainly when building interoperable systems across independent agent runtimes.
+Useful mainly when interoperating across independently deployed agent runtimes, teams, frameworks, or vendors.
 
-Not necessary for understanding a strong coding harness.
+Not necessary for understanding a strong single-harness coding system, and easy to overbuild into a multi-agent platform before the boundary is needed.
 
 ### Goal
 
-Understand architecture and use cases. No deep implementation.
+Understand the architecture well enough to distinguish A2A from MCP, Subagents, tools, and custom RPC.
+
+Build one bounded real protocol integration:
+
+```text
+Host
+→ discover + admit one Remote Agent
+→ one Task
+→ one structured Artifact
+→ local validation
+→ existing VERIFY / REVIEW
+```
+
+Do not build a registry, marketplace, swarm, dynamic routing layer, multi-hop delegation, or production auth platform.
+
+### Depth
+
+**Architecture well + one bounded practical protocol integration.**
 
 ---
 
