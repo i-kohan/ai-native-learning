@@ -1,0 +1,22 @@
+A2A01 bounded DEV probe
+task: T01
+context: variant
+workflow_status: failure
+a2a_delegation_enabled: false
+agent_card_discovered: false
+admission: (missing)
+workflowId: (missing)
+delegationId: (missing)
+taskId: (missing)
+contextId: (none)
+remote_pid: (missing)
+send_message: false
+terminal_state: (missing)
+artifact: (missing)
+delegation_outcome: (missing)
+delegation_count: 0
+grants_workflow_success: false
+final_verification: FAIL
+review_outcome: skipped
+expected_t01: false
+trace: /Users/i.kohanvs/Desktop/ai-native/traces/T01-variant-manual-2026-09-26T12-21-13-688Z.jsonl

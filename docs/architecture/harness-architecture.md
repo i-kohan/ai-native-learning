@@ -244,6 +244,14 @@ Not adopted:
 
 **Revisit when:** repeated cross-run facts are common and expensive enough to rediscover that a bounded, current-state-validated hint has measurable end-to-end value.
 
+### Experimental: A2A impact delegation
+
+**Status:** mechanism probe only. Default `runV1Harness()` does not delegate.
+
+`a2aDelegationEnabled` exposes one Worker tool, `delegate_remote_analysis({ objective, scope })`. The Host spawns `harness-impact-agent`, discovers its v1 Agent Card over HTTP, and admits it before `SendMessage`. The binding is HTTP+JSON. A validated `ImpactAnalysis` artifact is advisory Worker evidence. The remote process does not receive the parent environment or `OPENAI_API_KEY`, and it cannot write, verify, or review. Durable execution rejects this mode.
+
+**Revisit when:** a task has an impact-analysis episode that should run in a separate agent runtime, and A2A01 has been measured on that workload. This seam does not replace MCP or the Module 13 subagent.
+
 ### Retained routing boundary
 
 The current policy routes all normal episodes to the same model, but the deterministic routing boundary is cheap and useful for future requalification. Keep it.

@@ -222,6 +222,7 @@ export type HarnessRunResult = {
   plannerDurationMs: number;
   subagentsEnabled: boolean;
   mcpRepoReadEnabled?: boolean;
+  a2aDelegationEnabled?: boolean;
   memory?: MemoryRunMetrics;
   reviewPlan: ReviewPlan | null;
   reviewUnits: ReviewUnitReport[];
@@ -290,6 +291,11 @@ export async function runV1Harness(options: {
    * admitted MCP repo_read_file. Repair and review stay on direct tools.
    */
   mcpRepoReadEnabled?: boolean;
+  /**
+   * Experiment-only. One implementation Worker may delegate impact analysis
+   * to a separate A2A agent. Default remains off.
+   */
+  a2aDelegationEnabled?: boolean;
   /**
    * Experiment-only verified repository memory. Default runs do not read or
    * write memory, and memory cannot change WorkflowState.
@@ -366,6 +372,7 @@ async function executeV1Harness(options: {
   planningEnabled?: boolean;
   subagentsEnabled?: boolean;
   mcpRepoReadEnabled?: boolean;
+  a2aDelegationEnabled?: boolean;
   memory?: MemoryRunOptions;
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
   reviewUnitTemplates?: ChangeUnitTemplate[];
@@ -424,6 +431,7 @@ async function executeV1Harness(options: {
     options.subagentsEnabled === true,
   );
   const mcpRepoReadEnabled = options.mcpRepoReadEnabled === true;
+  const a2aDelegationEnabled = options.a2aDelegationEnabled === true;
   const conversationStateMode: ConversationStateMode =
     options.conversationStateMode ?? "manual";
   const startedAt = Date.now();
@@ -467,6 +475,7 @@ async function executeV1Harness(options: {
       planningEnabled,
       subagentsEnabled,
       mcpRepoReadEnabled,
+      a2aDelegationEnabled,
       memory: options.memory,
       architectureConstraints: options.architectureConstraints,
       bindReviewPlan: options.bindReviewPlan,
@@ -576,6 +585,7 @@ async function executeV1Harness(options: {
       planningEnabled,
       subagentsEnabled,
       mcpRepoReadEnabled,
+      a2aDelegationEnabled,
       memory: options.memory,
       architectureConstraints: options.architectureConstraints,
       bindReviewPlan: options.bindReviewPlan,
@@ -747,6 +757,7 @@ async function executeV1Harness(options: {
     planningEnabled,
     subagentsEnabled,
     mcpRepoReadEnabled,
+    a2aDelegationEnabled,
     memory: options.memory,
     architectureConstraints: options.architectureConstraints,
     bindReviewPlan: options.bindReviewPlan,
@@ -786,6 +797,7 @@ async function continueAfterAdmittedSpec(options: {
   planningEnabled: boolean;
   subagentsEnabled: boolean;
   mcpRepoReadEnabled: boolean;
+  a2aDelegationEnabled?: boolean;
   memory?: MemoryRunOptions;
   architectureConstraints?: ArchitectureConstraint[];
   bindReviewPlan?: (spec: Spec) => ParseReviewPlanResult;
@@ -814,6 +826,7 @@ async function continueAfterAdmittedSpec(options: {
     mcpRepoReadEnabled,
     durable,
   } = options;
+  const a2aDelegationEnabled = options.a2aDelegationEnabled === true;
   let { repositoryMap } = options;
   let contextPreparation: ContextPreparation | null =
     options.contextPreparation ?? null;
@@ -1025,6 +1038,14 @@ async function continueAfterAdmittedSpec(options: {
     );
   }
   if (
+    a2aDelegationEnabled &&
+    (options.bindFanOutPlan || options.bindReviewPlan)
+  ) {
+    throw new Error(
+      "a2aDelegationEnabled is only supported for the single implementation Worker.",
+    );
+  }
+  if (
     options.memory &&
     (options.memory.promote === true || options.memory.retrieve === true) &&
     (options.bindFanOutPlan || options.bindReviewPlan)
@@ -1209,6 +1230,7 @@ async function continueAfterAdmittedSpec(options: {
       conversationStateMode,
       subagentsEnabled,
       mcpRepoReadEnabled,
+      a2aDelegationEnabled,
       memoryHint,
     });
   }
@@ -1221,6 +1243,7 @@ async function continueAfterAdmittedSpec(options: {
     changedFiles: implementation.changedFiles,
     durationMs: implementation.durationMs,
     researchDelegations: implementation.researchDelegations,
+    a2aDelegations: implementation.a2aDelegations,
   });
 
   if (options.afterImplementationEpisode) {
@@ -1458,6 +1481,7 @@ async function continueAfterAdmittedSpec(options: {
     planningEnabled,
     subagentsEnabled,
     mcpRepoReadEnabled,
+    a2aDelegationEnabled,
     reviewPlan,
     reviewUnits,
     reviewabilityReportPath,
@@ -1519,6 +1543,9 @@ export function printHarnessResult(result: HarnessRunResult): void {
   console.log(`planning_enabled: ${result.planningEnabled}`);
   console.log(`subagents_enabled: ${result.subagentsEnabled}`);
   console.log(`mcp_repo_read_enabled: ${result.mcpRepoReadEnabled === true}`);
+  console.log(
+    `a2a_delegation_enabled: ${result.a2aDelegationEnabled === true}`,
+  );
   if (result.memory) {
     console.log(
       `memory: candidates=${result.memory.memoryCandidates} admitted=${result.memory.memoryAdmitted} retrieved=${result.memory.memoryRetrieved} validated=${result.memory.memoryValidated} rejected_stale=${result.memory.memoryRejectedStale} injected=${result.memory.memoryInjected} bytes=${result.memory.injectedBytes}`,
@@ -2069,6 +2096,7 @@ function mergeAgentRuns(
       ...left.researchDelegations,
       ...right.researchDelegations,
     ],
+    a2aDelegations: [...left.a2aDelegations, ...right.a2aDelegations],
   };
 }
 
@@ -2983,6 +3011,7 @@ function baseResult(fields: {
   planningEnabled: boolean;
   subagentsEnabled: boolean;
   mcpRepoReadEnabled?: boolean;
+  a2aDelegationEnabled?: boolean;
   reviewPlan?: ReviewPlan | null;
   reviewUnits?: ReviewUnitReport[];
   reviewabilityReportPath?: string | null;
@@ -3136,6 +3165,7 @@ function baseResult(fields: {
     plannerDurationMs: fields.plannerPhase.durationMs,
     subagentsEnabled: fields.subagentsEnabled,
     mcpRepoReadEnabled: fields.mcpRepoReadEnabled === true,
+    a2aDelegationEnabled: fields.a2aDelegationEnabled === true,
     reviewPlan: fields.reviewPlan ?? null,
     reviewUnits: fields.reviewUnits ?? [],
     reviewabilityReportPath: fields.reviewabilityReportPath ?? null,
@@ -3290,6 +3320,7 @@ async function finishRun(
         }
       : null,
     researchDelegations: result.implementation?.researchDelegations ?? [],
+    a2aDelegations: result.implementation?.a2aDelegations ?? [],
     receivedTerminalResponse: result.receivedTerminalResponse,
     verificationAttempts: result.verificationAttempts,
     repairAttempts: result.repairAttempts,
@@ -3369,6 +3400,7 @@ function assertDurableModeSupported(options: {
   planningEnabled?: boolean;
   subagentsEnabled?: boolean;
   mcpRepoReadEnabled?: boolean;
+  a2aDelegationEnabled?: boolean;
   memory?: Pick<MemoryRunOptions, "promote" | "retrieve">;
   bindReviewPlan?: unknown;
   bindFanOutPlan?: unknown;
@@ -3390,6 +3422,12 @@ function assertDurableModeSupported(options: {
     throw new WorkflowError(
       "unsupported_mode",
       "Durable execution does not support mcpRepoReadEnabled.",
+    );
+  }
+  if (options.a2aDelegationEnabled) {
+    throw new WorkflowError(
+      "unsupported_mode",
+      "Durable execution does not support a2aDelegationEnabled.",
     );
   }
   if (options.memory?.promote === true || options.memory?.retrieve === true) {
@@ -3953,6 +3991,7 @@ function resumedImplementationStub(
     clientInputItemsSent: 0,
     clientInputBytesSent: 0,
     researchDelegations: [],
+    a2aDelegations: [],
   };
 }
 

@@ -29,7 +29,7 @@ Completed modules:
 23. ✅ 23 — MCP Deeper Dive (closed by Master on 2026-09-24; MCP01 PASS; default local repo read remains direct)
 24. ✅ 24 — Memory Architectures (closed by Master on 2026-09-25; MEM01 PASS; memory remains opt-in/off by default)
 
-Next module: **25 — A2A / Interoperability**.
+Next module: **25 — A2A / Agent Interoperability** (A2A01 PASS as a mechanism probe; not marked complete).
 
 ---
 
@@ -55,6 +55,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional bounded fan-out behind an explicit `FanOutPlan` binder (Module 22). Same exact-base worktrees, schedule `sequential | parallel`, Git 3-way fan-in. Default remains Spec → one Worker; corrected PAR01 on P03 (one frozen Spec, 3×2 valid scheduling trials) was `not_worth_current_workload`.
 - optional MCP repository-read mechanism behind `mcpRepoReadEnabled` (Module 23). Implementation Worker can replace direct `read_file` with Host-admitted `repo_read_file` over a real local stdio MCP boundary. Default remains direct `read_file`; MCP does not own Spec, writes, VERIFY, REVIEW, retry, or workflow success.
 - optional verified repository memory behind explicit `memory` options (Module 24). Repository scope comes from the bound `config.repoRoot`. A harness-admitted implementation-surface fact can persist outside `WorkflowState` and, after current-repository validation, enter Worker context as one advisory hint. Default `runV1Harness()` does not read or write memory.
+- optional A2A impact delegation behind `a2aDelegationEnabled` (Module 25). The implementation Worker may call `delegate_remote_analysis` once. The Host discovers an Agent Card, admits one local HTTP+JSON agent, and may pass a validated artifact back as advisory evidence. Default remains off. The remote process does not own WorkflowState, VERIFY, or REVIEW.
 
 Conceptual default flow:
 
@@ -73,6 +74,69 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 25 — A2A / Agent Interoperability
+
+**Status:** mechanism implemented. A2A01 **PASS** as a mechanism probe. Not marked complete. Default `runV1Harness()` does not delegate over A2A.
+
+Theory:
+
+`docs/learning/lessons/25-a2a/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/25-a2a/notes.md`
+
+## What was implemented
+
+Opt-in bounded interoperability path:
+
+```text
+Implementation Worker
+→ delegate_remote_analysis({ objective, scope })
+→ Host discovers Agent Card
+→ Host admission
+→ A2A SendMessage over HTTP+JSON
+→ separate harness-impact-agent process
+→ real remote Task
+→ ImpactAnalysis artifact
+→ Host path admission
+→ advisory Worker evidence
+→ normal VERIFY
+→ normal independent REVIEW
+```
+
+SDK: `@a2a-js/sdk@1.0.1`, protocol `1.0`, binding `HTTP+JSON`. The client fetches `/.well-known/agent-card.json`. It does not import the server card object.
+
+## Important design decisions
+
+The model supplies only `objective` and `scope`. The Host owns the endpoint, `A2A_ALLOWED_ROOT`, `A2A_REMOTE_OPENAI_API_KEY`, protocol version, and admission. There is no fallback from the remote key to `OPENAI_API_KEY`. The child environment is an allowlist plus those A2A variables.
+
+A completed remote Task does not set parent workflow success. `grantsWorkflowSuccess` on the delegation record is false. VERIFY and REVIEW stay on the outer harness.
+
+Durable execution rejects `a2aDelegationEnabled` as `unsupported_mode`.
+
+## Current result
+
+Harness tests: **319 passed**, including 11 A2A tests.
+
+Negative card admission and out-of-scope artifact rejection fail closed. A real local HTTP Task id is distinct from the parent workflow id.
+
+A2A01 DEV probe, T01 variant, seam enabled. Two earlier runs the same day died in Spec (`Request timed out.`, ~32.7 s) before delegation. The evidence run is the third.
+
+| Run | Workspace | Outcome | Report |
+| --- | --- | --- | --- |
+| 1 | `T01-variant-manual-2026-09-26T12-19-56-296Z` | Spec timeout, delegation 0 | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-20-29-676Z.txt` |
+| 2 | `T01-variant-manual-2026-09-26T12-21-13-688Z` | Spec timeout, delegation 0 | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-21-47-041Z.txt` |
+| 3 | `T01-variant-manual-2026-09-26T15-47-26-326Z` | mechanism PASS, exit 0, 35997 ms | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T15-48-02-944Z.txt` |
+
+Evidence run: card discovered, admission pass, `SendMessage`, `taskId` `a7870191-8e91-40b7-b961-1e0f2ee5422e` distinct from `workflowId` and `delegationId` `c8021fad-b3ed-407f-980e-946774f52bea`, `contextId` `23664de7-4c46-44e6-aa29-2962252e7924`, remote pid 4075, `TASK_STATE_COMPLETED`, artifact accepted, `grantsWorkflowSuccess` false, VERIFY PASS, REVIEW pass, expected T01 outcome. The Worker received the advisory artifact, then wrote `tasks/task-routes.ts`. The remote credential was set on the probe process only. No code fallback to `OPENAI_API_KEY`.
+
+## Failures / open questions
+
+`delegateRemoteAnalysis` returns `record`, while the Worker loop stores `a2aDelegation`. The `a2a_delegation` trace event is complete, and the tool output reached the Worker. `implementation_completed.a2aDelegations` and the outer `run_completed.a2aDelegations` stayed `[]`. Module 25 is not closed.
 
 ---
 

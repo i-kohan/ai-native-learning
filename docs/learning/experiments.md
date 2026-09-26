@@ -2271,3 +2271,95 @@ Supported understanding:
 - MEM01 PASS does not justify default adoption without repeated workload evidence and measurable end-to-end value.
 
 **Topic Chat decision:** Module 24 CLOSED. Default memory remains off. Return to Master for next-module selection.
+
+---
+
+## Module 25 — A2A01 bounded impact delegation
+
+### Hypothesis
+
+The harness can delegate one bounded, read-only impact analysis to a separate A2A v1 agent and return only a Host-validated artifact as advisory Worker evidence.
+
+This is a mechanism probe. It does not claim a quality, latency, or cost change.
+
+### Variant
+
+Default `runV1Harness()` does not expose `delegate_remote_analysis`.
+
+Opt-in `a2aDelegationEnabled` on the single implementation Worker. Durable execution rejects it as `unsupported_mode`.
+
+SDK `@a2a-js/sdk@1.0.1`. Protocol `1.0`. Binding HTTP+JSON. Remote root is `A2A_ALLOWED_ROOT`. Remote model credential is `A2A_REMOTE_OPENAI_API_KEY`, with no fallback to `OPENAI_API_KEY`.
+
+### A2A01 PASS rule
+
+Frozen before implementation. PASS only if all of these are demonstrated:
+
+```text
+real separate A2A server process
+official current TypeScript SDK
+A2A v1.0 semantics
+Agent Card discovered over the actual integration path
+explicit Host admission
+expected AgentSkill advertised
+real SendMessage
+real remote Task
+remote task id distinct from workflowId
+structured artifact returned and validated
+remote agent has no parent WorkflowState authority
+remote agent does not receive parent credentials or the parent environment wholesale
+artifact remains advisory evidence
+one bounded Worker consumes the accepted evidence
+normal VERIFY remains authoritative
+normal independent REVIEW remains authoritative
+negative Agent Card admission fails closed
+negative artifact admission fails closed
+```
+
+### Deterministic contract
+
+Harness tests: **319 passed**, including 11 A2A tests.
+
+Covered: skill-missing card rejection with no `SendMessage`; incompatible protocol `0.3`; artifact path `../../secret.txt` rejected and not formatted as Worker evidence; real HTTP Task id distinct from the parent workflow id; completed Task does not grant workflow success; separate process serves the v1 card; child env omits `OPENAI_API_KEY`; default Worker tool list unchanged; durable mode rejected.
+
+### A2A01 run
+
+Three DEV runs on 2026-09-26, T01 variant, `a2aDelegationEnabled: true`. The remote key was assigned on the probe process only. No code fallback to `OPENAI_API_KEY`.
+
+Runs 1 and 2 exited 1 in Spec (`Request timed out.`, ~32.7 s) before the Worker. They are not the measurement.
+
+Evidence run: workspace `T01-variant-manual-2026-09-26T15-47-26-326Z`, exit 0, `duration_ms` 35997.
+
+```text
+agent_card_discovered: true
+admission: pass
+workflowId: T01-variant-manual-2026-09-26T15-47-26-326Z
+delegationId: c8021fad-b3ed-407f-980e-946774f52bea
+taskId: a7870191-8e91-40b7-b961-1e0f2ee5422e
+contextId: 23664de7-4c46-44e6-aa29-2962252e7924
+remote_pid: 4075
+send_message: true
+terminal_state: TASK_STATE_COMPLETED
+artifact: accepted
+delegation_count: 1
+grants_workflow_success: false
+final_verification: PASS
+review_outcome: pass
+expected_t01: true
+```
+
+The Worker called `delegate_remote_analysis` once before `write_file`. The tool observation named `src/tasks/task-routes.ts` and the 500→404 change. VERIFY and independent REVIEW both passed. Changed file: `tasks/task-routes.ts`.
+
+Report: `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T15-48-02-944Z.txt`
+
+Trace: `traces/T01-variant-manual-2026-09-26T15-47-26-326Z.jsonl`
+
+Earlier reports, not used for the rule:
+
+- `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-20-29-676Z.txt`
+- `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-21-47-041Z.txt`
+
+### A2A01 rule
+
+**PASS** as a mechanism probe. The evidence run showed a separate remote process, card discovery, Host admission, skill `repository-impact-analysis`, real `SendMessage`, a completed remote Task whose id is not `workflowId`, a Host-accepted artifact used only as Worker evidence, no workflow-success grant, then normal VERIFY and independent REVIEW. Deterministic tests still cover the negative card and artifact cases.
+
+Open bookkeeping gap: `implementation_completed.a2aDelegations` and the outer `run_completed.a2aDelegations` are `[]`, because the loop reads `a2aDelegation` and `delegateRemoteAnalysis` returns `record`. The `a2a_delegation` event and the Worker tool output hold the record. This does not change the PASS rule. It is not a quality, latency, or cost claim, and it does not close Module 25.

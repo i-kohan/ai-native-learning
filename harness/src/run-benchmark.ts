@@ -257,6 +257,7 @@ export function prepareBenchmark(
 export type BenchmarkRunOptions = {
   conversationStateMode?: ConversationStateMode;
   mcpRepoReadEnabled?: boolean;
+  a2aDelegationEnabled?: boolean;
   memory?: MemoryRunOptions;
 };
 
@@ -294,6 +295,7 @@ export async function runBenchmark(
       conversationStateMode,
       workspace,
       mcpRepoReadEnabled: options.mcpRepoReadEnabled === true,
+      a2aDelegationEnabled: options.a2aDelegationEnabled === true,
       memory: options.memory,
     });
 

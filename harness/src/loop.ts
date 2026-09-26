@@ -32,6 +32,13 @@ import {
   type ResearchDelegationRecord,
 } from "./research-subagent.ts";
 import {
+  DELEGATE_REMOTE_ANALYSIS_TOOL,
+  WORKER_A2A_INSTRUCTIONS,
+  delegateRemoteAnalysis,
+  parseDelegateRemoteAnalysis,
+  type A2aDelegationRecord,
+} from "./a2a/delegation.ts";
+import {
   openRepoReadSession,
   REPO_READ_TOOL_NAME,
   type RepoReadSession,
@@ -109,6 +116,7 @@ export type AgentRunResult = {
   clientInputItemsSent: number;
   clientInputBytesSent: number;
   researchDelegations: ResearchDelegationRecord[];
+  a2aDelegations: A2aDelegationRecord[];
 };
 
 type FunctionCallItem = {
@@ -136,6 +144,11 @@ export async function runAgentLoop(options: {
    */
   mcpRepoReadEnabled?: boolean;
   /**
+   * Experiment-only. Implementation Worker may delegate one bounded impact
+   * analysis over A2A. Default remains no remote delegation.
+   */
+  a2aDelegationEnabled?: boolean;
+  /**
    * Experiment-only advisory hint. Included only for the implementation phase.
    * Absent on the default path.
    */
@@ -152,6 +165,8 @@ export async function runAgentLoop(options: {
   );
   const mcpRepoReadEnabled =
     options.mcpRepoReadEnabled === true && phase === "implementation";
+  const a2aDelegationEnabled =
+    options.a2aDelegationEnabled === true && phase === "implementation";
   const startedAt = Date.now();
   const nested = Boolean(options.tracer);
   const tracer = options.tracer ?? new Tracer(config.tracesDir, runId);
@@ -163,10 +178,12 @@ export async function runAgentLoop(options: {
   let tools = workerToolsForEpisode({ phase, subagentsEnabled });
   let mcpSession: RepoReadSession | null = null;
   const researchDelegations: ResearchDelegationRecord[] = [];
+  const a2aDelegations: A2aDelegationRecord[] = [];
   let remainingDelegations =
     subagentsEnabled && phase === "implementation"
       ? MAX_RESEARCH_DELEGATIONS
       : 0;
+  let remainingA2aDelegations = a2aDelegationEnabled ? 1 : 0;
 
   const createResponse =
     options.responsesCreate ?? defaultResponsesCreate(config.apiKey);
@@ -174,6 +191,7 @@ export async function runAgentLoop(options: {
     phase,
     subagentsEnabled,
     mcpRepoReadEnabled,
+    a2aDelegationEnabled,
   );
 
   const selectedSkillId = skillIdForPhase(phase);
@@ -231,6 +249,7 @@ export async function runAgentLoop(options: {
       memoryHintProvided: Boolean(memoryHint),
       conversationStateMode,
       subagentsEnabled,
+      a2aDelegationEnabled,
     });
   }
 
@@ -256,6 +275,9 @@ export async function runAgentLoop(options: {
         admittedTools: mcpSession.tools.map((tool) => tool.name),
         replacedDirectTools: ["read_file"],
       });
+    }
+    if (a2aDelegationEnabled) {
+      tools = [...tools, DELEGATE_REMOTE_ANALYSIS_TOOL];
     }
 
     // Explicit agent loop: model → (tool → observation → model)* → final
@@ -360,8 +382,11 @@ export async function runAgentLoop(options: {
 
         const result = await executeWorkerTool({
           config,
+          workflowId: runId,
           remainingDelegations,
+          remainingA2aDelegations,
           subagentsEnabled,
+          a2aDelegationEnabled,
           mcpSession,
           name: call.name,
           argsJson: call.arguments,
@@ -372,6 +397,10 @@ export async function runAgentLoop(options: {
         if (result.delegation) {
           researchDelegations.push(result.delegation);
           remainingDelegations = 0;
+        }
+        if (result.a2aDelegation) {
+          a2aDelegations.push(result.a2aDelegation);
+          remainingA2aDelegations = 0;
         }
         if (
           result.ok &&
@@ -469,6 +498,7 @@ export async function runAgentLoop(options: {
     clientInputItemsSent,
     clientInputBytesSent,
     researchDelegations,
+    a2aDelegations,
   };
 
   if (!nested) {
@@ -490,6 +520,21 @@ export async function runAgentLoop(options: {
       clientInputItemsSent,
       clientInputBytesSent,
       researchDelegations: result.researchDelegations,
+      a2aDelegations: result.a2aDelegations.map((delegation) => ({
+        workflowId: delegation.workflowId,
+        delegationId: delegation.delegationId,
+        taskId: delegation.taskId,
+        contextId: delegation.contextId,
+        remotePid: delegation.remotePid,
+        cardDiscovered: delegation.cardDiscovered,
+        admission: delegation.admission,
+        admissionReason: delegation.admissionReason,
+        sendMessagePerformed: delegation.sendMessagePerformed,
+        taskTerminalState: delegation.taskTerminalState,
+        artifactAdmission: delegation.artifactAdmission,
+        outcome: delegation.outcome,
+        grantsWorkflowSuccess: delegation.grantsWorkflowSuccess,
+      })),
     });
     await tracer.close();
   }
@@ -592,6 +637,7 @@ function episodeInstructions(
   phase: EpisodePhase,
   subagentsEnabled: boolean,
   mcpRepoReadEnabled: boolean,
+  a2aDelegationEnabled: boolean,
 ): string {
   if (phase === "repair") {
     return REPAIR_INSTRUCTIONS;
@@ -599,19 +645,25 @@ function episodeInstructions(
   if (phase === "review_repair") {
     return REVIEW_REPAIR_INSTRUCTIONS;
   }
-  const base = subagentsEnabled
+  let base = subagentsEnabled
     ? `${AGENT_INSTRUCTIONS.trim()}\n${WORKER_RESEARCH_INSTRUCTIONS.trim()}\n`
     : AGENT_INSTRUCTIONS;
-  if (!mcpRepoReadEnabled) {
+  if (mcpRepoReadEnabled) {
+    base = `${base.trim()}\nRead repository files with repo_read_file. Path is relative to target-app/. There is no read_file tool in this episode.\n`;
+  }
+  if (!a2aDelegationEnabled) {
     return base;
   }
-  return `${base.trim()}\nRead repository files with repo_read_file. Path is relative to target-app/. There is no read_file tool in this episode.\n`;
+  return `${base.trim()}\n${WORKER_A2A_INSTRUCTIONS}\n`;
 }
 
 async function executeWorkerTool(options: {
   config: HarnessConfig;
+  workflowId: string;
   remainingDelegations: number;
+  remainingA2aDelegations: number;
   subagentsEnabled: boolean;
+  a2aDelegationEnabled: boolean;
   mcpSession: RepoReadSession | null;
   name: string;
   argsJson: string;
@@ -622,6 +674,7 @@ async function executeWorkerTool(options: {
   ok: boolean;
   output: string;
   delegation?: ResearchDelegationRecord;
+  a2aDelegation?: A2aDelegationRecord;
 }> {
   if (options.mcpSession && options.name === "read_file") {
     return {
@@ -637,6 +690,9 @@ async function executeWorkerTool(options: {
       };
     }
     return options.mcpSession.call(options.name, options.argsJson);
+  }
+  if (options.name === "delegate_remote_analysis") {
+    return executeRemoteAnalysisTool(options);
   }
   if (options.name !== "delegate_research") {
     return executeTool(options.config, options.name, options.argsJson);
@@ -717,6 +773,71 @@ async function executeWorkerTool(options: {
     output: child.output,
     delegation: child.record,
   };
+}
+
+async function executeRemoteAnalysisTool(options: {
+  config: HarnessConfig;
+  workflowId: string;
+  remainingA2aDelegations: number;
+  a2aDelegationEnabled: boolean;
+  argsJson: string;
+  tracer: Tracer;
+}): Promise<{
+  ok: boolean;
+  output: string;
+  a2aDelegation?: A2aDelegationRecord;
+}> {
+  if (!options.a2aDelegationEnabled) {
+    return executeTool(
+      options.config,
+      "delegate_remote_analysis",
+      options.argsJson,
+    );
+  }
+  const parsed = parseDelegateRemoteAnalysis(options.argsJson);
+  if (options.remainingA2aDelegations <= 0) {
+    const output =
+      "delegate_remote_analysis denied: at most one remote impact delegation is allowed per Worker implementation episode.";
+    options.tracer.record("a2a_delegation", {
+      workflowId: options.workflowId,
+      denied: true,
+      reason: output,
+    });
+    return { ok: false, output };
+  }
+  if (!parsed.ok) {
+    options.tracer.record("a2a_delegation", {
+      workflowId: options.workflowId,
+      denied: true,
+      reason: parsed.error,
+    });
+    return { ok: false, output: parsed.error };
+  }
+  const result = await delegateRemoteAnalysis({
+    config: options.config,
+    workflowId: options.workflowId,
+    objective: parsed.value.objective,
+    scope: parsed.value.scope,
+  });
+  options.tracer.record("a2a_delegation", {
+    workflowId: result.record.workflowId,
+    delegationId: result.record.delegationId,
+    taskId: result.record.taskId,
+    contextId: result.record.contextId,
+    remotePid: result.record.remotePid,
+    cardDiscovered: result.record.cardDiscovered,
+    agentName: result.record.agentName,
+    protocolVersion: result.record.protocolVersion,
+    binding: result.record.binding,
+    admission: result.record.admission,
+    admissionReason: result.record.admissionReason,
+    sendMessagePerformed: result.record.sendMessagePerformed,
+    taskTerminalState: result.record.taskTerminalState,
+    artifactAdmission: result.record.artifactAdmission,
+    outcome: result.record.outcome,
+    grantsWorkflowSuccess: result.record.grantsWorkflowSuccess,
+  });
+  return result;
 }
 
 function defaultResponsesCreate(apiKey: string): ResponsesCreateFn {

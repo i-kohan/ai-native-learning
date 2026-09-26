@@ -626,6 +626,7 @@ function mergeAgentRuns(
       ...left.researchDelegations,
       ...right.researchDelegations,
     ],
+    a2aDelegations: [...left.a2aDelegations, ...right.a2aDelegations],
   };
 }
 
