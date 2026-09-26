@@ -23,7 +23,7 @@ This does not claim that A2A improves quality, latency, or cost.
 ## Protocol pin
 
 - Spec: A2A **1.0** (`https://a2a-protocol.org/v1.0.0/specification/`)
-- SDK: `@a2a-js/sdk@1.0.1`
+- SDK: `@a2a-js/sdk@1.2.1`
 - Binding: HTTP+JSON (`RestTransportFactory`, `restHandler`)
 - Card path: `/.well-known/agent-card.json`
 - Skill: `repository-impact-analysis`
@@ -83,7 +83,18 @@ REVIEW:       pass
 
 `delegate_remote_analysis` ran once (9370 ms) before `write_file`. The observation pointed at `getTask` returning status 500. The Worker then changed that branch to 404. `grantsWorkflowSuccess` stayed false.
 
-`implementation_completed.a2aDelegations` and the outer `run_completed.a2aDelegations` are empty. `delegateRemoteAnalysis` returns `record`; the loop only stores `a2aDelegation`. The `a2a_delegation` event and the tool output still contain the record.
+Review fixes, same day: invalid scope `../../outside` and absolute scope fail closed; SDK moved to `@a2a-js/sdk@1.2.1`; the Worker loop stores `record` as `a2aDelegation`.
+
+Fresh probe after those fixes: workspace `T01-variant-manual-2026-09-26T17-45-22-646Z`, exit 0. Report `traces/a2a01-t01-2026-09-26T17-45-58-631Z.txt`.
+
+```text
+delegationId: 1c97cc7a-4d15-4193-9fdc-4c46f64d30aa
+taskId:       de7f1a0f-0623-4f0a-8892-1132d7319218
+contextId:    0f33fa7e-a27e-44a9-8624-5e8de3159b08
+implementation.a2aDelegations: 1
+VERIFY: PASS
+REVIEW: pass
+```
 
 ## Learning-critical surfaces
 

@@ -108,7 +108,7 @@ Implementation Worker
 → normal independent REVIEW
 ```
 
-SDK: `@a2a-js/sdk@1.0.1`, protocol `1.0`, binding `HTTP+JSON`. The client fetches `/.well-known/agent-card.json`. It does not import the server card object.
+SDK: `@a2a-js/sdk@1.2.1`, protocol `1.0`, binding `HTTP+JSON`. The client fetches `/.well-known/agent-card.json`. It does not import the server card object. An invalid delegated scope is rejected and does not widen to `A2A_ALLOWED_ROOT`.
 
 ## Important design decisions
 
@@ -120,23 +120,24 @@ Durable execution rejects `a2aDelegationEnabled` as `unsupported_mode`.
 
 ## Current result
 
-Harness tests: **319 passed**, including 11 A2A tests.
+Harness tests: **322 passed**, including 14 A2A tests.
 
-Negative card admission and out-of-scope artifact rejection fail closed. A real local HTTP Task id is distinct from the parent workflow id.
+Negative card admission, out-of-scope artifact paths, traversal scope `../../outside`, and absolute scope fail closed. A real local HTTP Task id is distinct from the parent workflow id. A successful Worker delegation is stored on `implementation.a2aDelegations`.
 
-A2A01 DEV probe, T01 variant, seam enabled. Two earlier runs the same day died in Spec (`Request timed out.`, ~32.7 s) before delegation. The evidence run is the third.
+A2A01 DEV probe, T01 variant, seam enabled. Two earlier runs the same day died in Spec (`Request timed out.`, ~32.7 s) before delegation. Run 3 passed before the review fixes and is not the evidence for those fixes.
 
 | Run | Workspace | Outcome | Report |
 | --- | --- | --- | --- |
 | 1 | `T01-variant-manual-2026-09-26T12-19-56-296Z` | Spec timeout, delegation 0 | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-20-29-676Z.txt` |
 | 2 | `T01-variant-manual-2026-09-26T12-21-13-688Z` | Spec timeout, delegation 0 | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-21-47-041Z.txt` |
 | 3 | `T01-variant-manual-2026-09-26T15-47-26-326Z` | mechanism PASS, exit 0, 35997 ms | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T15-48-02-944Z.txt` |
+| 4 | `T01-variant-manual-2026-09-26T17-45-22-646Z` | fresh mechanism PASS after review fixes, exit 0, 36586 ms | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T17-45-58-631Z.txt` |
 
-Evidence run: card discovered, admission pass, `SendMessage`, `taskId` `a7870191-8e91-40b7-b961-1e0f2ee5422e` distinct from `workflowId` and `delegationId` `c8021fad-b3ed-407f-980e-946774f52bea`, `contextId` `23664de7-4c46-44e6-aa29-2962252e7924`, remote pid 4075, `TASK_STATE_COMPLETED`, artifact accepted, `grantsWorkflowSuccess` false, VERIFY PASS, REVIEW pass, expected T01 outcome. The Worker received the advisory artifact, then wrote `tasks/task-routes.ts`. The remote credential was set on the probe process only. No code fallback to `OPENAI_API_KEY`.
+Fresh evidence run: card discovered, admission pass, `SendMessage`, `taskId` `de7f1a0f-0623-4f0a-8892-1132d7319218` distinct from `workflowId` and `delegationId` `1c97cc7a-4d15-4193-9fdc-4c46f64d30aa`, `contextId` `0f33fa7e-a27e-44a9-8624-5e8de3159b08`, remote pid 90292, `TASK_STATE_COMPLETED`, artifact accepted, `implementation.a2aDelegations` length 1, `grantsWorkflowSuccess` false, VERIFY PASS, REVIEW pass, expected T01 outcome. The remote credential was set on the probe process only. No code fallback to `OPENAI_API_KEY`.
 
 ## Failures / open questions
 
-`delegateRemoteAnalysis` returns `record`, while the Worker loop stores `a2aDelegation`. The `a2a_delegation` trace event is complete, and the tool output reached the Worker. `implementation_completed.a2aDelegations` and the outer `run_completed.a2aDelegations` stayed `[]`. Module 25 is not closed.
+Module 25 is not closed. Closure stays with Topic Chat / Master.
 
 ---
 

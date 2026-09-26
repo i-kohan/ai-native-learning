@@ -248,7 +248,7 @@ Not adopted:
 
 **Status:** mechanism probe only. Default `runV1Harness()` does not delegate.
 
-`a2aDelegationEnabled` exposes one Worker tool, `delegate_remote_analysis({ objective, scope })`. The Host spawns `harness-impact-agent`, discovers its v1 Agent Card over HTTP, and admits it before `SendMessage`. The binding is HTTP+JSON. A validated `ImpactAnalysis` artifact is advisory Worker evidence. The remote process does not receive the parent environment or `OPENAI_API_KEY`, and it cannot write, verify, or review. Durable execution rejects this mode.
+`a2aDelegationEnabled` exposes one Worker tool, `delegate_remote_analysis({ objective, scope })`. The Host spawns `harness-impact-agent`, discovers its v1 Agent Card over HTTP, and admits it before `SendMessage`. The binding is HTTP+JSON. A validated `ImpactAnalysis` artifact is advisory Worker evidence. An invalid delegated scope is rejected before `SendMessage` and does not widen the remote filesystem to the allowed root. The remote process does not receive the parent environment or `OPENAI_API_KEY`, and it cannot write, verify, or review. Durable execution rejects this mode. SDK `@a2a-js/sdk@1.2.1`, protocol `1.0`.
 
 **Revisit when:** a task has an impact-analysis episode that should run in a separate agent runtime, and A2A01 has been measured on that workload. This seam does not replace MCP or the Module 13 subagent.
 

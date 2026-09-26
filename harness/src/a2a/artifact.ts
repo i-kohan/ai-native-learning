@@ -89,15 +89,21 @@ export function formatImpactEvidence(
   ].join("\n");
 }
 
-export function scopeCeiling(allowedRoot: string, scope: string): string {
+export function scopeCeiling(
+  allowedRoot: string,
+  scope: string,
+): { ok: true; ceiling: string } | { ok: false; reason: string } {
   const normalized = scope.trim().replace(/\\/g, "/").replace(/^\.\//, "");
-  if (normalized === "" || normalized === "." || /\s/.test(normalized)) {
-    return path.resolve(allowedRoot);
+  if (normalized === "" || /\s/.test(normalized)) {
+    return { ok: false, reason: "invalid_scope" };
   }
   try {
-    return resolveWithin(allowedRoot, normalized);
-  } catch {
-    return path.resolve(allowedRoot);
+    return { ok: true, ceiling: resolveWithin(allowedRoot, normalized) };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -108,6 +114,10 @@ function admitPath(
   if (typeof value !== "string" || value.trim() === "") {
     return { ok: false, reason: "path_missing" };
   }
+  const ceiling = scopeCeiling(options.allowedRoot, options.scope);
+  if (!ceiling.ok) {
+    return { ok: false, reason: `invalid_scope: ${ceiling.reason}` };
+  }
   const relativePath = value.trim().replace(/\\/g, "/");
   let resolved: string;
   try {
@@ -116,9 +126,10 @@ function admitPath(
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, reason: `path_outside_scope: ${message}` };
   }
-  const ceiling = scopeCeiling(options.allowedRoot, options.scope);
-  const prefix = ceiling.endsWith(path.sep) ? ceiling : `${ceiling}${path.sep}`;
-  if (resolved !== ceiling && !resolved.startsWith(prefix)) {
+  const prefix = ceiling.ceiling.endsWith(path.sep)
+    ? ceiling.ceiling
+    : `${ceiling.ceiling}${path.sep}`;
+  if (resolved !== ceiling.ceiling && !resolved.startsWith(prefix)) {
     return {
       ok: false,
       reason: `path_outside_scope: ${relativePath}`,

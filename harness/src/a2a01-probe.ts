@@ -65,6 +65,7 @@ export async function runA2a01Probe(): Promise<void> {
     `artifact: ${delegation?.artifactAdmission ?? "(missing)"}`,
     `delegation_outcome: ${delegation?.outcome ?? "(missing)"}`,
     `delegation_count: ${delegations.length}`,
+    `implementation_a2a_delegations: ${result.implementation?.a2aDelegations.length ?? 0}`,
     `grants_workflow_success: ${delegation?.grantsWorkflowSuccess === true}`,
     `final_verification: ${result.finalVerificationPassed ? "PASS" : "FAIL"}`,
     `review_outcome: ${result.finalReviewerOutcome ?? "(none)"}`,
@@ -83,9 +84,23 @@ export async function runA2a01Probe(): Promise<void> {
   console.log(`\n${report}`);
   console.log(`a2a01_report: ${reportPath}`);
 
+  const stored = result.implementation?.a2aDelegations ?? [];
+  const storedRecord = stored[0];
   const mechanismOk =
     result.a2aDelegationEnabled === true &&
     delegations.length >= 1 &&
+    stored.length >= 1 &&
+    storedRecord?.workflowId === delegation?.workflowId &&
+    storedRecord.delegationId === delegation?.delegationId &&
+    storedRecord.taskId === delegation?.taskId &&
+    storedRecord.contextId === delegation?.contextId &&
+    storedRecord.cardDiscovered === true &&
+    storedRecord.admission === "pass" &&
+    storedRecord.sendMessagePerformed === true &&
+    storedRecord.taskTerminalState === "TASK_STATE_COMPLETED" &&
+    storedRecord.artifactAdmission === "accepted" &&
+    storedRecord.outcome === "accepted" &&
+    storedRecord.grantsWorkflowSuccess !== true &&
     delegation?.cardDiscovered === true &&
     delegation.admission === "pass" &&
     delegation.sendMessagePerformed === true &&

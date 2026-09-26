@@ -4,6 +4,7 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { HarnessConfig } from "../config.ts";
+import { scopeCeiling } from "./artifact.ts";
 import {
   A2A_ALLOWED_ROOT_ENV,
   A2A_BASE_URL_ENV,
@@ -105,6 +106,19 @@ export async function delegateRemoteAnalysis(options: {
   objective: string;
   scope: string;
 }): Promise<{ ok: boolean; output: string; record: A2aDelegationRecord }> {
+  const ceiling = scopeCeiling(options.config.targetAppRoot, options.scope);
+  if (!ceiling.ok) {
+    return {
+      ok: false,
+      output: "Delegated scope was rejected. Delegation was not sent.",
+      record: localFailure(
+        options.workflowId,
+        "scope_rejected",
+        ceiling.reason,
+      ),
+    };
+  }
+
   const remoteApiKey = process.env[A2A_REMOTE_OPENAI_API_KEY_ENV]?.trim() ?? "";
   if (!remoteApiKey) {
     return {

@@ -17,6 +17,7 @@ import { admitDiscoveredAgent } from "./admission.ts";
 import {
   admitImpactArtifact,
   formatImpactEvidence,
+  scopeCeiling,
   type ImpactAnalysisArtifact,
 } from "./artifact.ts";
 import { impactInterfaceUrl } from "./constants.ts";
@@ -31,6 +32,7 @@ export type A2aDelegationOutcome =
   | "not_a_task"
   | "task_not_completed"
   | "artifact_rejected"
+  | "scope_rejected"
   | "remote_failed"
   | "transport_uncertain";
 
@@ -76,6 +78,14 @@ export async function performRemoteImpactDelegation(options: {
   const delegationId = randomUUID();
   const remotePid = options.remotePid ?? null;
   const base = emptyRecord(options.workflowId, delegationId, remotePid);
+  const ceiling = scopeCeiling(options.allowedRoot, options.scope);
+  if (!ceiling.ok) {
+    return rejected(base, {
+      outcome: "scope_rejected",
+      admissionReason: ceiling.reason,
+      output: "Delegated scope was rejected. Delegation was not sent.",
+    });
+  }
 
   let card: unknown;
   try {

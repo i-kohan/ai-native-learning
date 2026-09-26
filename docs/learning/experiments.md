@@ -2288,7 +2288,7 @@ Default `runV1Harness()` does not expose `delegate_remote_analysis`.
 
 Opt-in `a2aDelegationEnabled` on the single implementation Worker. Durable execution rejects it as `unsupported_mode`.
 
-SDK `@a2a-js/sdk@1.0.1`. Protocol `1.0`. Binding HTTP+JSON. Remote root is `A2A_ALLOWED_ROOT`. Remote model credential is `A2A_REMOTE_OPENAI_API_KEY`, with no fallback to `OPENAI_API_KEY`.
+SDK `@a2a-js/sdk@1.2.1` (official current release checked 2026-09-26). Protocol `1.0`. Binding HTTP+JSON. Remote root is `A2A_ALLOWED_ROOT`. An invalid scope is rejected. Remote model credential is `A2A_REMOTE_OPENAI_API_KEY`, with no fallback to `OPENAI_API_KEY`.
 
 ### A2A01 PASS rule
 
@@ -2317,9 +2317,9 @@ negative artifact admission fails closed
 
 ### Deterministic contract
 
-Harness tests: **319 passed**, including 11 A2A tests.
+Harness tests: **322 passed**, including 14 A2A tests.
 
-Covered: skill-missing card rejection with no `SendMessage`; incompatible protocol `0.3`; artifact path `../../secret.txt` rejected and not formatted as Worker evidence; real HTTP Task id distinct from the parent workflow id; completed Task does not grant workflow success; separate process serves the v1 card; child env omits `OPENAI_API_KEY`; default Worker tool list unchanged; durable mode rejected.
+Covered: skill-missing card rejection with no `SendMessage`; incompatible protocol `0.3`; artifact path `../../secret.txt` rejected and not formatted as Worker evidence; scope `../../outside` and an absolute scope rejected without listing the allowed root; real HTTP Task id distinct from the parent workflow id; completed Task does not grant workflow success; separate process serves the v1 card; child env omits `OPENAI_API_KEY`; default Worker tool list unchanged; a successful delegation is stored on `implementation.a2aDelegations`; durable mode rejected.
 
 ### A2A01 run
 
@@ -2358,8 +2358,30 @@ Earlier reports, not used for the rule:
 - `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-20-29-676Z.txt`
 - `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-21-47-041Z.txt`
 
+### Fresh A2A01 run after review fixes
+
+2026-09-26, T01 variant, `@a2a-js/sdk@1.2.1`, seam enabled. Exit 0. Workspace `T01-variant-manual-2026-09-26T17-45-22-646Z`.
+
+```text
+agent_card_discovered: true
+admission: pass
+workflowId: T01-variant-manual-2026-09-26T17-45-22-646Z
+delegationId: 1c97cc7a-4d15-4193-9fdc-4c46f64d30aa
+taskId: de7f1a0f-0623-4f0a-8892-1132d7319218
+contextId: 0f33fa7e-a27e-44a9-8624-5e8de3159b08
+remote_pid: 90292
+terminal_state: TASK_STATE_COMPLETED
+artifact: accepted
+delegation_count: 1
+implementation_a2a_delegations: 1
+grants_workflow_success: false
+final_verification: PASS
+review_outcome: pass
+expected_t01: true
+```
+
+`implementation_completed.a2aDelegations` and the outer `run_completed.a2aDelegations` each contain that record. Report: `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T17-45-58-631Z.txt`.
+
 ### A2A01 rule
 
-**PASS** as a mechanism probe. The evidence run showed a separate remote process, card discovery, Host admission, skill `repository-impact-analysis`, real `SendMessage`, a completed remote Task whose id is not `workflowId`, a Host-accepted artifact used only as Worker evidence, no workflow-success grant, then normal VERIFY and independent REVIEW. Deterministic tests still cover the negative card and artifact cases.
-
-Open bookkeeping gap: `implementation_completed.a2aDelegations` and the outer `run_completed.a2aDelegations` are `[]`, because the loop reads `a2aDelegation` and `delegateRemoteAnalysis` returns `record`. The `a2a_delegation` event and the Worker tool output hold the record. This does not change the PASS rule. It is not a quality, latency, or cost claim, and it does not close Module 25.
+**PASS** as a mechanism probe after the review fixes. Current SDK `1.2.1` with A2A v1.0 HTTP+JSON semantics. The fresh run showed a separate remote process, card discovery, Host admission, real `SendMessage`, a completed Task whose id is not `workflowId`, a validated advisory artifact, a stored delegation record, then normal VERIFY and independent REVIEW. Invalid scope fails closed in tests. This is not a quality, latency, or cost claim, and it does not close Module 25.

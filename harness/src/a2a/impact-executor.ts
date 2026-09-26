@@ -14,6 +14,7 @@ import {
 } from "@a2a-js/sdk/server";
 import {
   admitImpactArtifact,
+  scopeCeiling,
   type ImpactAnalysisArtifact,
 } from "./artifact.ts";
 import { IMPACT_ARTIFACT_NAME } from "./constants.ts";
@@ -140,6 +141,10 @@ export async function runImpactAnalysisEpisode(options: {
 }): Promise<ImpactAnalysisArtifact> {
   if (!options.apiKey.trim() || !options.model.trim()) {
     throw new Error("Remote impact model is not configured.");
+  }
+  const ceiling = scopeCeiling(options.allowedRoot, options.scope);
+  if (!ceiling.ok) {
+    throw new Error(`Delegated scope was rejected: ${ceiling.reason}`);
   }
   const create = options.responsesCreate ?? defaultRemoteCreate(options.apiKey);
   let input: Array<Record<string, unknown>> = [

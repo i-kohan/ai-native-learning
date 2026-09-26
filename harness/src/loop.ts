@@ -155,6 +155,8 @@ export async function runAgentLoop(options: {
   memoryHint?: string | null;
   /** Test injection only. Production uses the OpenAI Responses client. */
   responsesCreate?: ResponsesCreateFn;
+  /** Test injection only. Production calls delegateRemoteAnalysis. */
+  delegateImpactAnalysis?: typeof delegateRemoteAnalysis;
 }): Promise<AgentRunResult> {
   const { config, task, runId, spec, reusableContext } = options;
   const phase: EpisodePhase = options.phase ?? "implementation";
@@ -393,6 +395,7 @@ export async function runAgentLoop(options: {
           tracer,
           reusableContext,
           responsesCreate: options.responsesCreate,
+          delegateImpactAnalysis: options.delegateImpactAnalysis,
         });
         if (result.delegation) {
           researchDelegations.push(result.delegation);
@@ -670,6 +673,7 @@ async function executeWorkerTool(options: {
   tracer: Tracer;
   reusableContext?: ReusableContext;
   responsesCreate?: ResponsesCreateFn;
+  delegateImpactAnalysis?: typeof delegateRemoteAnalysis;
 }): Promise<{
   ok: boolean;
   output: string;
@@ -782,6 +786,7 @@ async function executeRemoteAnalysisTool(options: {
   a2aDelegationEnabled: boolean;
   argsJson: string;
   tracer: Tracer;
+  delegateImpactAnalysis?: typeof delegateRemoteAnalysis;
 }): Promise<{
   ok: boolean;
   output: string;
@@ -813,7 +818,8 @@ async function executeRemoteAnalysisTool(options: {
     });
     return { ok: false, output: parsed.error };
   }
-  const result = await delegateRemoteAnalysis({
+  const delegate = options.delegateImpactAnalysis ?? delegateRemoteAnalysis;
+  const result = await delegate({
     config: options.config,
     workflowId: options.workflowId,
     objective: parsed.value.objective,
@@ -837,7 +843,11 @@ async function executeRemoteAnalysisTool(options: {
     outcome: result.record.outcome,
     grantsWorkflowSuccess: result.record.grantsWorkflowSuccess,
   });
-  return result;
+  return {
+    ok: result.ok,
+    output: result.output,
+    a2aDelegation: result.record,
+  };
 }
 
 function defaultResponsesCreate(apiKey: string): ResponsesCreateFn {

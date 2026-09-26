@@ -27,7 +27,7 @@ Discovery is not permission. A completed Task is not parent success.
 
 ## What v1 standardizes
 
-Protocol baseline for this module: **A2A 1.0**, SDK `@a2a-js/sdk@1.0.1`. Re-verify the current revision before later protocol work.
+Protocol baseline for this module: **A2A 1.0**, SDK `@a2a-js/sdk@1.2.1`. Re-verify the current revision before later protocol work. An invalid delegated scope fails closed. It does not widen to the allowed root.
 
 The Agent Card is published at `/.well-known/agent-card.json`. `supportedInterfaces` names a binding (`HTTP+JSON`, `JSONRPC`, or `GRPC`) and a `protocolVersion` such as `1.0`. Patch numbers are not part of compatibility.
 

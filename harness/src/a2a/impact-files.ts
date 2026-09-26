@@ -13,15 +13,23 @@ export function listBoundedFiles(
 ): { ok: true; output: string } | { ok: false; output: string } {
   const requested = relativePath.trim() === "" ? "." : relativePath.trim();
   const ceiling = scopeCeiling(allowedRoot, scope);
+  if (!ceiling.ok) {
+    return {
+      ok: false,
+      output: `Delegated scope was rejected: ${ceiling.reason}`,
+    };
+  }
   const listPath =
-    requested === "." ? path.relative(allowedRoot, ceiling) || "." : requested;
+    requested === "."
+      ? path.relative(allowedRoot, ceiling.ceiling) || "."
+      : requested;
   let target: string;
   try {
     target = resolveWithin(allowedRoot, listPath === "" ? "." : listPath);
   } catch (error) {
     return { ok: false, output: errorMessage(error) };
   }
-  if (!insideCeiling(target, ceiling)) {
+  if (!insideCeiling(target, ceiling.ceiling)) {
     return {
       ok: false,
       output: `Path is outside the delegated scope: ${requested}`,
@@ -50,14 +58,20 @@ export function readBoundedFile(
   scope: string,
   relativePath: string,
 ): { ok: true; output: string } | { ok: false; output: string } {
+  const ceiling = scopeCeiling(allowedRoot, scope);
+  if (!ceiling.ok) {
+    return {
+      ok: false,
+      output: `Delegated scope was rejected: ${ceiling.reason}`,
+    };
+  }
   let target: string;
   try {
     target = resolveWithin(allowedRoot, relativePath);
   } catch (error) {
     return { ok: false, output: errorMessage(error) };
   }
-  const ceiling = scopeCeiling(allowedRoot, scope);
-  if (!insideCeiling(target, ceiling)) {
+  if (!insideCeiling(target, ceiling.ceiling)) {
     return {
       ok: false,
       output: `Path is outside the delegated scope: ${relativePath}`,

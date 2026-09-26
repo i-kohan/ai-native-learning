@@ -14,7 +14,8 @@ import {
   type RequestContext,
 } from "@a2a-js/sdk/server";
 import { admitDiscoveredAgent } from "../src/a2a/admission.ts";
-import { admitImpactArtifact } from "../src/a2a/artifact.ts";
+import { admitImpactArtifact, scopeCeiling } from "../src/a2a/artifact.ts";
+import { listBoundedFiles, readBoundedFile } from "../src/a2a/impact-files.ts";
 import { buildImpactAgentCard } from "../src/a2a/impact-card.ts";
 import { createImpactApp } from "../src/a2a/impact-server.ts";
 import { runImpactAnalysisEpisode } from "../src/a2a/impact-executor.ts";
@@ -128,6 +129,82 @@ describe("A2A artifact admission", () => {
     } finally {
       await started.close();
     }
+  });
+
+  it("rejects an invalid delegated scope instead of widening to the allowed root", async () => {
+    const root = tempRepo();
+    fs.writeFileSync(path.join(root, "secret.txt"), "secret-observation\n");
+    const listed = listBoundedFiles(root, "../../outside", ".");
+    assert.equal(listed.ok, false);
+    assert.equal(listed.output.includes("secret.txt"), false);
+    assert.equal(listed.output.includes("src/app.ts"), false);
+    const read = readBoundedFile(root, "../../outside", "src/app.ts");
+    assert.equal(read.ok, false);
+    assert.equal(read.output.includes("export const status"), false);
+    const admitted = admitImpactArtifact(
+      {
+        objective: "impact",
+        relevantPaths: ["src/app.ts"],
+        findings: [{ path: "src/app.ts", observation: "inside the root" }],
+      },
+      { allowedRoot: root, scope: "../../outside" },
+    );
+    assert.equal(admitted.ok, false);
+    const ceiling = scopeCeiling(root, "../../outside");
+    assert.equal(ceiling.ok, false);
+
+    let modelCalled = false;
+    await assert.rejects(() =>
+      runImpactAnalysisEpisode({
+        allowedRoot: root,
+        apiKey: "remote-secret",
+        model: "test-model",
+        objective: "escape",
+        scope: "../../outside",
+        responsesCreate: async () => {
+          modelCalled = true;
+          return { id: "unused", output: [] };
+        },
+      }),
+    );
+    assert.equal(modelCalled, false);
+
+    const executor = new ScriptedExecutor({
+      objective: "impact",
+      relevantPaths: ["src/app.ts"],
+      findings: [{ path: "src/app.ts", observation: "used" }],
+    });
+    const started = await startApp(
+      root,
+      (baseUrl) => buildImpactAgentCard(baseUrl),
+      executor,
+    );
+    try {
+      const result = await performRemoteImpactDelegation({
+        workflowId: "parent-workflow",
+        baseUrl: started.baseUrl,
+        allowedRoot: root,
+        objective: "Where is the missing-task error?",
+        scope: "../../outside",
+      });
+      assert.equal(executor.calls, 0);
+      assert.equal(result.record.sendMessagePerformed, false);
+      assert.equal(result.record.outcome, "scope_rejected");
+      assert.equal(result.ok, false);
+      assert.equal(result.output.includes("secret-observation"), false);
+    } finally {
+      await started.close();
+    }
+  });
+
+  it("rejects an absolute delegated scope", () => {
+    const root = tempRepo();
+    const ceiling = scopeCeiling(root, path.resolve(root, "src"));
+    assert.equal(ceiling.ok, false);
+    const listed = listBoundedFiles(root, path.resolve(root), ".");
+    assert.equal(listed.ok, false);
+    assert.equal(listed.output.includes("secret.txt"), false);
+    assert.equal(listed.output.includes("src/app.ts"), false);
   });
 
   it("rejects traversal in the structured artifact helper", () => {
@@ -414,6 +491,93 @@ describe("A2A worker seam", () => {
     ]);
     assert.deepEqual(tool.parameters.required.sort(), ["objective", "scope"]);
     assert.match(requests[0]?.instructions ?? "", /exactly once/);
+  });
+
+  it("stores a successful remote analysis on the implementation result", async () => {
+    const root = tempRepo();
+    const executor = new ScriptedExecutor({
+      objective: "impact",
+      relevantPaths: ["src/app.ts"],
+      findings: [{ path: "src/app.ts", observation: "missing task returns 500" }],
+    });
+    const started = await startApp(
+      root,
+      (baseUrl) => buildImpactAgentCard(baseUrl),
+      executor,
+    );
+    const workflowId = "a2a-record";
+    try {
+      let turn = 0;
+      const result = await runAgentLoop({
+        config: harnessConfig(root),
+        task: "fix the bug",
+        runId: workflowId,
+        a2aDelegationEnabled: true,
+        responsesCreate: async () => {
+          turn += 1;
+          if (turn === 1) {
+            return {
+              id: "delegate",
+              output: [
+                {
+                  type: "function_call",
+                  call_id: "a2a-1",
+                  name: "delegate_remote_analysis",
+                  arguments: JSON.stringify({
+                    objective: "Where is the missing-task error?",
+                    scope: "src",
+                  }),
+                },
+              ],
+            } as never;
+          }
+          return {
+            id: "done",
+            output_text: "done",
+            output: [
+              {
+                type: "message",
+                content: [{ type: "output_text", text: "done" }],
+              },
+            ],
+          } as never;
+        },
+        delegateImpactAnalysis: async (options) => {
+          const remote = await performRemoteImpactDelegation({
+            workflowId: options.workflowId,
+            baseUrl: started.baseUrl,
+            allowedRoot: root,
+            objective: options.objective,
+            scope: options.scope,
+          });
+          return {
+            ok: remote.ok,
+            output: remote.output,
+            record: remote.record,
+          };
+        },
+      });
+      assert.equal(result.a2aDelegations.length, 1);
+      const record = result.a2aDelegations[0];
+      assert.ok(record);
+      assert.equal(record.workflowId, workflowId);
+      assert.equal(typeof record.delegationId, "string");
+      assert.ok(record.delegationId);
+      assert.equal(typeof record.taskId, "string");
+      assert.ok(record.taskId);
+      assert.notEqual(record.taskId, workflowId);
+      assert.equal(typeof record.contextId, "string");
+      assert.ok(record.contextId);
+      assert.equal(record.cardDiscovered, true);
+      assert.equal(record.admission, "pass");
+      assert.equal(record.sendMessagePerformed, true);
+      assert.equal(record.taskTerminalState, "TASK_STATE_COMPLETED");
+      assert.equal(record.artifactAdmission, "accepted");
+      assert.equal(record.outcome, "accepted");
+      assert.equal(record.grantsWorkflowSuccess, false);
+    } finally {
+      await started.close();
+    }
   });
 
   it("rejects durable execution", async () => {

@@ -1,0 +1,23 @@
+A2A01 bounded DEV probe
+task: T01
+context: variant
+workflow_status: success
+a2a_delegation_enabled: true
+agent_card_discovered: true
+admission: pass
+workflowId: T01-variant-manual-2026-09-26T17-45-22-646Z
+delegationId: 1c97cc7a-4d15-4193-9fdc-4c46f64d30aa
+taskId: de7f1a0f-0623-4f0a-8892-1132d7319218
+contextId: 0f33fa7e-a27e-44a9-8624-5e8de3159b08
+remote_pid: 90292
+send_message: true
+terminal_state: TASK_STATE_COMPLETED
+artifact: accepted
+delegation_outcome: accepted
+delegation_count: 1
+implementation_a2a_delegations: 1
+grants_workflow_success: false
+final_verification: PASS
+review_outcome: pass
+expected_t01: true
+trace: /Users/i.kohanvs/Desktop/ai-native/traces/T01-variant-manual-2026-09-26T17-45-22-646Z.jsonl
