@@ -37,6 +37,15 @@ export class TaskService {
     return task;
   }
 
+  delete(id: string): Task | undefined {
+    const task = this.tasks.get(id);
+    if (!task) {
+      return undefined;
+    }
+    this.tasks.delete(id);
+    return task;
+  }
+
   reopen(id: string): Task | undefined {
     const task = this.tasks.get(id);
     if (!task) {
