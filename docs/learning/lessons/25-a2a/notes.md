@@ -43,24 +43,26 @@ npm run benchmark:a2a01
 
 ## Deterministic results
 
-Harness tests: **319 passed**, including 11 A2A tests.
+Harness tests: **322 passed**, including 14 A2A tests.
 
 Covered:
 
 - card without `repository-impact-analysis` is discovered and rejected; the executor is not called
 - protocol `0.3` is not admitted
 - artifact path `../../secret.txt` is rejected and is not returned as advisory evidence
+- traversal scope `../../outside` and absolute scope are rejected before delegation and cannot widen to the allowed root
 - a real HTTP Task id differs from the parent workflow id and from `delegationId`
 - a completed Task does not set `grantsWorkflowSuccess`
 - child env allowlist omits `OPENAI_API_KEY` and `GITHUB_TOKEN`
 - a separate process serves the v1 card
 - the remote episode tools are `list_files`, `read_file`, and `submit_impact_analysis`
 - default Worker tools do not include `delegate_remote_analysis`
+- a successful Worker delegation is preserved in `implementation.a2aDelegations`
 - durable mode rejects `a2aDelegationEnabled`
 
 ## A2A01 DEV probe
 
-Evidence run on 2026-09-26: **PASS** as a mechanism probe. Exit 0. Module 25 is not closed.
+Initial evidence run on 2026-09-26 passed before the review fixes. The fresh post-fix run below is the authoritative A2A01 mechanism evidence. Module 25 is not closed.
 
 The probe process received `A2A_REMOTE_OPENAI_API_KEY` as an explicit one-shot copy. The code does not fall back to `OPENAI_API_KEY`.
 
@@ -85,7 +87,7 @@ REVIEW:       pass
 
 Review fixes, same day: invalid scope `../../outside` and absolute scope fail closed; SDK moved to `@a2a-js/sdk@1.2.1`; the Worker loop stores `record` as `a2aDelegation`.
 
-Fresh probe after those fixes: workspace `T01-variant-manual-2026-09-26T17-45-22-646Z`, exit 0. Report `traces/a2a01-t01-2026-09-26T17-45-58-631Z.txt`.
+Fresh authoritative probe after those fixes: workspace `T01-variant-manual-2026-09-26T17-45-22-646Z`, exit 0. Report `traces/a2a01-t01-2026-09-26T17-45-58-631Z.txt`.
 
 ```text
 delegationId: 1c97cc7a-4d15-4193-9fdc-4c46f64d30aa
@@ -103,3 +105,12 @@ REVIEW: pass
 3. `buildImpactSendRequest` / task mapping in `harness/src/a2a/host.ts`
 4. `admitImpactArtifact` in `harness/src/a2a/artifact.ts`
 5. `formatImpactEvidence` plus `delegateRemoteAnalysis` / `executeRemoteAnalysisTool` in `harness/src/loop.ts`
+
+
+## Adoption decision
+
+A2A01 proves the interoperability mechanism, not that A2A should replace simpler boundaries.
+
+Use the current seam only when the delegated episode genuinely belongs in an independently operated agent runtime. For same-harness work, direct tools or the Module 13 Subagent remain simpler.
+
+Default: `a2aDelegationEnabled=false`.
