@@ -4,7 +4,7 @@ Date: 2026-09-27
 
 ## Decision
 
-**CLOSED.**
+**MASTER CLOSED.**
 
 A2A01 is **PASS** as a bounded mechanism probe.
 
@@ -80,3 +80,47 @@ A2A01 does not prove a quality, cost, or latency advantage. Keep the seam off un
 ## Next
 
 Return to Master for next-module selection. Do not auto-start Module 26 from this Topic Chat.
+
+
+## Master acceptance
+
+Master review confirmed the intended interoperability and authority boundaries:
+
+```text
+official JS SDK                    = @a2a-js/sdk@1.2.1
+protocol semantics                 = A2A v1.0
+binding                            = HTTP+JSON
+separate Remote Agent process      = yes
+Agent Card discovery               = real
+Host admission                     = explicit
+invalid scope before send          = fail closed
+real SendMessage                   = yes
+remote Task                        = real / distinct taskId
+contextId                          = distinct from workflow/task identities
+structured Artifact                = schema/path admitted
+out-of-scope Artifact              = rejected
+parent secrets inherited           = no
+remote tools                       = read-only bounded set
+delegation record preserved        = implementation.a2aDelegations
+remote completion grants success   = false
+VERIFY                             = PASS
+independent REVIEW                 = pass
+default A2A                        = off
+```
+
+The current protocol/SDK pin is appropriate for the recorded probe. Current official A2A remains on the stable v1.0 protocol line; SDK package versions evolve independently.
+
+The adoption boundary is accepted:
+
+```text
+same harness/runtime/trust boundary
+→ direct function / tool / Subagent
+
+independently operated autonomous agent system
++ useful standardized discovery/task/artifact semantics
+→ A2A candidate
+```
+
+A2A01 is mechanism evidence only; it does not establish quality, latency, or cost improvement.
+
+No remaining blocker for Module 25.
