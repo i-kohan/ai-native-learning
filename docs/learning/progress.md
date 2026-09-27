@@ -28,8 +28,9 @@ Completed modules:
 22. ✅ 22 — Bounded Parallel Fan-Out (closed by Master on 2026-09-23; PAR01 = `not_worth_current_workload`)
 23. ✅ 23 — MCP Deeper Dive (closed by Master on 2026-09-24; MCP01 PASS; default local repo read remains direct)
 24. ✅ 24 — Memory Architectures (closed by Master on 2026-09-25; MEM01 PASS; memory remains opt-in/off by default)
+25. ✅ 25 — A2A / Agent Interoperability (closed by Topic Chat on 2026-09-27; A2A01 PASS; A2A remains opt-in/off by default)
 
-Next module: **25 — A2A / Agent Interoperability** (A2A01 PASS as a mechanism probe; not marked complete).
+Return to Master for next-module selection.
 
 ---
 
@@ -79,7 +80,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 25 — A2A / Agent Interoperability
 
-**Status:** mechanism implemented. A2A01 **PASS** as a mechanism probe. Not marked complete. Default `runV1Harness()` does not delegate over A2A.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-27. A2A01 **PASS** as a mechanism probe. Default `runV1Harness()` does not delegate over A2A.
 
 Theory:
 
@@ -135,9 +136,22 @@ A2A01 DEV probe, T01 variant, seam enabled. Two earlier runs the same day died i
 
 Fresh evidence run: card discovered, admission pass, `SendMessage`, `taskId` `de7f1a0f-0623-4f0a-8892-1132d7319218` distinct from `workflowId` and `delegationId` `1c97cc7a-4d15-4193-9fdc-4c46f64d30aa`, `contextId` `0f33fa7e-a27e-44a9-8624-5e8de3159b08`, remote pid 90292, `TASK_STATE_COMPLETED`, artifact accepted, `implementation.a2aDelegations` length 1, `grantsWorkflowSuccess` false, VERIFY PASS, REVIEW pass, expected T01 outcome. The remote credential was set on the probe process only. No code fallback to `OPENAI_API_KEY`.
 
-## Failures / open questions
+## Closure / remaining boundaries
 
-Module 25 is not closed. Closure stays with Topic Chat / Master.
+Final Understanding Check: **PASS with precision corrections** on 2026-09-27.
+
+The learner correctly distinguished capability invocation from delegation to an independently operated agent system; understood Host admission as a harness-owned authorization/policy boundary; kept remote Task completion separate from parent workflow success; chose Subagent for same-harness child reasoning and A2A for an independently deployed agent system; and recognized timeout-after-send as an ambiguous distributed outcome.
+
+Precision corrections retained in the closure record:
+
+- A2A does not require a literally different “harness”; the key boundary is an independently operated autonomous agent system/runtime with its own execution authority.
+- `delegationId` is the parent harness identity for one A2A delegation attempt, not a Subagent id.
+- `contextId` groups related A2A interactions; it is not memory, a workflow phase, or `WorkflowState`.
+- after a send timeout, the remote Task may exist while the client lacks its `taskId`; recovery therefore needs reconciliation/dedup/idempotency policy rather than blind resend.
+
+Adoption remains conditional. For same-harness/runtime work, direct tools or the Module 13 Subagent stay simpler. Use A2A when an independently operated agent boundary and standardized discovery/task/artifact semantics are actually useful.
+
+See `docs/learning/lessons/25-a2a/closure.md`.
 
 ---
 
