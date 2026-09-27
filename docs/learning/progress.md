@@ -28,9 +28,9 @@ Completed modules:
 22. ✅ 22 — Bounded Parallel Fan-Out (closed by Master on 2026-09-23; PAR01 = `not_worth_current_workload`)
 23. ✅ 23 — MCP Deeper Dive (closed by Master on 2026-09-24; MCP01 PASS; default local repo read remains direct)
 24. ✅ 24 — Memory Architectures (closed by Master on 2026-09-25; MEM01 PASS; memory remains opt-in/off by default)
-25. ✅ 25 — A2A / Agent Interoperability (closed by Topic Chat on 2026-09-27; A2A01 PASS; A2A remains opt-in/off by default)
+25. ✅ 25 — A2A / Agent Interoperability (closed by Master on 2026-09-27; A2A01 PASS; A2A remains opt-in/off by default)
 
-Return to Master for next-module selection.
+Next module: **26 — Large Multi-Agent Systems / Swarms**.
 
 ---
 
