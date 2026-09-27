@@ -1,6 +1,6 @@
 # 25 — A2A01 notes
 
-Status: mechanism implemented. A2A01 **PASS** as a mechanism probe. Default delegation stays off. Module 25 is not closed.
+Status: ✅ **COMPLETED** — closed by Topic Chat on 2026-09-27. A2A01 **PASS** as a mechanism probe. Default delegation stays off.
 
 ## Purpose
 
@@ -114,3 +114,22 @@ A2A01 proves the interoperability mechanism, not that A2A should replace simpler
 Use the current seam only when the delegated episode genuinely belongs in an independently operated agent runtime. For same-harness work, direct tools or the Module 13 Subagent remain simpler.
 
 Default: `a2aDelegationEnabled=false`.
+
+
+## Final understanding / Topic Chat closure
+
+Final Understanding Check: **PASS with precision corrections** on 2026-09-27.
+
+Supported understanding:
+
+- MCP/tool exposure gives our agent system a capability; A2A delegates a bounded goal to another independently operated autonomous agent system;
+- the distinction is architectural, not “small task vs large task”;
+- Agent Card discovery does not authorize delegation; Host admission owns endpoint/protocol/identity/skill/interface policy;
+- a remote `TASK_STATE_COMPLETED` proves only that the remote Task reached its completed state; the Host must still validate the Artifact, the Worker may continue implementation, and parent VERIFY/REVIEW remain authoritative;
+- `workflowId`, `delegationId`, `taskId`, and `contextId` are distinct identities;
+- `delegationId` is the parent harness id for one A2A delegation attempt, not a Subagent id;
+- `contextId` groups related A2A Messages/Tasks and is not memory, a Task phase, or `WorkflowState`;
+- a timeout after `SendMessage` is ambiguous: the remote Task may already exist even when the client did not receive its `taskId`; blind resend can duplicate work;
+- same-harness child reasoning → prefer Subagent; independently deployed/owned autonomous agent runtime → A2A becomes plausible.
+
+**Topic Chat decision:** Module 25 CLOSED. A2A stays opt-in/off by default. Return to Master for next-module selection.
