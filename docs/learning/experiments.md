@@ -2385,3 +2385,30 @@ expected_t01: true
 ### A2A01 rule
 
 **PASS** as a mechanism probe after the review fixes. Current SDK `1.2.1` with A2A v1.0 HTTP+JSON semantics. The fresh run showed a separate remote process, card discovery, Host admission, real `SendMessage`, a completed Task whose id is not `workflowId`, a validated advisory artifact, a stored delegation record, then normal VERIFY and independent REVIEW. Invalid scope fails closed in tests. The scope fix is not a post-hoc expansion of the experiment goal: it restores the already intended bounded-authority boundary. This is not a quality, latency, or cost claim, and it does not close Module 25.
+
+
+### Module 25 — Final understanding / Topic Chat closure
+
+Final Understanding Check: **PASS with precision corrections** on 2026-09-27.
+
+The learner demonstrated the intended architectural distinction:
+
+```text
+capability invocation inside our system
+→ function / tool / MCP
+
+bounded child reasoning owned by our harness
+→ Subagent
+
+bounded goal delegated to an independently operated autonomous agent system
+→ A2A
+```
+
+Retained precision corrections:
+
+- A2A does not require a literally separate “harness”; independence of the agent system/runtime and execution authority is the important boundary.
+- `delegationId` identifies the parent-side A2A delegation attempt.
+- `contextId` groups related A2A interactions; it is not memory, `WorkflowState`, or a task phase.
+- timeout after `SendMessage` is an ambiguous outcome. The Task may exist while its `taskId` is unknown to the client, so safe recovery requires reconciliation/dedup/idempotency policy rather than blind resend.
+
+**Topic Chat decision:** Module 25 CLOSED. A2A01 remains a mechanism PASS only; default delegation remains off. Return to Master for next-module selection.
