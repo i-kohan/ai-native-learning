@@ -11,7 +11,7 @@ import {
 } from "../src/investigation-episode.ts";
 import {
   admitChildInvestigationReport,
-  lostChildFindings,
+  droppedChildEvidencePaths,
 } from "../src/investigation-report.ts";
 import {
   buildSynthesisInput,
@@ -24,6 +24,7 @@ import {
   type ChildExecutionRecord,
 } from "../src/investigation-swarm.ts";
 import { gradeInvestigationReport } from "../src/swm01-grader.ts";
+import { workspaceMutationsSince } from "../src/swm01-probe.ts";
 import { SWM01_SURFACES } from "../src/swm01-contract.ts";
 import { admitSwarmPlan } from "../src/swarm-plan.ts";
 import type { InvestigationReport } from "../src/investigation-report.ts";
@@ -481,27 +482,125 @@ describe("SWM01 handoff", () => {
     });
     assert.match(input, /injected_failure/);
     assert.equal(input.includes("function_call"), false);
-    const lost = lostChildFindings(
+    const dropped = droppedChildEvidencePaths(
       [
         {
           id: "a",
           report: {
             objective: "slice A",
             findings: [
-              { claim: "kept out", evidencePaths: ["docs/other.txt"] },
+              {
+                claim: "both paths",
+                evidencePaths: ["docs/kept.txt", "docs/other.txt"],
+              },
             ],
             uncertainties: [],
           },
         },
       ],
       {
-        mechanisms: [],
+        mechanisms: [
+          {
+            name: "note",
+            entryPoints: ["docs/kept.txt"],
+            activationOwner: "harness",
+            capabilities: ["read"],
+            evidence: ["kept"],
+            retainedOuterAuthority: ["harness"],
+            durableSupport: "unknown",
+            defaultStatus: "opt-in",
+            evidencePaths: ["docs/kept.txt"],
+          },
+        ],
         uncertainties: [],
         coverageSummary: "none",
       },
     );
-    assert.equal(lost.length, 1);
-    assert.equal(lost[0]?.workerId, "a");
+    assert.equal(dropped.length, 1);
+    assert.equal(dropped[0]?.path, "docs/other.txt");
+    assert.equal(dropped[0]?.workerId, "a");
+  });
+});
+
+describe("SWM01 workspace mutation", () => {
+  it("ignores the post-creation node_modules symlink and still flags a new file", () => {
+    const created = "?? target-app/node_modules";
+    assert.deepEqual(workspaceMutationsSince(created, created), []);
+    assert.deepEqual(
+      workspaceMutationsSince(
+        created,
+        "?? target-app/node_modules\n?? harness/src/extra.ts",
+      ),
+      ["?? harness/src/extra.ts"],
+    );
+  });
+});
+
+describe("SWM01 synthesis provenance", () => {
+  it("rejects a path the child read but did not put in its report", async () => {
+    const config = tempConfig();
+    fs.writeFileSync(path.join(config.repoRoot, "docs/a.txt"), "alpha\n");
+    fs.writeFileSync(path.join(config.repoRoot, "docs/b.txt"), "beta\n");
+    const callsByWorker = new Map<string, number>();
+    const synthesisInputs: string[] = [];
+    const create: InvestigationResponsesCreate = async (request) => {
+      if (request.instructions.includes("synthesizing")) {
+        synthesisInputs.push(JSON.stringify(request.input));
+        return functionResponse("syn", "submit_investigation_report", {
+          mechanisms: [
+            {
+              name: "note",
+              entryPoints: ["docs/b.txt"],
+              activationOwner: "harness",
+              capabilities: ["read"],
+              evidence: ["beta"],
+              retainedOuterAuthority: ["harness"],
+              durableSupport: "unknown",
+              defaultStatus: "opt-in",
+              evidencePaths: ["docs/b.txt"],
+            },
+          ],
+          uncertainties: [{ claim: "fixture", reason: "test" }],
+          coverageSummary: "fixture coverage",
+        });
+      }
+      const blob = JSON.stringify(request.input);
+      const workerId =
+        blob.match(/Worker id: ([A-Za-z0-9_-]+)/)?.[1] ?? "unknown";
+      const count = (callsByWorker.get(workerId) ?? 0) + 1;
+      callsByWorker.set(workerId, count);
+      if (count === 1) {
+        return functionResponse(`read-a-${workerId}`, "read_file", {
+          path: "docs/a.txt",
+        });
+      }
+      if (count === 2) {
+        return functionResponse(`read-b-${workerId}`, "read_file", {
+          path: "docs/b.txt",
+        });
+      }
+      return functionResponse(`child-${workerId}`, "submit_investigation_report", {
+        findings: [{ claim: `claim ${workerId}`, evidencePaths: ["docs/a.txt"] }],
+        uncertainties: [],
+      });
+    };
+
+    const result = await runMultiAgentInvestigation({
+      config,
+      objective: "audit",
+      proposedPlan: {
+        workers: [
+          { id: "a", objective: "slice A" },
+          { id: "c", objective: "slice C" },
+        ],
+      },
+      responsesCreate: create,
+    });
+
+    assert.equal(result.report, null);
+    assert.equal(synthesisInputs.length > 1, true);
+    assert.match(synthesisInputs[1] ?? "", /docs\/b\.txt/);
+    assert.match(synthesisInputs[1] ?? "", /admitted evidence set/);
   });
 });
 

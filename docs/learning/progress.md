@@ -30,7 +30,7 @@ Completed modules:
 24. ✅ 24 — Memory Architectures (closed by Master on 2026-09-25; MEM01 PASS; memory remains opt-in/off by default)
 25. ✅ 25 — A2A / Agent Interoperability (closed by Master on 2026-09-27; A2A01 PASS; A2A remains opt-in/off by default)
 
-Module 26 is **not closed**. The SWM01 seam and deterministic tests are in the repo. The paired model probe has not run.
+Module 26 is **not closed**. The recorded pair on `gpt-5.6-luna` at `f992e3a` had variant coverage 9/9 versus 8/9 and correctness 0.7778 versus 0.25, at about 3.56× baseline input tokens and about 53% more wall time. Two later pairs at `828eafa` also passed the mechanism check. In both, the variant covered less than the baseline and cost more input tokens. Default remains one Worker. No adoption claim.
 
 ---
 
@@ -81,7 +81,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 26 — Bounded multi-agent investigation
 
-**Status:** not closed. SWM01 seam and deterministic tests are in place. The paired baseline/variant model probe did not start: this environment has no `OPENAI_API_KEY` or `OPENAI_MODEL`.
+**Status:** not closed. One valid pair ran. Default remains Spec → one Worker. No adoption claim.
 
 Theory:
 
@@ -118,13 +118,40 @@ The grader's expected surfaces were frozen in `harness/src/swm01-contract.ts` be
 
 ## Current result
 
-Harness tests: **333 passed** (11 new SWM01 tests). The full suite needs `OPENAI_API_KEY` only because an existing fan-out test calls `loadConfig()`; a placeholder value is enough for that test. It is not a model call.
+Paired probe on 2026-09-28, model `gpt-5.6-luna`, base SHA `f992e3a669860ba49f51f265d1f0f604bb6f851b`. Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T11-04-13-012Z.json`.
 
-SWM01 probe: not started. `npx tsx src/swm01-probe.ts` exits 1 with `Missing required env OPENAI_API_KEY`. No baseline metrics, variant metrics, or trace were produced. Do not treat the deterministic tests as the paired experiment.
+| Arm | Wall | Input tokens | Coverage | Correctness |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 70,200 ms | 174,332 | 8/9 | 0.25 |
+| Variant | 107,213 ms | 621,400 | 9/9 | 0.7778 |
+
+Three workers genuinely overlapped. The variant used about 3.56× the baseline input tokens and was about 53% slower end to end. That pair's `mechanismPass` was false only because `createWorkspace()`'s `target-app/node_modules` symlink was counted as a worker mutation. The live mechanism checks themselves passed. The read-only check now compares git status with the post-creation baseline.
+
+Synthesis may cite only evidence paths present in successful child reports. `droppedChildEvidencePaths` records child evidence paths absent from the final report. It does not claim that a surviving path preserved the finding.
+
+The frozen grader in `swm01-contract.ts` was not retuned after this pair.
+
+Fresh pair after the review fixes, same model, base SHA `828eafadf4b1e3b8cec3d89728f1ddff4fbefd69` (HEAD includes the SWM01 commit, so this is not the same tree as `f992e3a`). Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T11-48-16-516Z.json`. `mechanismPass` true. Workspace dirty: no. Three workers overlapped. One child hit `max_turns_exceeded` and stayed visible.
+
+| Arm | Wall | Input tokens | Coverage | Correctness |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 46,894 ms | 209,701 | 8/9 | 0.25 |
+| Variant | 89,073 ms | 615,951 | 8/9 | 0 |
+
+Versus the `f992e3a` pair: baseline coverage and correctness stayed 8/9 and 0.25; variant coverage fell from 9/9 to 8/9 (`review_plan` unmatched) and correctness fell from 0.7778 to 0. Variant input tokens were about 2.94× baseline and wall time about 90% higher. `droppedChildEvidencePaths` length 6. Deterministic suite: **335 passed, 0 failed**.
+
+Third pair, same SHA and model, grader unchanged. Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T15-24-39-165Z.json`. `mechanismPass` true. All three workers succeeded and overlapped.
+
+| Arm | Wall | Input tokens | Coverage | Correctness |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 88,096 ms | 290,930 | 8/9 | 1 |
+| Variant | 90,206 ms | 533,716 | 7/9 | 0.7143 |
+
+The variant missed `review_plan` and `github_ci_delivery`. It used about 1.83× baseline input tokens. Wall time was almost the same, about 2% higher. `droppedChildEvidencePaths` length 13.
 
 ## Closure / remaining boundaries
 
-No adoption claim. Default remains one Worker. The module stays open until one valid baseline and one valid variant run against one committed SHA, with the frozen grader.
+No adoption claim. Default remains one Worker. The module stays open. One pair is not an adoption decision.
 
 ---
 

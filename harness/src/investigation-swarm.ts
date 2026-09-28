@@ -13,6 +13,7 @@ import {
   enforceIncompleteCoverage,
   normalizeRepoPath,
   parseInvestigationReport,
+  reportedChildEvidencePaths,
   type ChildInvestigationReport,
   type InvestigationReport,
 } from "./investigation-report.ts";
@@ -219,10 +220,7 @@ export async function runMultiAgentInvestigation(options: {
     responsesCreate: create,
     submitToolName: SUBMIT_FINAL_REPORT_TOOL.name,
     acceptSubmission: (argsJson) =>
-      acceptFinalReport(
-        argsJson,
-        children.flatMap((child) => child.observedReadPaths),
-      ),
+      acceptFinalReport(argsJson, reportedChildEvidencePaths(children)),
   });
   const synthesisUsage = usageFromEpisode(synthesisEpisode);
   const failures = children

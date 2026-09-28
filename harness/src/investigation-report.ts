@@ -159,7 +159,7 @@ export function admitInvestigationReportPaths(
       if (!allowed.has(normalizeRepoPath(cited))) {
         return {
           ok: false,
-          error: `mechanisms[${index}].evidencePaths cites a path outside admitted reads: ${cited}`,
+          error: `mechanisms[${index}].evidencePaths cites a path outside the admitted evidence set: ${cited}`,
         };
       }
     }
@@ -194,38 +194,63 @@ export function enforceIncompleteCoverage(
   };
 }
 
-export function lostChildFindings(
+export function reportedChildEvidencePaths(
+  children: Array<{
+    status: "success" | "failure";
+    report: ChildInvestigationReport | null;
+  }>,
+): string[] {
+  const paths: string[] = [];
+  for (const child of children) {
+    if (child.status !== "success" || !child.report) {
+      continue;
+    }
+    for (const finding of child.report.findings) {
+      for (const item of finding.evidencePaths) {
+        paths.push(normalizeRepoPath(item));
+      }
+    }
+  }
+  return paths;
+}
+
+export type DroppedChildEvidencePath = {
+  workerId: string;
+  claim: string;
+  path: string;
+};
+
+/**
+ * Evidence paths cited by a child finding and absent from the final report.
+ * A path that survives does not prove the finding's claim was preserved.
+ */
+export function droppedChildEvidencePaths(
   children: Array<{ id: string; report: ChildInvestigationReport | null }>,
   finalReport: InvestigationReport,
-): Array<{ workerId: string; claim: string; evidencePaths: string[] }> {
+): DroppedChildEvidencePath[] {
   const kept = new Set(
     finalReport.mechanisms.flatMap((mechanism) =>
       mechanism.evidencePaths.map(normalizeRepoPath),
     ),
   );
-  const lost: Array<{
-    workerId: string;
-    claim: string;
-    evidencePaths: string[];
-  }> = [];
+  const dropped: DroppedChildEvidencePath[] = [];
   for (const child of children) {
     if (!child.report) {
       continue;
     }
     for (const finding of child.report.findings) {
-      const preserved = finding.evidencePaths.some((item) =>
-        kept.has(normalizeRepoPath(item)),
-      );
-      if (!preserved) {
-        lost.push({
-          workerId: child.id,
-          claim: finding.claim,
-          evidencePaths: finding.evidencePaths,
-        });
+      for (const item of finding.evidencePaths) {
+        if (!kept.has(normalizeRepoPath(item))) {
+          dropped.push({
+            workerId: child.id,
+            claim: finding.claim,
+            path: item,
+          });
+        }
       }
     }
   }
-  return lost;
+  return dropped;
 }
 
 export function normalizeRepoPath(value: string): string {

@@ -99,5 +99,5 @@ Adoption would need a repeated workload-specific comparison, not this probe.
 - Fresh worker context is the point of the split. Sharing conversations would undo it.
 - Provenance admission is a read-set check, not a truth check.
 - A failed child must remain visible. Do not respawn it to hide the hole.
-- Grade the final report. Child findings the Lead drops are lost.
+- Grade the final report. The recorded handoff metric is dropped child evidence paths. A path that survives does not prove the claim was preserved.
 - Mechanism success and adoption are separate. The default remains one Worker.

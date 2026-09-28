@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { REPO_ROOT, loadConfig } from "./config.ts";
-import { lostChildFindings } from "./investigation-report.ts";
+import { droppedChildEvidencePaths } from "./investigation-report.ts";
 import {
   evaluateSwm01LiveMechanism,
   pathReadMetrics,
@@ -30,6 +30,7 @@ export async function runSwm01Probe(): Promise<void> {
     ref: baseRevision,
   });
   const bound = bindConfig(config, workspace);
+  const createdStatus = workspaceStatus(workspace.root);
   let baseline: BaselineInvestigationResult | null = null;
   let variant: MultiAgentInvestigationResult | null = null;
   try {
@@ -47,27 +48,30 @@ export async function runSwm01Probe(): Promise<void> {
     const variantGrade = variant.report
       ? gradeInvestigationReport(variant.report, workspace.root)
       : null;
-    const lost = variant.report
-      ? lostChildFindings(variant.children, variant.report)
+    const droppedPaths = variant.report
+      ? droppedChildEvidencePaths(variant.children, variant.report)
       : [];
     const mechanism = evaluateSwm01LiveMechanism(variant);
-    const dirty = workspaceStatus(workspace.root);
+    const mutations = workspaceMutationsSince(
+      createdStatus,
+      workspaceStatus(workspace.root),
+    );
     const validPair = baseline.report !== null && variant.report !== null && variant.admission.ok;
     const mechanismPass =
       validPair &&
       baseline.model === variant.model &&
       Object.values(mechanism).every(Boolean) &&
-      dirty === "";
+      mutations.length === 0;
     const evidence = {
       baseRevision,
       model: config.model,
       objective: SWM01_OBJECTIVE,
       workspaceRoot: workspace.root,
-      workspaceDirty: dirty,
+      workspaceDirty: mutations.join("\n"),
       validPair,
       mechanismPass,
       mechanism,
-      lostChildFindings: lost,
+      droppedChildEvidencePaths: droppedPaths,
       baseline: armEvidence(baseline, baselineGrade),
       variant: {
         ...armEvidence(variant, variantGrade),
@@ -149,7 +153,7 @@ function formatSummary(evidence: {
   mechanismPass: boolean;
   workspaceDirty: string;
   mechanism: Record<string, boolean>;
-  lostChildFindings: unknown[];
+  droppedChildEvidencePaths: unknown[];
   baseline: ReturnType<typeof armEvidence>;
   variant: ReturnType<typeof armEvidence> & {
     workerCount: number;
@@ -193,7 +197,7 @@ function formatSummary(evidence: {
     `child_failures: ${evidence.variant.childFailures.length}`,
     `synthesis_input_bytes: ${evidence.variant.synthesisInputBytes}`,
     `worker_path_overlap: ${evidence.variant.coverageOverlap.length}`,
-    `lost_child_findings: ${evidence.lostChildFindings.length}`,
+    `dropped_child_evidence_paths: ${evidence.droppedChildEvidencePaths.length}`,
     `report: ${reportPath}`,
   ];
   return lines.join("\n");
@@ -206,6 +210,21 @@ function writeEvidence(evidence: unknown): string {
   const jsonPath = path.join(dir, `swm01-${id}.json`);
   fs.writeFileSync(jsonPath, `${JSON.stringify(evidence, null, 2)}\n`);
   return jsonPath;
+}
+
+export function workspaceMutationsSince(
+  createdStatus: string,
+  currentStatus: string,
+): string[] {
+  const created = new Set(porcelainLines(createdStatus));
+  return porcelainLines(currentStatus).filter((line) => !created.has(line));
+}
+
+function porcelainLines(status: string): string[] {
+  return status
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0);
 }
 
 function workspaceStatus(repoRoot: string): string {

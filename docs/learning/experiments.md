@@ -2425,7 +2425,7 @@ A shallow Lead plus 2–3 fresh read-only workers can cover a breadth-first harn
 
 Audit the current harness's optional and experimental agentic mechanisms: entry, activation owner, capabilities, artifact, retained outer authority, durable support, and default/opt-in/conditional status. Claims need repository paths. Uncertainties stay explicit.
 
-The grader's nine surfaces and expected statuses are frozen in `harness/src/swm01-contract.ts` before any model output. They were not revised after a run, because no model run exists.
+The grader's nine surfaces and expected statuses are frozen in `harness/src/swm01-contract.ts` before any model output. They were not retuned after the pair below.
 
 ### Arms
 
@@ -2436,14 +2436,49 @@ Same objective, same `config.model`, same read-only repository tools, same final
 
 ### Result
 
-**Not run.** On 2026-09-27 the cloud environment had no `OPENAI_API_KEY` and no `OPENAI_MODEL`. `npm run benchmark:swm01` exits 1 before creating a workspace or calling a model:
+One pair on 2026-09-28. Model `gpt-5.6-luna`. Base SHA `f992e3a669860ba49f51f265d1f0f604bb6f851b`. Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T11-04-13-012Z.json`.
 
-```text
-Missing required env OPENAI_API_KEY. Set it in .env or the environment.
-```
+| Arm | Wall | Input tokens | Coverage | Correctness |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 70,200 ms | 174,332 | 8/9 | 0.25 |
+| Variant | 107,213 ms | 621,400 | 9/9 | 0.7778 |
 
-No base SHA, grader scores, token counts, worker objectives, path overlap, or lost-finding count exists for a live pair. Deterministic tests cover admission, the read-only tool boundary, concurrent overlap, and partial child failure. Those tests are not the paired probe.
+Three workers genuinely overlapped. The variant used about 3.56× the baseline input tokens and was about 53% slower end to end.
+
+`mechanismPass` on that trace is false. The only failing check was workspace cleanliness: `createWorkspace()` creates `target-app/node_modules`, and the probe treated that harness-owned symlink as a mutation. The ten live mechanism checks were true. The cleanliness check now diffs git status against the workspace's post-creation baseline. The requirement itself stays.
+
+The handoff field is `droppedChildEvidencePaths`: each child evidence path missing from the final report. Path survival is not semantic finding preservation, so this result does not say that no child findings were lost.
+
+### Fresh pair after the review fixes
+
+2026-09-28. Same model `gpt-5.6-luna`. Base SHA `828eafadf4b1e3b8cec3d89728f1ddff4fbefd69`. This tree is the merge that contains SWM01, not `f992e3a`. The runner used the review fixes. The grader contract was not changed.
+
+Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T11-48-16-516Z.json`.
+
+`mechanismPass`: true. `workspaceDirty`: empty. Overlap: true (`commonOverlapMs` 23,676). Child failures: 1 (`mechanism-entry-inventory`, `max_turns_exceeded`). `dropped_child_evidence_paths`: 6.
+
+| Arm | Wall | Input tokens | Coverage | Correctness |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 46,894 ms | 209,701 | 8/9 (`github_ci_delivery` missing) | 0.25 |
+| Variant | 89,073 ms | 615,951 | 8/9 (`review_plan` missing) | 0 |
+
+Changed from the `f992e3a` pair: mechanism false → true; baseline coverage and correctness unchanged; variant coverage 9/9 → 8/9; variant correctness 0.7778 → 0; variant input tokens 621,400 → 615,951; variant wall 107,213 ms → 89,073 ms. On this pair the variant used about 2.94× baseline input tokens and was about 90% slower. The six dropped paths are evidence-path omissions, not a count of lost findings.
+
+### Third pair
+
+2026-09-28. Same model, same SHA `828eafadf4b1e3b8cec3d89728f1ddff4fbefd69`, same frozen grader.
+
+Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T15-24-39-165Z.json`.
+
+`mechanismPass`: true. `workspaceDirty`: empty. Overlap: true (`commonOverlapMs` 31,117). Child failures: 0. `dropped_child_evidence_paths`: 13.
+
+| Arm | Wall | Input tokens | Coverage | Correctness |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | 88,096 ms | 290,930 | 8/9 (`github_ci_delivery` missing) | 1 |
+| Variant | 90,206 ms | 533,716 | 7/9 (`review_plan`, `github_ci_delivery` missing) | 0.7143 |
+
+The variant used about 1.83× baseline input tokens. End-to-end wall time was about 2% higher. The thirteen dropped paths are evidence-path omissions, not preserved or lost findings.
 
 ### SWM01 rule
 
-Not claimed. A mechanism PASS still requires one valid live pair plus the deterministic boundaries. Default remains Spec → one Worker.
+Not an adoption claim. Default remains Spec → one Worker. The grader was not retuned from this pair.
