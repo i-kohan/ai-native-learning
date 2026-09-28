@@ -1,6 +1,6 @@
 # 26 — SWM01 notes
 
-Status: **not closed**. One paired probe ran on `gpt-5.6-luna` at `f992e3a`. No adoption claim. Default remains one Worker.
+Status: **CLOSED by Topic Chat on 2026-09-28**. SWM01 mechanism PASS. No adoption claim. Default remains one Worker.
 
 ## What this probe is
 
@@ -120,3 +120,26 @@ The variant missed `review_plan` and `github_ci_delivery`. About 1.83× baseline
 5. `harness/src/swm01-grader.ts` — grades the final report only.
 
 Flow: `admitSwarmPlan` → `runChildWorker` inside `Promise.all` → `buildSynthesisInput` → `enforceIncompleteCoverage` → `gradeInvestigationReport`.
+
+
+## Topic Chat closure
+
+Final Understanding Check: **PASS with precision corrections** on 2026-09-28.
+
+The learner demonstrated the intended distinctions:
+
+- `Promise.all` is only a concurrency primitive; the multi-agent lesson is the Lead/worker/synthesis topology plus authority and lifecycle boundaries;
+- Module 13 Subagent and Module 26 are a continuum: one bounded helper can evolve into a Lead coordinating several sibling reasoning contexts;
+- the Lead may propose decomposition, while the harness owns worker count, capabilities, budgets, write authority, recursion, and lifecycle admission;
+- the final synthesis is the system output, so useful child evidence omitted during fan-in does not count as final-system coverage;
+- real parallelism does not imply better ROI: planning, duplicated exploration, handoff, and synthesis can outweigh any worker-wave latency benefit.
+
+Precision retained:
+
+- separate contexts can reduce context pressure and increase breadth, but must not be described as inherently higher quality;
+- agreement among several workers is not independent verification;
+- `droppedChildEvidencePaths` measures path omission only, not semantic finding loss.
+
+**Topic Chat decision:** Module 26 CLOSED. SWM01 is a mechanism PASS, but the paired probes did not show a stable quality/latency benefit that justifies default adoption. Keep Spec → one Worker as the default and revisit bounded multi-agent investigation only for a workload with genuinely independent breadth-first directions and a measurable coverage/latency need.
+
+See `docs/learning/lessons/26-bounded-multi-agent/closure.md`.

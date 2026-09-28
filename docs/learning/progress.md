@@ -29,8 +29,9 @@ Completed modules:
 23. ✅ 23 — MCP Deeper Dive (closed by Master on 2026-09-24; MCP01 PASS; default local repo read remains direct)
 24. ✅ 24 — Memory Architectures (closed by Master on 2026-09-25; MEM01 PASS; memory remains opt-in/off by default)
 25. ✅ 25 — A2A / Agent Interoperability (closed by Master on 2026-09-27; A2A01 PASS; A2A remains opt-in/off by default)
+26. ✅ 26 — Bounded Multi-Agent Systems (closed by Topic Chat on 2026-09-28; SWM01 mechanism PASS; default remains one Worker)
 
-Module 26 is **not closed**. The recorded pair on `gpt-5.6-luna` at `f992e3a` had variant coverage 9/9 versus 8/9 and correctness 0.7778 versus 0.25, at about 3.56× baseline input tokens and about 53% more wall time. Two later pairs at `828eafa` also passed the mechanism check. In both, the variant covered less than the baseline and cost more input tokens. Default remains one Worker. No adoption claim.
+Module 26 is **closed from the Topic Chat side**. SWM01 demonstrated the intended bounded Lead → workers → synthesis topology with real concurrent read-only children and harness-owned authority. The paired probes did not show a stable quality/latency advantage over one Investigator and consistently cost more input tokens. Default remains one Worker. No general multi-agent adoption claim.
 
 ---
 
@@ -81,7 +82,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 26 — Bounded multi-agent investigation
 
-**Status:** not closed. One valid pair ran. Default remains Spec → one Worker. No adoption claim.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-09-28. SWM01 mechanism PASS. Default remains Spec → one Worker; no adoption claim.
 
 Theory:
 
@@ -151,7 +152,11 @@ The variant missed `review_plan` and `github_ci_delivery`. It used about 1.83× 
 
 ## Closure / remaining boundaries
 
-No adoption claim. Default remains one Worker. The module stays open. One pair is not an adoption decision.
+Final Understanding Check: **PASS with precision corrections** on 2026-09-28. The learner correctly separated concurrency primitives from workflow topology, understood Module 13 → Module 26 as a continuum, kept resource/capability authority in the harness, treated final synthesis as the system output, and separated mechanism success from workload ROI.
+
+**Topic Chat decision:** Module 26 CLOSED. SWM01 is a mechanism PASS only. The three recorded pairs did not show a stable advantage that justifies default adoption; later pairs were more expensive in input tokens and did not outperform the single-investigator baseline. Default remains Spec → one Worker.
+
+See `docs/learning/lessons/26-bounded-multi-agent/closure.md`.
 
 ---
 

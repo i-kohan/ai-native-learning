@@ -2481,4 +2481,21 @@ The variant used about 1.83× baseline input tokens. End-to-end wall time was ab
 
 ### SWM01 rule
 
-Not an adoption claim. Default remains Spec → one Worker. The grader was not retuned from this pair.
+**Mechanism PASS.** After the review fixes, fresh runs demonstrated the bounded topology: Lead-proposed decomposition, harness admission, 2–3 fresh read-only workers, real overlap, structured child artifacts, provenance-limited synthesis, explicit child failure, and unchanged default `runV1Harness()`.
+
+This is not an adoption claim. Across the recorded pairs the variant did not show a stable quality/latency advantage and always used more input tokens than the corresponding baseline. Default remains Spec → one Worker. The grader was not retuned from these results.
+
+### Topic Chat closure
+
+Final Understanding Check: **PASS with precision corrections** on 2026-09-28.
+
+Retained understanding:
+
+- concurrency is an implementation primitive; the learning target is the Lead/worker/fan-in topology and its authority boundaries;
+- Module 13 and Module 26 are a continuum rather than disjoint technologies;
+- the harness, not the Lead, owns worker budget, capabilities, and lifecycle admission;
+- the final synthesized report is the system outcome; child evidence omitted during fan-in is not final coverage;
+- real parallelism can still lose on end-to-end cost or latency;
+- worker agreement is not VERIFY.
+
+**Topic Chat decision:** Module 26 CLOSED. SWM01 remains a bounded mechanism PASS, not a default-architecture adoption. See `docs/learning/lessons/26-bounded-multi-agent/closure.md`.

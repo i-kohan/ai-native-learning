@@ -254,7 +254,7 @@ Not adopted:
 
 ### Experimental: bounded multi-agent investigation (SWM01)
 
-**Status:** mechanism probe only. It is not wired into `runV1Harness()`.
+**Status:** mechanism PASS, not adopted. It is not wired into `runV1Harness()`.
 
 One Lead may propose a 2–3 worker `SwarmPlan`. The harness admits the plan, runs fresh read-only workers concurrently, and asks the Lead to synthesize an `InvestigationReport`. The Lead does not choose models, tools, turn limits, or write access. This is not the default coding path and it is not a swarm platform.
 
