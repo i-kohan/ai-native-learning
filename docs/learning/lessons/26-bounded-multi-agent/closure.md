@@ -1,6 +1,6 @@
 # 26 — Closure
 
-Status: **CLOSED by Topic Chat on 2026-09-28**.
+Status: **MASTER CLOSED on 2026-09-28**.
 
 Mechanism: **SWM01 PASS**.
 
@@ -143,3 +143,48 @@ Not implemented or justified by this module:
 - production swarm platform.
 
 Those remain separate future questions rather than hidden requirements of SWM01.
+
+
+## Master acceptance
+
+Master review confirmed the intended bounded topology and evidence:
+
+```text
+Lead-generated SwarmPlan            = yes
+harness worker-count admission      = 2–3 only
+model-controlled authority fields   = rejected
+worker contexts                     = fresh / sibling-isolated
+worker capabilities                 = read-only
+recursive delegation                = unavailable
+worker execution                    = genuinely overlapping
+child artifacts                     = structured + path-provenance admitted
+raw child conversations in fan-in   = no
+partial child failure               = explicit / not respawned
+Lead synthesis                      = bounded common-schema artifact
+external grader                     = frozen
+default runV1Harness path           = unchanged
+```
+
+The post-review evaluator correction for the harness-created `target-app/node_modules` symlink is accepted: the cleanliness invariant remains present and now compares against post-workspace-creation baseline rather than treating harness setup as a worker mutation.
+
+The paired evidence does not support adoption:
+
+```text
+pair 1: variant grade better, ~3.56x input tokens, ~53% slower
+pair 2: mechanism PASS, variant no quality advantage, ~2.94x tokens, ~90% slower
+pair 3: mechanism PASS, baseline quality better, ~1.83x tokens, ~2% slower
+```
+
+These runs establish a working shallow multi-agent mechanism and substantial coordination/token cost, not a general anti-multi-agent conclusion.
+
+Final Master decision:
+
+```text
+bounded Lead → workers → synthesis topology = accepted
+authority / budget boundaries               = accepted
+partial-failure semantics                    = accepted
+semantic fan-in provenance                   = accepted
+stable ROI advantage                         = not demonstrated
+default                                      = Spec → one Worker
+remaining Module 26 blockers                 = none
+```
