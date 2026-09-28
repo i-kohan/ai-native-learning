@@ -1,0 +1,1706 @@
+{
+  "baseRevision": "f992e3a669860ba49f51f265d1f0f604bb6f851b",
+  "model": "gpt-5.6-luna",
+  "objective": "Audit the current harness's optional and experimental agentic mechanisms. For every relevant mechanism, determine:\n1. where it enters the harness;\n2. who decides/adopts it;\n3. what tools/capabilities/authority it receives;\n4. what artifact/evidence it returns;\n5. what authority remains with the outer harness;\n6. whether it is supported with durable execution;\n7. whether it is default, opt-in, or conditional.\n\nSupport claims with repository paths.\nExplicitly preserve uncertainties and incomplete coverage.",
+  "workspaceRoot": "/Users/i.kohanvs/Desktop/ai-native/.worktrees/swm01-2026-09-28T11-01-15-231Z",
+  "workspaceDirty": "?? target-app/node_modules",
+  "validPair": true,
+  "mechanismPass": false,
+  "mechanism": {
+    "leadProposedBoundedPlan": true,
+    "harnessAdmittedTwoToThree": true,
+    "freshWorkersExecuted": true,
+    "workersReadOnly": true,
+    "workersCannotDelegate": true,
+    "executionOverlapped": true,
+    "structuredChildReports": true,
+    "provenanceRetained": true,
+    "synthesisReceivesCompressedReports": true,
+    "leadProducedFinalReport": true
+  },
+  "lostChildFindings": [],
+  "baseline": {
+    "ok": true,
+    "failureReason": null,
+    "wallMs": 70200,
+    "modelCalls": 8,
+    "toolCalls": 39,
+    "inputTokens": 174332,
+    "outputTokens": 8255,
+    "pathsRead": [
+      "README.md",
+      "package.json",
+      "harness/src/index.ts",
+      "harness/package.json",
+      "harness/src/run.ts",
+      "harness/src/loop.ts",
+      "harness/src/tools.ts",
+      "docs/architecture/harness-architecture.md",
+      "docs/learning/experiments.md",
+      "docs/learning/master-learning-plan.md",
+      "harness/src/run-benchmark.ts",
+      "harness/src/evidence.ts",
+      "harness/src/plan.ts",
+      "harness/src/planner-phase.ts",
+      "harness/src/fan-out.ts",
+      "harness/src/memory.ts",
+      "harness/src/mcp/repo-read-host.ts",
+      "harness/src/a2a/delegation.ts",
+      "harness/src/workflow-state.ts",
+      "harness/src/workflow-store.ts",
+      "harness/src/retry.ts",
+      "harness/src/model-routing.ts",
+      "harness/src/github-delivery.ts",
+      "harness/src/skills.ts",
+      "harness/src/subagents-experiment.ts",
+      "harness/src/fanout-experiment.ts"
+    ],
+    "uniquePathsRead": [
+      "README.md",
+      "docs/architecture/harness-architecture.md",
+      "docs/learning/experiments.md",
+      "docs/learning/master-learning-plan.md",
+      "harness/package.json",
+      "harness/src/a2a/delegation.ts",
+      "harness/src/evidence.ts",
+      "harness/src/fan-out.ts",
+      "harness/src/fanout-experiment.ts",
+      "harness/src/github-delivery.ts",
+      "harness/src/index.ts",
+      "harness/src/loop.ts",
+      "harness/src/mcp/repo-read-host.ts",
+      "harness/src/memory.ts",
+      "harness/src/model-routing.ts",
+      "harness/src/plan.ts",
+      "harness/src/planner-phase.ts",
+      "harness/src/retry.ts",
+      "harness/src/run-benchmark.ts",
+      "harness/src/run.ts",
+      "harness/src/skills.ts",
+      "harness/src/subagents-experiment.ts",
+      "harness/src/tools.ts",
+      "harness/src/workflow-state.ts",
+      "harness/src/workflow-store.ts",
+      "package.json"
+    ],
+    "duplicatePathReads": [],
+    "grade": {
+      "coverageMatched": [
+        "explicit_planner",
+        "research_subagent",
+        "review_plan",
+        "bounded_fan_out",
+        "mcp_repo_read",
+        "verified_memory",
+        "a2a_delegation",
+        "durable_execution"
+      ],
+      "coverageMissing": [
+        "github_ci_delivery"
+      ],
+      "coverageRatio": 0.8888888888888888,
+      "correctnessConsistent": [
+        "bounded_fan_out",
+        "a2a_delegation"
+      ],
+      "correctnessInconsistent": [
+        "explicit_planner",
+        "research_subagent",
+        "review_plan",
+        "mcp_repo_read",
+        "verified_memory",
+        "durable_execution"
+      ],
+      "correctnessRatio": 0.25,
+      "incorrectClaims": [
+        {
+          "mechanism": "Explicit Planner",
+          "claim": "durableSupport=partial",
+          "reason": "Frozen contract expects unsupported for explicit_planner."
+        },
+        {
+          "mechanism": "Bounded research Subagent",
+          "claim": "durableSupport=partial",
+          "reason": "Frozen contract expects unsupported for research_subagent."
+        },
+        {
+          "mechanism": "Human-reviewable decomposition / ReviewPlan",
+          "claim": "durableSupport=partial",
+          "reason": "Frozen contract expects unsupported for review_plan."
+        },
+        {
+          "mechanism": "MCP repository read host",
+          "claim": "durableSupport=partial",
+          "reason": "Frozen contract expects unsupported for mcp_repo_read."
+        },
+        {
+          "mechanism": "Verified repository memory",
+          "claim": "durableSupport=partial",
+          "reason": "Frozen contract expects unsupported for verified_memory."
+        },
+        {
+          "mechanism": "Durable execution/checkpoints and durable REVIEW retry",
+          "claim": "durableSupport=supported",
+          "reason": "Frozen contract expects partial for durable_execution."
+        }
+      ],
+      "unsupportedFindings": [
+        {
+          "mechanism": "Human-reviewable decomposition / ReviewPlan",
+          "claim": "harness/src/run.ts, harness/src/run-benchmark.ts, docs/architecture/harness-architecture.md",
+          "reason": "No existing evidence path matches the frozen fragments for review_plan."
+        }
+      ]
+    }
+  },
+  "variant": {
+    "ok": true,
+    "failureReason": null,
+    "wallMs": 107213,
+    "modelCalls": 30,
+    "toolCalls": 113,
+    "inputTokens": 621400,
+    "outputTokens": 13927,
+    "pathsRead": [
+      "harness/src/index.ts",
+      "harness/src/config.ts",
+      "harness/src/run.ts",
+      "harness/src/loop.ts",
+      "harness/package.json",
+      "docs/architecture/harness-architecture.md",
+      "harness/src/evidence.ts",
+      "harness/src/plan.ts",
+      "harness/src/run-benchmark.ts",
+      "harness/src/model-routing.ts",
+      "harness/src/memory.ts",
+      "harness/src/fan-out.ts",
+      "harness/src/run-benchmark.ts",
+      "harness/src/orchestration-experiment.ts",
+      "harness/src/planning-experiment.ts",
+      "harness/src/subagents-experiment.ts",
+      "harness/src/fanout-experiment.ts",
+      "harness/src/mcp01-probe.ts",
+      "harness/src/a2a01-probe.ts",
+      "harness/src/workflow-state.ts",
+      "harness/src/delivery-run.ts",
+      "harness/src/decomposition-experiment.ts",
+      "harness/src/retry.ts",
+      "harness/src/spec-phase.ts",
+      "harness/src/review-plan.ts",
+      "harness/src/tools.ts",
+      "harness/src/research-subagent.ts",
+      "harness/src/fan-out.ts",
+      "harness/src/a2a01-probe.ts",
+      "harness/src/mcp01-probe.ts",
+      "harness/src/ci-admission.ts",
+      "harness/src/loop.ts",
+      "harness/src/config.ts",
+      "harness/src/evidence.ts",
+      "harness/src/github-delivery.ts",
+      "harness/src/mcp/repo-read-host.ts",
+      "harness/src/a2a/admission.ts",
+      "harness/src/a2a/delegation.ts",
+      "harness/src/a2a/impact-executor.ts",
+      "harness/src/a2a/artifact.ts",
+      "harness/src/verify.ts",
+      "harness/src/a2a/host.ts",
+      "harness/src/run-benchmark.ts",
+      "harness/src/repair.ts",
+      "harness/src/review.ts",
+      "harness/src/delivery-accept.ts",
+      "harness/src/mcp/repo-server.ts",
+      "harness/src/durability-probe.ts",
+      "harness/src/checkpoint-probe.ts",
+      "harness/src/retry.ts",
+      "harness/src/retry-probe.ts",
+      "harness/src/workflow-state.ts",
+      "harness/src/workflow-store.ts",
+      "harness/src/workflow-lease.ts",
+      "harness/src/workflow-lease-store.ts",
+      "harness/src/workflow-lock.ts",
+      "harness/src/run-durable-invocation.ts",
+      "harness/src/workflow-store.ts",
+      "harness/src/memory-store.ts",
+      "harness/src/memory.ts",
+      "harness/src/fan-out.ts",
+      "harness/src/orchestration-experiment.ts",
+      "harness/src/subagents-experiment.ts",
+      "harness/tests/durability.test.ts",
+      "harness/tests/checkpoint.test.ts",
+      "harness/tests/retry.test.ts",
+      "docs/architecture/harness-architecture.md",
+      "harness/src/delivery-state.ts",
+      "harness/src/delivery-store.ts",
+      "harness/src/delivery-run.ts",
+      "harness/tests/delivery.test.ts",
+      "harness/tests/memory.test.ts",
+      "harness/tests/fan-out.test.ts",
+      "harness/src/review-baseline.ts"
+    ],
+    "uniquePathsRead": [
+      "docs/architecture/harness-architecture.md",
+      "harness/package.json",
+      "harness/src/a2a/admission.ts",
+      "harness/src/a2a/artifact.ts",
+      "harness/src/a2a/delegation.ts",
+      "harness/src/a2a/host.ts",
+      "harness/src/a2a/impact-executor.ts",
+      "harness/src/a2a01-probe.ts",
+      "harness/src/checkpoint-probe.ts",
+      "harness/src/ci-admission.ts",
+      "harness/src/config.ts",
+      "harness/src/decomposition-experiment.ts",
+      "harness/src/delivery-accept.ts",
+      "harness/src/delivery-run.ts",
+      "harness/src/delivery-state.ts",
+      "harness/src/delivery-store.ts",
+      "harness/src/durability-probe.ts",
+      "harness/src/evidence.ts",
+      "harness/src/fan-out.ts",
+      "harness/src/fanout-experiment.ts",
+      "harness/src/github-delivery.ts",
+      "harness/src/index.ts",
+      "harness/src/loop.ts",
+      "harness/src/mcp/repo-read-host.ts",
+      "harness/src/mcp/repo-server.ts",
+      "harness/src/mcp01-probe.ts",
+      "harness/src/memory-store.ts",
+      "harness/src/memory.ts",
+      "harness/src/model-routing.ts",
+      "harness/src/orchestration-experiment.ts",
+      "harness/src/plan.ts",
+      "harness/src/planning-experiment.ts",
+      "harness/src/repair.ts",
+      "harness/src/research-subagent.ts",
+      "harness/src/retry-probe.ts",
+      "harness/src/retry.ts",
+      "harness/src/review-baseline.ts",
+      "harness/src/review-plan.ts",
+      "harness/src/review.ts",
+      "harness/src/run-benchmark.ts",
+      "harness/src/run-durable-invocation.ts",
+      "harness/src/run.ts",
+      "harness/src/spec-phase.ts",
+      "harness/src/subagents-experiment.ts",
+      "harness/src/tools.ts",
+      "harness/src/verify.ts",
+      "harness/src/workflow-lease-store.ts",
+      "harness/src/workflow-lease.ts",
+      "harness/src/workflow-lock.ts",
+      "harness/src/workflow-state.ts",
+      "harness/src/workflow-store.ts",
+      "harness/tests/checkpoint.test.ts",
+      "harness/tests/delivery.test.ts",
+      "harness/tests/durability.test.ts",
+      "harness/tests/fan-out.test.ts",
+      "harness/tests/memory.test.ts",
+      "harness/tests/retry.test.ts"
+    ],
+    "duplicatePathReads": [
+      "docs/architecture/harness-architecture.md",
+      "harness/src/a2a01-probe.ts",
+      "harness/src/config.ts",
+      "harness/src/delivery-run.ts",
+      "harness/src/evidence.ts",
+      "harness/src/fan-out.ts",
+      "harness/src/loop.ts",
+      "harness/src/mcp01-probe.ts",
+      "harness/src/memory.ts",
+      "harness/src/orchestration-experiment.ts",
+      "harness/src/retry.ts",
+      "harness/src/run-benchmark.ts",
+      "harness/src/subagents-experiment.ts",
+      "harness/src/workflow-state.ts",
+      "harness/src/workflow-store.ts"
+    ],
+    "grade": {
+      "coverageMatched": [
+        "explicit_planner",
+        "research_subagent",
+        "review_plan",
+        "bounded_fan_out",
+        "mcp_repo_read",
+        "verified_memory",
+        "a2a_delegation",
+        "durable_execution",
+        "github_ci_delivery"
+      ],
+      "coverageMissing": [],
+      "coverageRatio": 1,
+      "correctnessConsistent": [
+        "explicit_planner",
+        "research_subagent",
+        "review_plan",
+        "bounded_fan_out",
+        "mcp_repo_read",
+        "a2a_delegation",
+        "github_ci_delivery"
+      ],
+      "correctnessInconsistent": [
+        "verified_memory",
+        "durable_execution"
+      ],
+      "correctnessRatio": 0.7777777777777778,
+      "incorrectClaims": [
+        {
+          "mechanism": "Verified repository memory",
+          "claim": "durableSupport=supported",
+          "reason": "Frozen contract expects unsupported for verified_memory."
+        },
+        {
+          "mechanism": "Durable workflow checkpoints/resume",
+          "claim": "durableSupport=supported",
+          "reason": "Frozen contract expects partial for durable_execution."
+        }
+      ],
+      "unsupportedFindings": [
+        {
+          "mechanism": "Explicit Planner",
+          "claim": "harness/src/plan.ts, harness/src/planning-experiment.ts, docs/architecture/harness-architecture.md",
+          "reason": "No existing evidence path matches the frozen fragments for explicit_planner."
+        }
+      ]
+    },
+    "workerCount": 3,
+    "workerObjectives": [
+      {
+        "id": "activation-trace",
+        "objective": "Inventory every optional or experimental agentic mechanism and trace its entry points through configuration, CLI/API wiring, feature flags, and runtime orchestration. For each mechanism, determine who decides to activate/adopt it and whether it is default, opt-in, or conditional; cite repository paths and explicitly record mechanisms or paths that remain uncertain or unexamined.",
+        "scopeHint": "Focus on startup/entrypoint code, configuration schemas, CLI/API surfaces, feature flags, and orchestration dispatch. Do not primarily assess detailed tool authority or persistence implementation."
+      },
+      {
+        "id": "authority-and-evidence",
+        "objective": "For each mechanism identified in the harness, audit the agent's effective capabilities and authority boundary: tools, filesystem/network/process access, delegation rights, approval gates, and what artifact/evidence it returns to the outer harness. Determine who can accept or reject the result and cite the implementation, schemas, and result-handling paths; preserve ambiguities and incomplete coverage.",
+        "scopeHint": "Focus on agent construction, tool registries, permissions/policies, approval/adoption logic, result/artifact contracts, and outer-harness consumption. Avoid duplicating feature-activation inventory except where needed to identify mechanisms."
+      },
+      {
+        "id": "durability-and-lifecycle",
+        "objective": "Assess whether each optional or experimental agentic mechanism has durable execution and what lifecycle guarantees exist across retries, crashes, restarts, resumptions, checkpoints, and persisted artifacts. Trace persistence, scheduling, recovery, and test/documentation evidence, and relate findings to the remaining authority of the outer harness. Clearly distinguish implemented support, conditional support, absent support, and unknowns with repository-path citations.",
+        "scopeHint": "Focus on execution lifecycle, queues/runners, state stores, checkpoints, retry/recovery code, persistence formats, and tests/docs proving durability. Do not re-audit tool inventories or activation configuration unless needed to establish lifecycle scope."
+      }
+    ],
+    "children": [
+      {
+        "id": "activation-trace",
+        "status": "success",
+        "failureReason": null,
+        "startedAt": 1790593352455,
+        "finishedAt": 1790593388858,
+        "durationMs": 36403,
+        "reportBytes": 8546,
+        "modelCalls": 9,
+        "toolCalls": 37,
+        "inputTokens": 172639,
+        "outputTokens": 2751,
+        "pathsRead": [
+          "harness/src/index.ts",
+          "harness/src/config.ts",
+          "harness/src/run.ts",
+          "harness/src/loop.ts",
+          "harness/package.json",
+          "docs/architecture/harness-architecture.md",
+          "harness/src/evidence.ts",
+          "harness/src/plan.ts",
+          "harness/src/run-benchmark.ts",
+          "harness/src/model-routing.ts",
+          "harness/src/memory.ts",
+          "harness/src/fan-out.ts",
+          "harness/src/run-benchmark.ts",
+          "harness/src/orchestration-experiment.ts",
+          "harness/src/planning-experiment.ts",
+          "harness/src/subagents-experiment.ts",
+          "harness/src/fanout-experiment.ts",
+          "harness/src/mcp01-probe.ts",
+          "harness/src/a2a01-probe.ts",
+          "harness/src/workflow-state.ts",
+          "harness/src/delivery-run.ts",
+          "harness/src/decomposition-experiment.ts",
+          "harness/src/retry.ts",
+          "harness/src/spec-phase.ts",
+          "harness/src/review-plan.ts"
+        ]
+      },
+      {
+        "id": "authority-and-evidence",
+        "status": "success",
+        "failureReason": null,
+        "startedAt": 1790593352455,
+        "finishedAt": 1790593406673,
+        "durationMs": 54218,
+        "reportBytes": 5921,
+        "modelCalls": 10,
+        "toolCalls": 35,
+        "inputTokens": 174276,
+        "outputTokens": 3132,
+        "pathsRead": [
+          "harness/src/tools.ts",
+          "harness/src/research-subagent.ts",
+          "harness/src/fan-out.ts",
+          "harness/src/a2a01-probe.ts",
+          "harness/src/mcp01-probe.ts",
+          "harness/src/ci-admission.ts",
+          "harness/src/loop.ts",
+          "harness/src/config.ts",
+          "harness/src/evidence.ts",
+          "harness/src/github-delivery.ts",
+          "harness/src/mcp/repo-read-host.ts",
+          "harness/src/a2a/admission.ts",
+          "harness/src/a2a/delegation.ts",
+          "harness/src/a2a/impact-executor.ts",
+          "harness/src/a2a/artifact.ts",
+          "harness/src/verify.ts",
+          "harness/src/a2a/host.ts",
+          "harness/src/run-benchmark.ts",
+          "harness/src/repair.ts",
+          "harness/src/review.ts",
+          "harness/src/delivery-accept.ts",
+          "harness/src/mcp/repo-server.ts"
+        ]
+      },
+      {
+        "id": "durability-and-lifecycle",
+        "status": "success",
+        "failureReason": null,
+        "startedAt": 1790593352455,
+        "finishedAt": 1790593392384,
+        "durationMs": 39929,
+        "reportBytes": 7037,
+        "modelCalls": 9,
+        "toolCalls": 39,
+        "inputTokens": 269211,
+        "outputTokens": 3725,
+        "pathsRead": [
+          "harness/src/durability-probe.ts",
+          "harness/src/checkpoint-probe.ts",
+          "harness/src/retry.ts",
+          "harness/src/retry-probe.ts",
+          "harness/src/workflow-state.ts",
+          "harness/src/workflow-store.ts",
+          "harness/src/workflow-lease.ts",
+          "harness/src/workflow-lease-store.ts",
+          "harness/src/workflow-lock.ts",
+          "harness/src/run-durable-invocation.ts",
+          "harness/src/workflow-store.ts",
+          "harness/src/memory-store.ts",
+          "harness/src/memory.ts",
+          "harness/src/fan-out.ts",
+          "harness/src/orchestration-experiment.ts",
+          "harness/src/subagents-experiment.ts",
+          "harness/tests/durability.test.ts",
+          "harness/tests/checkpoint.test.ts",
+          "harness/tests/retry.test.ts",
+          "docs/architecture/harness-architecture.md",
+          "harness/src/delivery-state.ts",
+          "harness/src/delivery-store.ts",
+          "harness/src/delivery-run.ts",
+          "harness/tests/delivery.test.ts",
+          "harness/tests/memory.test.ts",
+          "harness/tests/fan-out.test.ts",
+          "harness/src/review-baseline.ts"
+        ]
+      }
+    ],
+    "overlap": {
+      "overlapped": true,
+      "commonOverlapMs": 36403,
+      "pairwise": [
+        {
+          "a": "activation-trace",
+          "b": "authority-and-evidence",
+          "overlapMs": 36403
+        },
+        {
+          "a": "activation-trace",
+          "b": "durability-and-lifecycle",
+          "overlapMs": 36403
+        },
+        {
+          "a": "authority-and-evidence",
+          "b": "durability-and-lifecycle",
+          "overlapMs": 39929
+        }
+      ],
+      "durationSumMs": 130550,
+      "waveWallMs": 54219,
+      "durationSumExceedsWaveWall": true
+    },
+    "childFailures": [],
+    "synthesisInputBytes": 23557,
+    "coverageOverlap": [
+      "docs/architecture/harness-architecture.md",
+      "harness/src/a2a01-probe.ts",
+      "harness/src/config.ts",
+      "harness/src/delivery-run.ts",
+      "harness/src/evidence.ts",
+      "harness/src/fan-out.ts",
+      "harness/src/loop.ts",
+      "harness/src/mcp01-probe.ts",
+      "harness/src/memory.ts",
+      "harness/src/orchestration-experiment.ts",
+      "harness/src/retry.ts",
+      "harness/src/run-benchmark.ts",
+      "harness/src/subagents-experiment.ts",
+      "harness/src/workflow-state.ts"
+    ],
+    "leadPlan": {
+      "pathsRead": [],
+      "uniquePathsRead": [],
+      "duplicatePathReads": []
+    },
+    "synthesis": {
+      "modelCalls": 1,
+      "toolCalls": 1,
+      "inputTokens": 4854,
+      "outputTokens": 3828
+    }
+  },
+  "reports": {
+    "baseline": {
+      "mechanisms": [
+        {
+          "name": "Explicit Planner",
+          "entryPoints": [
+            "harness/src/run.ts (runV1Harness option planningEnabled)",
+            "harness/src/run-benchmark.ts (benchmark planning path)",
+            "harness/src/planner-phase.ts"
+          ],
+          "activationOwner": "Outer harness/benchmark runner decides via planningEnabled; planner model only submits a Plan. The Plan parser and harness accept it, but plan is explicitly advisory.",
+          "capabilities": [
+            "Read-only list_files/read_file during planning",
+            "Submit structured steps, likely files, dependencies, verification intent, and risks",
+            "No write_file or run_command in planner phase"
+          ],
+          "evidence": [
+            "planner-phase.ts exposes PLANNER_TOOLS as read-only tools plus submit_plan and records planner_decision",
+            "plan.ts states the resolved Spec is authoritative and the Plan is not an authority boundary",
+            "docs/architecture/harness-architecture.md says the explicit Planner is experimental and OFF by default"
+          ],
+          "retainedOuterAuthority": [
+            "Spec and ambiguity gate",
+            "Whether implementation starts",
+            "Tool permissions and workflow transitions",
+            "Verification, review, retry, terminal status, and eval truth"
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/run.ts",
+            "harness/src/planner-phase.ts",
+            "harness/src/plan.ts",
+            "harness/src/run-benchmark.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Bounded research Subagent",
+          "entryPoints": [
+            "harness/src/loop.ts (implementation Worker tool execution)",
+            "harness/src/evidence.ts (delegate_research tool and limits)",
+            "harness/src/subagents-experiment.ts"
+          ],
+          "activationOwner": "Outer harness enables subagentsEnabled; implementation Worker may choose delegate_research, but the harness caps it at MAX_RESEARCH_DELEGATIONS=1 and validates/adopts the report.",
+          "capabilities": [
+            "Read-only child episode: list_files, read_file, submit_evidence_report",
+            "Bounded objective and scope supplied by Worker",
+            "Returns EvidenceReport findings, inspected paths, and uncertainties"
+          ],
+          "evidence": [
+            "evidence.ts defines the optional tool, one-delegation cap, read-only handoff, and advisory authority rule",
+            "subagents-experiment.ts says a correct EvidenceReport proves mechanism correctness, not adoption, and default remains unchanged",
+            "loop.ts records researchDelegations and uses the child result as an observation"
+          ],
+          "retainedOuterAuthority": [
+            "Child cannot write, run tests, delegate further, expand Spec, grant permission, or declare success",
+            "Harness checks cited paths were actually read",
+            "Outer Worker still implements; outer VERIFY/REVIEW decide outcome"
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/evidence.ts",
+            "harness/src/loop.ts",
+            "harness/src/subagents-experiment.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Human-reviewable decomposition / ReviewPlan",
+          "entryPoints": [
+            "harness/src/run.ts (bindReviewPlan/reviewUnitTemplates options)",
+            "harness/src/run-benchmark.ts (decomposition benchmark path)"
+          ],
+          "activationOwner": "Harness-owned binder/templates decide units; the documented experiment specifically prohibits an LLM Review Planner from being the binder.",
+          "capabilities": [
+            "Advisory or harness-bound change units",
+            "Sequential scoped implementation and per-unit verification when the execution scope is enabled",
+            "Reviewability artifacts and unit reports"
+          ],
+          "evidence": [
+            "docs/architecture/harness-architecture.md classifies decomposition as conditional, not default, and says advisory plans alone did not create real review surfaces",
+            "run.ts documents bindReviewPlan as experiment-only and harness-owned",
+            "run.ts result model includes reviewPlan, reviewUnits, and reviewabilityReportPath"
+          ],
+          "retainedOuterAuthority": [
+            "Binder and unit ordering",
+            "Workspace/tool scope",
+            "Whether to continue units",
+            "Verification/review gates and final workflow status"
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/run.ts",
+            "harness/src/run-benchmark.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Bounded parallel fan-out / fan-in",
+          "entryPoints": [
+            "harness/src/run.ts (bindFanOutPlan, fanOutSchedule, fanOutChildWorkspaces)",
+            "harness/src/fan-out.ts",
+            "harness/src/fanout-experiment.ts",
+            "harness/src/run-benchmark.ts (--fanout)"
+          ],
+          "activationOwner": "Outer harness supplies/binds a frozen FanOutPlan and chooses sequential or parallel schedule; child Workers execute units but do not decide plan authority.",
+          "capabilities": [
+            "Multiple Worker episodes in exact-base isolated worktrees",
+            "Each child gets normal implementation tools and scoped verification",
+            "SourceDelta artifacts, child verification evidence, write-set overlap, and deterministic 3-way fan-in/conflict report"
+          ],
+          "evidence": [
+            "fan-out.ts requires exact base provenance, runs child episodes, captures deltas, checks child VERIFY, and performs fan-in",
+            "fanout-experiment.ts requires child VERIFY, deterministic fan-in, final VERIFY, independent REVIEW, no conflicts/lost changes, and frozen base/spec for valid trials",
+            "docs/architecture/harness-architecture.md records the mechanism as OFF by default and not adopted after P03"
+          ],
+          "retainedOuterAuthority": [
+            "Plan binding, integration order, workspace creation, scheduling, fan-in, conflict/lost-change decisions, final VERIFY/REVIEW and delivery",
+            "Children cannot directly make the integrated result authoritative"
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/fan-out.ts",
+            "harness/src/fanout-experiment.ts",
+            "harness/src/run.ts",
+            "harness/src/run-benchmark.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "MCP repository read host",
+          "entryPoints": [
+            "harness/src/loop.ts (mcpRepoReadEnabled)",
+            "harness/src/mcp/repo-read-host.ts",
+            "harness/src/run-benchmark.ts"
+          ],
+          "activationOwner": "Outer harness opens the MCP session and admits discovered tools against a fixed allowlist/schema; Worker receives the admitted repo_read_file tool, not arbitrary MCP tools.",
+          "capabilities": [
+            "Implementation-phase repository reads through repo_read_file",
+            "Allowed root fixed to target-app root",
+            "Host rejects tools outside allowlist, unsupported capabilities, unsafe schema, and forbidden argument keys; direct read_file is replaced for implementation"
+          ],
+          "evidence": [
+            "repo-read-host.ts pins protocol revision, launches server with MCP_ALLOWED_ROOT, admits only repo_read_file, and validates schema",
+            "loop.ts records MCP admission and removes direct read_file only for implementation",
+            "run.ts calls this experiment-only and says repair/review stay on direct tools"
+          ],
+          "retainedOuterAuthority": [
+            "MCP endpoint/process, root, allowlist, schema admission, and which phases use MCP",
+            "Writes, commands, VERIFY, REVIEW and workflow status remain outer harness controls"
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/mcp/repo-read-host.ts",
+            "harness/src/loop.ts",
+            "harness/src/run.ts",
+            "harness/src/run-benchmark.ts"
+          ]
+        },
+        {
+          "name": "A2A remote impact-analysis delegation",
+          "entryPoints": [
+            "harness/src/loop.ts (a2aDelegationEnabled)",
+            "harness/src/a2a/delegation.ts",
+            "harness/src/run-benchmark.ts (A2A probe path)"
+          ],
+          "activationOwner": "Outer harness enables the flag and starts/adopts the local remote agent; Worker can invoke at most one bounded delegation and supplies only objective/scope.",
+          "capabilities": [
+            "One remote read-oriented impact-analysis request over A2A",
+            "Remote process gets a constrained allowed root and separately supplied remote credential/model",
+            "Returns an admitted A2aDelegationRecord plus advisory analysis output; scope ceiling is checked before sending"
+          ],
+          "evidence": [
+            "delegation.ts requires exactly once before first write, limits arguments to objective/scope, and declares output advisory only",
+            "delegation.ts starts a loopback process with an environment allowlist and stops it after use",
+            "loop.ts adds the tool only during implementation and records a2aDelegations; run.ts labels it experiment-only"
+          ],
+          "retainedOuterAuthority": [
+            "Host chooses endpoint, credentials, root, model, protocol/security policy and admission",
+            "Remote result is not Spec, permission, VERIFY, REVIEW, or workflow success; outer Worker, verification, review and workflow remain authoritative"
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/a2a/delegation.ts",
+            "harness/src/loop.ts",
+            "harness/src/run.ts",
+            "harness/src/run-benchmark.ts"
+          ]
+        },
+        {
+          "name": "Verified repository memory",
+          "entryPoints": [
+            "harness/src/run.ts (memory: MemoryRunOptions)",
+            "harness/src/memory.ts",
+            "harness/src/run-benchmark.ts (memory probe path)"
+          ],
+          "activationOwner": "Caller/benchmark opts in with storeDir and retrieve/promote flags; deterministic memory code proposes/admit/revalidates records, not the model.",
+          "capabilities": [
+            "Persist a narrow implementation-surface claim after supported verified evidence",
+            "Retrieve repository-scoped records and inject one advisory hint into implementation context",
+            "Fingerprint/anchor validation, stale rejection, and out-of-scope filtering"
+          ],
+          "evidence": [
+            "memory.ts requires supported workflow/verification/review evidence for candidates, validates claims against current repository, and formats the hint as non-authoritative",
+            "run.ts explicitly says default runs do not read/write memory and memory cannot change WorkflowState",
+            "run.ts exposes memory metrics including admitted, validated, stale-rejected, and injected records"
+          ],
+          "retainedOuterAuthority": [
+            "Spec, current repository facts, tools, verification, review, workflow state and terminal outcome",
+            "Memory cannot authorize edits or alter WorkflowState"
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/memory.ts",
+            "harness/src/run.ts",
+            "harness/src/run-benchmark.ts"
+          ]
+        },
+        {
+          "name": "Durable execution/checkpoints and durable REVIEW retry",
+          "entryPoints": [
+            "harness/src/run.ts (durable: DurableRunOptions)",
+            "harness/src/workflow-state.ts",
+            "harness/src/workflow-store.ts",
+            "harness/src/retry.ts",
+            "harness/src/run-benchmark.ts (durability/retry probe paths)"
+          ],
+          "activationOwner": "Caller opts in by supplying durable workflowId/storeDir; outer harness owns lease acquisition, state transitions, persistence, fencing, retry classification and admission.",
+          "capabilities": [
+            "File-backed validated WorkflowState with spec_required → implementation_ready → review_ready → terminal",
+            "Atomic local persistence, workspace/baseline integrity checks, resume across processes, single-machine lease/fencing",
+            "Harness-owned bounded independent REVIEW retry state and retry budget"
+          ],
+          "evidence": [
+            "workflow-state.ts defines phases, legal admissions, durable verification evidence and retry state",
+            "workflow-store.ts uses atomic replacement and fenced owner saves; bootstrap-only unfenced save is explicitly separated",
+            "retry.ts states the model does not classify, budget, or decide retries and handles transient/semantic/policy/ambiguous outcomes",
+            "docs/architecture/harness-architecture.md says this is implemented as an opt-in mechanism probe; mid-Worker/mid-VERIFY crash reconciliation, exactly-once and distributed durability are not started"
+          ],
+          "retainedOuterAuthority": [
+            "All authoritative workflow transitions, workspace binding, baseline integrity, lease/fencing, retry admission and terminal outcome",
+            "Model episodes remain attempts; trace JSONL is not authoritative state"
+          ],
+          "durableSupport": "supported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/run.ts",
+            "harness/src/workflow-state.ts",
+            "harness/src/workflow-store.ts",
+            "harness/src/retry.ts",
+            "harness/src/run-benchmark.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Provider conversation continuation (previous_response_id)",
+          "entryPoints": [
+            "harness/src/index.ts",
+            "harness/src/loop.ts",
+            "harness/src/run-benchmark.ts",
+            "harness/src/run.ts"
+          ],
+          "activationOwner": "Caller selects conversationStateMode; loop controls whether it sends manual history or previous_response_id. No model authority changes.",
+          "capabilities": [
+            "Provider-side continuation of one episode",
+            "Reduced client-side replay/input accounting relative to manual mode",
+            "Same Worker tools and phase permissions"
+          ],
+          "evidence": [
+            "loop.ts defines previous_response_id as episode-local conversation transport, explicitly not WorkflowState",
+            "docs/architecture/harness-architecture.md says provider continuation works but token/wall-time improvement is not established and default remains manual",
+            "run-benchmark.ts exposes the mode for benchmark comparisons"
+          ],
+          "retainedOuterAuthority": [
+            "Workflow lifecycle, tool execution, verification, review, retry, delivery and durable state are unchanged"
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/loop.ts",
+            "harness/src/run-benchmark.ts",
+            "harness/src/run.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Repair-model routing override",
+          "entryPoints": [
+            "harness/src/model-routing.ts",
+            "harness/src/loop.ts",
+            "harness/src/run.ts",
+            "harness/src/run-benchmark.ts (routing benchmark path)"
+          ],
+          "activationOwner": "Harness configuration selects repairModel; resolveModel applies it only to repair episodes. The model does not choose routing.",
+          "capabilities": [
+            "A distinct configured model for repair episodes",
+            "No extra tools, permissions, workflow authority, or changed verification semantics"
+          ],
+          "evidence": [
+            "model-routing.ts says routing selects a model for one semantic episode and does not choose tools, permissions, limits, or authority",
+            "resolveModel uses repairModel only for episode repair and defaults all other episodes to config.model",
+            "run.ts result captures routing/model metrics and architecture docs describe normal routing as harness-owned"
+          ],
+          "retainedOuterAuthority": [
+            "Harness chooses model policy, episode boundaries, permissions, budgets, VERIFY/REVIEW and final outcome"
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/model-routing.ts",
+            "harness/src/loop.ts",
+            "harness/src/run.ts",
+            "harness/src/run-benchmark.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Evidence-guided repair Skill",
+          "entryPoints": [
+            "harness/src/loop.ts (skillIdForPhase/loadSkill)",
+            "harness/src/skills.ts"
+          ],
+          "activationOwner": "Harness selects it deterministically for repair and review_repair phases; the model receives procedural context but does not adopt a privileged role.",
+          "capabilities": [
+            "Reusable repair procedure/context",
+            "Content hash recorded in SkillLoadRecord",
+            "No new tools or permissions"
+          ],
+          "evidence": [
+            "skills.ts maps repair and review_repair to evidence-guided-repair and explicitly says skill is not privileged and cannot replace spec, tools, verification, review, or retry policy",
+            "loop.ts loads and records the skill per episode",
+            "docs/architecture/harness-architecture.md lists one reusable skill in retained core"
+          ],
+          "retainedOuterAuthority": [
+            "Spec, repository facts, tool constraints, verification, review and retry policy"
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/skills.ts",
+            "harness/src/loop.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        }
+      ],
+      "uncertainties": [
+        {
+          "claim": "Durable execution support for MCP, A2A, memory, fan-out, decomposition, routing, and skills is not fully established by the inspected code.",
+          "reason": "The durable state schema persists core phase/spec/verification/retry data but does not visibly persist all optional mechanism configuration or in-flight child/remote/memory side effects. I therefore marked most as partial or unsupported rather than claiming resumability."
+        },
+        {
+          "claim": "The exact CLI parsing/adoption behavior for every benchmark flag was not exhaustively inspected.",
+          "reason": "run-benchmark.ts was read but truncated by the repository reader; source entry points and package scripts establish availability, while some detailed dispatch branches remain unverified."
+        },
+        {
+          "claim": "Current empirical conclusions for experiments are taken from architecture/experiment source rather than fresh probe artifacts.",
+          "reason": "No generated eval artifacts were inspected; the repository documents the fan-out and subagent conclusions and their precommitted decision rules, but this audit did not execute probes."
+        },
+        {
+          "claim": "The complete remote A2A artifact-admission implementation was not read.",
+          "reason": "delegation.ts references host/artifact/server modules, but only delegation.ts and the probe entry point were inspected; details of remote report parsing and admission remain incomplete."
+        }
+      ],
+      "coverageSummary": "Inspected the main harness entry points, package scripts, architecture summary, run/loop capability wiring, and source for Planner, research subagents, decomposition, fan-out, MCP, A2A, memory, durability/retry, conversation continuation, routing, and skills. The retained default remains conservative Spec → one Worker → deterministic VERIFY/repair → independent REVIEW; the optional mechanisms are predominantly opt-in or conditional, and the outer harness retains workflow, evidence, permissions, and terminal authority. Coverage is incomplete for truncated dispatch portions of run-benchmark.ts, some A2A host/artifact internals, GitHub/CI probe orchestration beyond the inspected delivery surface, and generated runtime artifacts."
+    },
+    "variant": {
+      "mechanisms": [
+        {
+          "name": "Explicit Planner",
+          "entryPoints": [
+            "Optional planningEnabled option and shouldRunPlanner gate in runV1Harness.",
+            "Planning experiment compares baseline Spec→Worker with a read-only Planner variant."
+          ],
+          "activationOwner": "The outer harness caller sets planningEnabled; the harness gates execution. Adoption remains experiment-driven and human-controlled.",
+          "capabilities": [
+            "Read-only planning/repository context as admitted by the planner path.",
+            "Can propose a Plan, but cannot expand Spec, authorize edits, or determine success."
+          ],
+          "evidence": [
+            "Returns an advisory Plan and experiment comparison/report artifacts.",
+            "Plan is not itself permission, workflow state, or acceptance."
+          ],
+          "retainedOuterAuthority": [
+            "Outer harness resolves/adopts Spec and permissions.",
+            "Worker execution, VERIFY, REVIEW, and terminal workflow outcome remain harness-controlled."
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/plan.ts",
+            "harness/src/planning-experiment.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Bounded research Subagent",
+          "entryPoints": [
+            "Optional shouldEnableSubagents flag in implementation episodes.",
+            "Implementation Worker may use delegate_research, capped by MAX_RESEARCH_DELEGATIONS=1."
+          ],
+          "activationOwner": "Explicit caller flag plus implementation-phase harness gate; the model can request delegation only within the admitted tool contract.",
+          "capabilities": [
+            "Up to six child turns.",
+            "Read/list target-app files only; no writes, shell, verification, further delegation, Spec mutation, permission grant, or success declaration."
+          ],
+          "evidence": [
+            "EvidenceReport with findings and repository paths actually read.",
+            "Reports are advisory and path citations are admission-checked."
+          ],
+          "retainedOuterAuthority": [
+            "Harness admits/rejects cited evidence and decides whether it is useful.",
+            "Spec, permissions, verification, review, retry, and workflow success remain outer-harness decisions."
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/evidence.ts",
+            "harness/src/research-subagent.ts",
+            "harness/src/subagents-experiment.ts"
+          ]
+        },
+        {
+          "name": "MCP repository read tool",
+          "entryPoints": [
+            "runBenchmark/runAgentLoop MCP option.",
+            "MCP probe explicitly enables it; implementation-phase gate is required."
+          ],
+          "activationOwner": "Outer harness option and phase gate; host admission selects the protocol, root, and allowlisted tool.",
+          "capabilities": [
+            "Strict, admitted repo_read_file access under the host-selected target-app root.",
+            "No root/credential/token fields; direct read_file is removed for the MCP-enabled implementation episode.",
+            "Writes and npm test remain direct harness tools."
+          ],
+          "evidence": [
+            "MCP admission/trace records and repository-read results.",
+            "Probe checks that direct read_file is absent."
+          ],
+          "retainedOuterAuthority": [
+            "Host chooses root and tool schema and can refuse admission.",
+            "Harness retains write, test, VERIFY, REVIEW, and terminal authority; MCP is not an OS sandbox."
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/run-benchmark.ts",
+            "harness/src/loop.ts",
+            "harness/src/mcp01-probe.ts",
+            "harness/src/mcp/repo-read-host.ts",
+            "harness/src/mcp/repo-server.ts"
+          ]
+        },
+        {
+          "name": "A2A remote impact analysis",
+          "entryPoints": [
+            "Optional a2aDelegationEnabled implementation-loop option.",
+            "Standalone A2A probe requires A2A_REMOTE_OPENAI_API_KEY and explicitly enables the flag."
+          ],
+          "activationOwner": "Outer harness chooses endpoint, credentials, model, root, protocol policy, and one-delegation budget; the Worker may supply only objective and scope within the contract.",
+          "capabilities": [
+            "One bounded remote delegation.",
+            "Read-only list/read and structured artifact submission under an in-scope target-app root; no writes, shell, VERIFY, REVIEW, or workflow decision."
+          ],
+          "evidence": [
+            "ImpactAnalysis artifact with bounded paths/findings.",
+            "Host admission validates agent name, skill, URL, protocol, completion, scope, and evidence; accepted artifact records grantsWorkflowSuccess=false."
+          ],
+          "retainedOuterAuthority": [
+            "Host discovery/admission and artifact acceptance can reject the result.",
+            "Local VERIFY/REVIEW and final workflow outcome remain authoritative; remote process has no established OS/container isolation."
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/loop.ts",
+            "harness/src/a2a/delegation.ts",
+            "harness/src/a2a/impact-executor.ts",
+            "harness/src/a2a/admission.ts",
+            "harness/src/a2a/host.ts",
+            "harness/src/a2a/artifact.ts",
+            "harness/src/a2a01-probe.ts"
+          ]
+        },
+        {
+          "name": "Conversation continuation via previous_response_id",
+          "entryPoints": [
+            "Selectable orchestration arm in the orchestration experiment.",
+            "runAgentLoop defaults to manual history replay."
+          ],
+          "activationOwner": "Experiment/caller selects the arm; provider continuation is used only within an episode.",
+          "capabilities": [
+            "Provider-side continuation of model context using previous_response_id instead of manual history replay."
+          ],
+          "evidence": [
+            "Trial traces, chain/replay evidence, and experiment reports.",
+            "Continuation is not a workflow checkpoint."
+          ],
+          "retainedOuterAuthority": [
+            "Harness still controls tools, episode boundaries, verification, review, and outcome.",
+            "Manual replay remains default and no economic improvement is established."
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/loop.ts",
+            "harness/src/orchestration-experiment.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Verified repository memory",
+          "entryPoints": [
+            "MemoryRunOptions with storeDir and independent promote/retrieve switches.",
+            "Normal runV1Harness defaults to no memory read/write."
+          ],
+          "activationOwner": "Caller opts into retrieval and/or promotion; harness validates repository scope and evidence before use.",
+          "capabilities": [
+            "Persist and retrieve repository-scoped verified records.",
+            "Inject a validated advisory hint; promotion requires supported verification/review evidence."
+          ],
+          "evidence": [
+            "Immutable file-backed memory records and retrieval/promotion results.",
+            "Stale or invalid claims are rejected before injection."
+          ],
+          "retainedOuterAuthority": [
+            "Memory cannot alter WorkflowState, Spec, permissions, or success.",
+            "Harness controls validation, promotion, and whether an advisory hint affects execution."
+          ],
+          "durableSupport": "supported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/memory.ts",
+            "harness/src/memory-store.ts",
+            "harness/src/run.ts",
+            "harness/tests/memory.test.ts",
+            "harness/tests/durability.test.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Human-reviewable decomposition / ReviewPlan",
+          "entryPoints": [
+            "Optional harness-bound ReviewPlan and UnitExecutionScope path.",
+            "Decomposition experiment evaluates sequential units against default one-Worker execution."
+          ],
+          "activationOwner": "Caller/outer harness supplies or adopts the ReviewPlan; human review is part of the proposed adoption gate.",
+          "capabilities": [
+            "Split work into sequential dependent UnitExecutionScope episodes.",
+            "Cumulative verification across units; unit scopes provide harness process control, not model authority."
+          ],
+          "evidence": [
+            "ReviewPlan, unit execution results, cumulative verification, and experiment report."
+          ],
+          "retainedOuterAuthority": [
+            "ReviewPlan is advisory until harness adoption.",
+            "Harness controls unit ordering, scope, permissions, verification, and terminal state."
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/review-plan.ts",
+            "harness/src/decomposition-experiment.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Bounded parallel fan-out",
+          "entryPoints": [
+            "Optional fan-out configuration in runV1Harness.",
+            "Fan-out experiment selects sequential or Promise.all scheduling for frozen plan units."
+          ],
+          "activationOwner": "Outer harness/caller selects the schedule; harness freezes units, creates exact-base workspaces, and performs fan-in.",
+          "capabilities": [
+            "Parallel or sequential child Worker execution in isolated exact-base workspaces.",
+            "Child verification and deterministic Git fan-in; conflict/lost-change detection."
+          ],
+          "evidence": [
+            "Per-unit outputs, source deltas, verification results, and fan-in result.",
+            "Experiment acceptance requires correctness, gates, no conflicts/lost changes, >=20% end-to-end improvement, and no >20% cost regression."
+          ],
+          "retainedOuterAuthority": [
+            "Harness controls frozen plan, workspace bases, verification, conflict handling, and final adoption.",
+            "One Worker remains default."
+          ],
+          "durableSupport": "unsupported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/fan-out.ts",
+            "harness/src/fanout-experiment.ts",
+            "harness/tests/fan-out.test.ts",
+            "harness/src/run.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Durable workflow checkpoints/resume",
+          "entryPoints": [
+            "Optional durable run option in runV1Harness.",
+            "run-durable-invocation dispatches persisted WorkflowState phases."
+          ],
+          "activationOwner": "Caller opts into durable mode; outer harness owns state transitions, leases, fencing, and phase dispatch.",
+          "capabilities": [
+            "Persist spec_required→implementation_ready→review_ready→terminal state.",
+            "Atomic file replacement, lease ownership/fencing, restart resume, and phase skipping after successful checkpoints."
+          ],
+          "evidence": [
+            "WorkflowState, durable invocation records, checkpoint/baseline fingerprints, and durability probes/tests."
+          ],
+          "retainedOuterAuthority": [
+            "Harness admits transitions, binds workspace/provenance, controls VERIFY/REVIEW/retry, and determines terminal outcome.",
+            "No exactly-once or mid-Worker crash reconciliation; lock/lease behavior is bounded single-machine protection."
+          ],
+          "durableSupport": "supported",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/run.ts",
+            "harness/src/workflow-state.ts",
+            "harness/src/workflow-store.ts",
+            "harness/src/run-durable-invocation.ts",
+            "harness/src/workflow-lease.ts",
+            "harness/src/workflow-lease-store.ts",
+            "harness/src/workflow-lock.ts",
+            "harness/src/durability-probe.ts",
+            "harness/tests/durability.test.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Review-ready checkpoint and baseline restoration",
+          "entryPoints": [
+            "Conditional durable review_ready checkpoint path.",
+            "review-baseline snapshot is persisted and fingerprint-checked before resume."
+          ],
+          "activationOwner": "Outer harness creates/adopts the checkpoint and validates workspace/baseline integrity on restart.",
+          "capabilities": [
+            "Restore a separately persisted baseline and skip Worker/pre-review VERIFY on a valid review_ready resume.",
+            "Run independent REVIEW from reconstructed state."
+          ],
+          "evidence": [
+            "FileSnapshot, fingerprints, restoration outcome, and checkpoint test results."
+          ],
+          "retainedOuterAuthority": [
+            "Harness rejects missing/tampered baselines or workspace mutation and retains REVIEW/repair/terminal authority."
+          ],
+          "durableSupport": "supported",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/checkpoint-probe.ts",
+            "harness/src/review-baseline.ts",
+            "harness/src/workflow-state.ts",
+            "harness/tests/checkpoint.test.ts"
+          ]
+        },
+        {
+          "name": "Durable REVIEW retry",
+          "entryPoints": [
+            "review_ready retry state and decideRetry policy.",
+            "Retry probe exercises fresh-process continuation."
+          ],
+          "activationOwner": "Harness classifies failures, sets attempt budgets, persists operation state, and decides retry/reconciliation; the model does not.",
+          "capabilities": [
+            "Bounded retry of independent REVIEW for admitted transient failures.",
+            "Persist operationId, attempt, budget, and failure class."
+          ],
+          "evidence": [
+            "Review findings/outcome, retry state, failure classification, and retry trace."
+          ],
+          "retainedOuterAuthority": [
+            "Harness stops on semantic/policy/unknown or ambiguous failures, requires reconciliation where needed, and owns review success/terminal failure.",
+            "Does not provide crash-safe Worker/VERIFY retries or general exactly-once execution."
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/retry.ts",
+            "harness/src/workflow-state.ts",
+            "harness/src/retry-probe.ts",
+            "harness/tests/retry.test.ts",
+            "harness/src/config.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Post-terminal GitHub delivery",
+          "entryPoints": [
+            "Separate opt-in runDelivery path after successful terminal WorkflowState.",
+            "Delivery state reloads and reconciles on restart."
+          ],
+          "activationOwner": "Outer harness delivery runner; GitHub/human review remains outside WorkflowState authority.",
+          "capabilities": [
+            "Fresh local VERIFY, branch/commit/publish, draft PR creation/reconciliation, CI observation, and at most one semantic CI repair.",
+            "Fenced local DeliveryState persistence."
+          ],
+          "evidence": [
+            "DeliveryState, branch/PR/CI observations, expected head SHA, and draft PR artifact marked ready for human review."
+          ],
+          "retainedOuterAuthority": [
+            "Requires terminal success and local acceptance before delivery.",
+            "No merge authority; current-head CI yields ready_for_human_review, and human review/merge remains final."
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "opt-in",
+          "evidencePaths": [
+            "harness/src/delivery-run.ts",
+            "harness/src/delivery-state.ts",
+            "harness/src/delivery-store.ts",
+            "harness/src/github-delivery.ts",
+            "harness/src/ci-admission.ts",
+            "harness/tests/delivery.test.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        },
+        {
+          "name": "Independent VERIFY/REVIEW and bounded repair",
+          "entryPoints": [
+            "Core implementation loop after Worker; review and repair paths are invoked by the outer orchestration.",
+            "Delivery acceptance also requires local VERIFY and independent REVIEW."
+          ],
+          "activationOwner": "Outer harness owns verification, review parsing/classification, repair admission, and retry budget; model terminal responses are not acceptance.",
+          "capabilities": [
+            "Worker has list/read target-app, constrained write under target-app/src, and npm-test command.",
+            "REVIEW can identify scoped blocking findings; repair Worker can address admitted failures."
+          ],
+          "evidence": [
+            "Changed files/diffs, discovery, tool calls, token usage, verification results, parsed review findings, and repair outcomes."
+          ],
+          "retainedOuterAuthority": [
+            "VERIFY must pass before downstream acceptance; harness classifies findings, admits blocking repairs, and determines workflow/delivery success.",
+            "Default Worker tools are host-mediated, but npm test is not a general OS/network sandbox."
+          ],
+          "durableSupport": "partial",
+          "defaultStatus": "default",
+          "evidencePaths": [
+            "harness/src/tools.ts",
+            "harness/src/verify.ts",
+            "harness/src/loop.ts",
+            "harness/src/review.ts",
+            "harness/src/repair.ts",
+            "harness/src/delivery-accept.ts"
+          ]
+        },
+        {
+          "name": "Conditional repair-model routing",
+          "entryPoints": [
+            "OPENAI_REPAIR_MODEL configuration and model-routing episode selection.",
+            "withPinnedModel provides an additional benchmark/qualification pin."
+          ],
+          "activationOwner": "Configuration/caller selects the optional repair model; harness applies it only to verification repair when nonempty.",
+          "capabilities": [
+            "Changes model selection for verification-repair episodes only.",
+            "Pinned benchmark runs can reject nested model pins."
+          ],
+          "evidence": [
+            "Episode/model-routing records and configuration-driven selection."
+          ],
+          "retainedOuterAuthority": [
+            "Harness retains episode classification, tool permissions, verification, review, and outcome; this is not a general autonomous agent-selection policy."
+          ],
+          "durableSupport": "unknown",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/model-routing.ts",
+            "harness/src/config.ts"
+          ]
+        },
+        {
+          "name": "Phase-selected Skills",
+          "entryPoints": [
+            "runAgentLoop selects an available phase skill and injects it as procedural context."
+          ],
+          "activationOwner": "Harness phase/skill availability determines loading; it is not a user-facing agentic feature flag.",
+          "capabilities": [
+            "Additional phase-specific procedural context, including evidence-guided repair guidance where available."
+          ],
+          "evidence": [
+            "Injected skill context and resulting episode trace."
+          ],
+          "retainedOuterAuthority": [
+            "Skills do not grant independent tools, delegation, permissions, or workflow authority; all host gates remain in force."
+          ],
+          "durableSupport": "unknown",
+          "defaultStatus": "conditional",
+          "evidencePaths": [
+            "harness/src/loop.ts",
+            "docs/architecture/harness-architecture.md"
+          ]
+        }
+      ],
+      "uncertainties": [
+        {
+          "claim": "Coverage is incomplete for exact CLI/API dispatch wiring and all call sites constructing durable or delivery options.",
+          "reason": "The child report could not fully examine the large run-benchmark.ts dispatch and did not inspect every caller; named entry points and central APIs were inspected, but some flag-to-callback mappings remain untraced. Evidence: harness/src/run-benchmark.ts; harness/src/run.ts."
+        },
+        {
+          "claim": "The exact ordering of memory, decomposition, fan-out, and durable branches in the full execution body is not fully established.",
+          "reason": "The executeV1Harness body was not completely read; conclusions use public option types, central loop behavior, and supporting modules. Evidence: harness/src/run.ts."
+        },
+        {
+          "claim": "Durability claims do not establish power-loss, network-filesystem, or mid-Worker/mid-VERIFY exactly-once guarantees.",
+          "reason": "Tests cover phase resume, checkpoint tampering, retry, and delivery cases, but no production crash-injection coverage was found for those windows; leases and atomic rename are application-level protections. Evidence: harness/tests/durability.test.ts; harness/tests/checkpoint.test.ts; docs/architecture/harness-architecture.md."
+        },
+        {
+          "claim": "MCP and A2A isolation is application-level rather than a proven OS sandbox.",
+          "reason": "Both paths enforce target-app/root and read guards, but the child processes can technically access whatever the host OS permits under their configured environment/root. Evidence: harness/src/mcp/repo-server.ts; harness/src/a2a/impact-executor.ts."
+        },
+        {
+          "claim": "External GitHub side effects are not exactly-once fenced by WorkflowState.",
+          "reason": "Delivery reconciles expected heads and remote state, but check-to-action races and remote side effects can require reconciliation; GitHub is outside WorkflowState fencing. Evidence: harness/src/delivery-run.ts; harness/src/delivery-state.ts; docs/architecture/harness-architecture.md."
+        },
+        {
+          "claim": "The complete handling of every Worker tool result and all delivery-store consumers was not fully inspected.",
+          "reason": "The child reports identify the visible contracts and acceptance paths but note truncated loop.ts and incomplete outer-state/delivery persistence coverage. Evidence: harness/src/loop.ts; harness/src/delivery-store.ts."
+        }
+      ],
+      "coverageSummary": "All three child investigations succeeded, so there are no failed-child omissions. The synthesis covers the identified optional and experimental mechanisms, their entry/adoption gates, capabilities, returned artifacts, outer-harness authority, defaults, and lifecycle support. Coverage is nevertheless incomplete at several implementation edges: exact CLI dispatch, full execution-branch ordering, every durable/delivery caller, complete tool-result assembly, and crash behavior around in-flight model/tool/external side effects remain uncertain as documented above."
+    },
+    "children": [
+      {
+        "id": "activation-trace",
+        "report": {
+          "objective": "Inventory every optional or experimental agentic mechanism and trace its entry points through configuration, CLI/API wiring, feature flags, and runtime orchestration. For each mechanism, determine who decides to activate/adopt it and whether it is default, opt-in, or conditional; cite repository paths and explicitly record mechanisms or paths that remain uncertain or unexamined.",
+          "findings": [
+            {
+              "claim": "Normal CLI startup is a single manual task entrypoint (`--task` or stdin), loads env-backed config, and invokes `runV1Harness` with `contextMode: \"variant\"`; no experimental capability is enabled there. Config requires OPENAI_API_KEY and OPENAI_MODEL, with optional OPENAI_REPAIR_MODEL and fixed budgets/paths.",
+              "evidencePaths": [
+                "harness/src/index.ts",
+                "harness/src/config.ts"
+              ]
+            },
+            {
+              "claim": "The main orchestration API exposes opt-in seams for planning, Worker subagents, MCP repository reads, A2A delegation, verified memory, advisory ReviewPlan/decomposed units, bounded fan-out, admitted Spec, and durability. Each is represented as an optional runV1Harness option, while comments explicitly label the first several experiment-only and state defaults remain off/in-memory.",
+              "evidencePaths": [
+                "harness/src/run.ts"
+              ]
+            },
+            {
+              "claim": "Explicit Planner is opt-in/conditional: `planningEnabled` is checked by `shouldRunPlanner(planningEnabled)`, and the experiment compares baseline Spec→Worker against a variant with a read-only Planner. The experiment encodes `defaultUnchanged: true`; Plan is advisory and cannot expand Spec/authorize edits. The architecture experiment conclusion is therefore an adoption candidate only via measured experiment, not automatic activation.",
+              "evidencePaths": [
+                "harness/src/plan.ts",
+                "harness/src/planning-experiment.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Bounded research Subagent is opt-in: `shouldEnableSubagents` only returns true for an explicit true flag; only implementation episodes receive `delegate_research`, with MAX_RESEARCH_DELEGATIONS=1 and a read-only EvidenceReport contract. Evidence is advisory, not Spec/permission/success. The experiment explicitly says unused optional delegation is evidence and Subagents are not made default.",
+              "evidencePaths": [
+                "harness/src/evidence.ts",
+                "harness/src/subagents-experiment.ts"
+              ]
+            },
+            {
+              "claim": "MCP repo_read_file is opt-in and restricted to implementation: runBenchmark passes the boolean option through, runAgentLoop requires the flag plus implementation phase, opens/admit-checks a session, removes direct read_file, and records admission. The standalone MCP probe activates it explicitly and checks direct reads are absent; repair/review remain direct-tool paths.",
+              "evidencePaths": [
+                "harness/src/run-benchmark.ts",
+                "harness/src/loop.ts",
+                "harness/src/mcp01-probe.ts"
+              ]
+            },
+            {
+              "claim": "A2A remote impact analysis is opt-in, implementation-only, and bounded to one delegation. The standalone A2A probe refuses to run unless A2A_REMOTE_OPENAI_API_KEY is set (no fallback), then explicitly passes a2aDelegationEnabled flag. Remote artifact acceptance does not grant workflow success; final VERIFY/REVIEW still decide outcome.",
+              "evidencePaths": [
+                "harness/src/loop.ts",
+                "harness/src/a2a01-probe.ts"
+              ]
+            },
+            {
+              "claim": "Conversation continuation via `previous_response_id` is an experimental selectable orchestration mode; runAgentLoop defaults to manual history replay, while the experiment runs manual and previous_response_id arms and evaluates chain/replay evidence. Architecture documents it as experimental with default manual and no established economic improvement.",
+              "evidencePaths": [
+                "harness/src/loop.ts",
+                "harness/src/orchestration-experiment.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Verified repository memory is opt-in: MemoryRunOptions requires a storeDir and has independent promote/retrieve switches; normal runV1Harness defaults to no read/write. Retrieval is repository-scoped and revalidates records before injecting an advisory hint; promotion requires supported verification/review evidence. Memory cannot change WorkflowState per the run API comments/architecture.",
+              "evidencePaths": [
+                "harness/src/memory.ts",
+                "harness/src/run.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Human-reviewable decomposition is conditional/opt-in rather than default. A harness-bound ReviewPlan can split work into sequential UnitExecutionScope episodes with dependencies and cumulative verification; ReviewPlan is advisory while UnitExecutionScope is harness process control. The corrected experiment says default remains Spec→one Worker and adoption is pending human-review evidence.",
+              "evidencePaths": [
+                "harness/src/review-plan.ts",
+                "harness/src/decomposition-experiment.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Bounded parallel fan-out is opt-in/experimental: it executes frozen plan units in sequential or Promise.all parallel schedules, exact-base workspaces, child verification, and deterministic Git fan-in. The experiment's predeclared rule requires correctness, all gates, no conflicts/lost changes, >=20% full end-to-end wall improvement, and no >20% cost regression; it explicitly preserves one Worker as default.",
+              "evidencePaths": [
+                "harness/src/fan-out.ts",
+                "harness/src/fanout-experiment.ts",
+                "harness/src/run.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Durable checkpoints are opt-in: `durable` absent means current in-memory workflow; when present the outer runner acquires a lease and uses WorkflowState phases spec_required→implementation_ready→review_ready→terminal with harness-admitted transitions. Durable state can resume without rerunning earlier phases, but does not provide mid-Worker crash reconciliation/exactly-once semantics (documented limitation).",
+              "evidencePaths": [
+                "harness/src/run.ts",
+                "harness/src/workflow-state.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Post-terminal GitHub delivery is a separate opt-in orchestration path, not part of runV1Harness. `runDelivery` requires a terminal successful WorkflowState, acquires a lease, fresh local VERIFY, then progresses local acceptance→branch/PR→CI and at most one repair; it explicitly has no merge authority and GitHub is not fenced by WorkflowState.",
+              "evidencePaths": [
+                "harness/src/delivery-run.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Durable independent REVIEW retry is harness-controlled and conditional on failure classification/budget rather than model choice. `decideRetry` stops permanent/semantic failures, requests reconciliation for ambiguous side effects, and retries otherwise until max attempts; the model neither classifies nor budgets. Default max review retry attempts is 2, and retry state is part of review_ready durable state.",
+              "evidencePaths": [
+                "harness/src/retry.ts",
+                "harness/src/config.ts",
+                "harness/src/workflow-state.ts"
+              ]
+            },
+            {
+              "claim": "Repair model routing is an optional configuration mechanism: all episodes use OPENAI_MODEL unless the episode is verification repair and OPENAI_REPAIR_MODEL is nonempty; this is a conditional override, not a general agent-selection policy. `withPinnedModel` is an additional benchmark/qualification pin that rejects nested pins.",
+              "evidencePaths": [
+                "harness/src/model-routing.ts",
+                "harness/src/config.ts"
+              ]
+            },
+            {
+              "claim": "Skills are phase-selected procedural context rather than a user-facing feature flag: runAgentLoop selects a phase skill and injects it when available. The architecture lists one evidence-guided repair Skill as retained core, so this is not classified as optional agentic orchestration, but its load is conditional on phase/skill availability.",
+              "evidencePaths": [
+                "harness/src/loop.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            }
+          ],
+          "uncertainties": [
+            "The bottom-level CLI dispatch in run-benchmark.ts was not directly examinable because repository reads truncate the large file; package scripts prove named probe/experiment entrypoints exist, but exact flag-to-callback dispatch was not traced line-by-line.",
+            "I did not inspect every experimental probe/experiment module (routing, durability/checkpoint/ownership/CI probes, eval qualification) or all call sites that construct durable/delivery options. Findings cover their central APIs and documented architecture, but exact activation flags for those runner modes remain unexamined.",
+            "I did not inspect the full executeV1Harness body in run.ts, so the precise order in which memory, review-plan, fan-out, and durable dispatch branches are selected is inferred from the public option types, central loop behavior, and supporting modules rather than fully traced."
+          ]
+        }
+      },
+      {
+        "id": "authority-and-evidence",
+        "report": {
+          "objective": "For each mechanism identified in the harness, audit the agent's effective capabilities and authority boundary: tools, filesystem/network/process access, delegation rights, approval gates, and what artifact/evidence it returns to the outer harness. Determine who can accept or reject the result and cite the implementation, schemas, and result-handling paths; preserve ambiguities and incomplete coverage.",
+          "findings": [
+            {
+              "claim": "The default Worker receives four host-mediated tools: list_files/read_file over target-app, write_file constrained by resolveWithin to target-app/src, and run_command constrained exactly to npm test. npm test executes with a positive environment allowlist, but the verification process is not a general filesystem/network sandbox.",
+              "evidencePaths": [
+                "harness/src/tools.ts",
+                "harness/src/verify.ts"
+              ]
+            },
+            {
+              "claim": "Agent episode success is deliberately weaker than workflow success: AgentRunResult.status means only that the model produced a terminal response, while the outer harness owns verification and workflow completion. The loop records changed files/diffs, discovery, token usage, tool calls, and delegation records for outer consumption.",
+              "evidencePaths": [
+                "harness/src/loop.ts",
+                "harness/src/verify.ts"
+              ]
+            },
+            {
+              "claim": "Research delegation is opt-in and implementation-only, capped at one delegation and a six-turn child budget. The child can only list/read target-app files and submit EvidenceReport; it cannot write, run commands, delegate further, alter Spec, grant permission, or declare success. Reports are accepted only when cited evidence paths were actually read, and are explicitly advisory rather than authority, permission, verification, or workflow success.",
+              "evidencePaths": [
+                "harness/src/evidence.ts",
+                "harness/src/research-subagent.ts"
+              ]
+            },
+            {
+              "claim": "The implementation Worker can optionally use MCP repo_read_file instead of direct read_file. Host admission pins protocol revision, admits only an allowlisted tool whose schema is strict and exposes no root/credential/token fields, and the server receives an absolute host-selected root while refusing to start if OPENAI_API_KEY is present. Writes and npm test remain direct harness tools.",
+              "evidencePaths": [
+                "harness/src/loop.ts",
+                "harness/src/mcp/repo-read-host.ts",
+                "harness/src/mcp/repo-server.ts"
+              ]
+            },
+            {
+              "claim": "The optional A2A mechanism is a single bounded implementation delegation. The model may provide only objective and scope; host code chooses local endpoint, allowed root, model, credentials, and protocol policy. Scope is resolved within target-app, remote process environment is allowlisted and receives only the remote key plus bounded configuration, and the remote executor is read-only (list/read/structured submit; no writes, shell, verification, review, or workflow decision).",
+              "evidencePaths": [
+                "harness/src/a2a/delegation.ts",
+                "harness/src/a2a/impact-executor.ts",
+                "harness/src/a2a/artifact.ts"
+              ]
+            },
+            {
+              "claim": "A2A has explicit admission and artifact acceptance gates: the host validates agent name, advertised skill, HTTP+JSON interface URL, and compatible 1.0 protocol; it refuses to send on discovery/admission/client failures. A task must complete, then the ImpactAnalysis artifact must have in-scope bounded paths/findings. Accepted output is advisory evidence only and the immutable record grantsWorkflowSuccess is false.",
+              "evidencePaths": [
+                "harness/src/a2a/admission.ts",
+                "harness/src/a2a/host.ts",
+                "harness/src/a2a/artifact.ts"
+              ]
+            },
+            {
+              "claim": "Independent REVIEW is downstream authority over implementation quality, but only after deterministic VERIFY passes. Findings are parsed and classified by the harness against resolved Spec, changed-file scope, evidence/actionability, severity/confidence; accepted blocking findings trigger bounded repair, while no accepted blockers is review success. The model's own terminal response is not acceptance.",
+              "evidencePaths": [
+                "harness/src/review.ts",
+                "harness/src/delivery-accept.ts"
+              ]
+            },
+            {
+              "claim": "Repair decisions are harness-owned: verification pass ends repair; otherwise repeated unchanged failures or configured attempt ceilings stop, and only then does the workflow proceed/fail. Delivery acceptance requires local VERIFY pass and independent REVIEW pass before expectedHeadSha can advance.",
+              "evidencePaths": [
+                "harness/src/repair.ts",
+                "harness/src/delivery-accept.ts"
+              ]
+            },
+            {
+              "claim": "CI evidence is classified by current expected head SHA; stale observations are ignored, infrastructure failures reobserved, policy failures permanently fail, and semantic failures allow at most one repair. A successful current-head CI observation yields ready_for_human_review rather than auto-merge authority.",
+              "evidencePaths": [
+                "harness/src/ci-admission.ts",
+                "harness/src/github-delivery.ts"
+              ]
+            },
+            {
+              "claim": "The delivery artifact is intentionally a draft PR and explicitly says ready for human review and must not be auto-merged. Remote branch reconciliation refuses unexpected remote movement and draft PR reconciliation avoids duplicate open PRs; therefore human review/merge remains the ultimate external acceptance gate.",
+              "evidencePaths": [
+                "harness/src/github-delivery.ts"
+              ]
+            }
+          ],
+          "uncertainties": [
+            "The read of loop.ts was truncated before the full executeWorkerTool and final result assembly; exact per-tool handling details beyond the visible construction and result type should be verified by a complete read if needed.",
+            "I did not inspect every outer run.ts state transition or all delivery-store persistence paths, so this report covers the visible agent/result contracts and acceptance functions but not every serialization consumer.",
+            "MCP's underlying child process can technically access whatever the host OS permits under its configured root; the application-level boundary is target-app plus path validation, not an OS sandbox.",
+            "A2A remote process uses the host target-app root and read guards, but the repository does not establish an independent OS/container isolation boundary."
+          ]
+        }
+      },
+      {
+        "id": "durability-and-lifecycle",
+        "report": {
+          "objective": "Assess whether each optional or experimental agentic mechanism has durable execution and what lifecycle guarantees exist across retries, crashes, restarts, resumptions, checkpoints, and persisted artifacts. Trace persistence, scheduling, recovery, and test/documentation evidence, and relate findings to the remaining authority of the outer harness. Clearly distinguish implemented support, conditional support, absent support, and unknowns with repository-path citations.",
+          "findings": [
+            {
+              "claim": "Durable workflow execution is implemented conditionally (opt-in durable mode), with file-backed WorkflowState phases spec_required, implementation_ready, review_ready, and terminal; transitions are schema-validated, atomically replaced via temp-file rename, and fresh invocations dispatch from the persisted phase rather than rerunning completed phases.",
+              "evidencePaths": [
+                "harness/src/workflow-state.ts",
+                "harness/src/workflow-store.ts",
+                "harness/src/run-durable-invocation.ts",
+                "harness/tests/durability.test.ts"
+              ]
+            },
+            {
+              "claim": "DUR01 proves interruption after implementation_ready can resume in a fresh process with same workflow/workspace/base provenance, Spec skipped, and Worker→VERIFY→REVIEW authority retained; terminal state is checked as persisted. This is probe support, not default normal in-memory behavior.",
+              "evidencePaths": [
+                "harness/src/durability-probe.ts",
+                "harness/tests/durability.test.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Checkpoint/resume at review_ready is implemented conditionally: a separately persisted, atomically written and fingerprint-checked FileSnapshot baseline is restored, workspace fingerprint is revalidated, and fresh process reconstruction skips Worker/pre-review VERIFY while running independent REVIEW. Tests cover missing/tampered baseline and workspace mutation fail-closed behavior.",
+              "evidencePaths": [
+                "harness/src/checkpoint-probe.ts",
+                "harness/src/review-baseline.ts",
+                "harness/tests/checkpoint.test.ts",
+                "harness/src/workflow-state.ts"
+              ]
+            },
+            {
+              "claim": "Durable REVIEW retry is implemented conditionally, not as general exactly-once execution. Retry state (operationId, attempt count, budget, failure class) is persisted on review_ready before attempts; transient failures may be admitted by harness policy, and a fresh process can continue the same logical operation. Semantic, policy, unknown model errors, and ambiguous Worker side effects stop or require reconciliation; Worker/VERIFY retries are not crash-safe.",
+              "evidencePaths": [
+                "harness/src/retry.ts",
+                "harness/src/workflow-state.ts",
+                "harness/src/retry-probe.ts",
+                "harness/tests/retry.test.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Single-machine ownership/fencing is implemented for durable WorkflowState and delivery state: leases persist owner/fencing token/expiry, saves validate ownership and expiry, and O_EXCL mutexes serialize file operations. Guarantees are bounded: expiry does not stop old processes, lock files can remain after crash and require manual recovery, no CAS/stateVersion, distributed scheduler, or cross-machine election exists.",
+              "evidencePaths": [
+                "harness/src/workflow-lease.ts",
+                "harness/src/workflow-lease-store.ts",
+                "harness/src/workflow-lock.ts",
+                "harness/src/workflow-store.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Post-terminal GitHub delivery is an implemented optional durable lifecycle separate from WorkflowState. DeliveryState persists local acceptance, committed/published head, branch/PR reconciliation, CI waiting/observations, bounded one-time semantic CI repair, ready_for_human_review, or delivery_failed; runDelivery reloads existing state and reconciles deterministic branch/PR/expected head after restart, with fenced local state writes.",
+              "evidencePaths": [
+                "harness/src/delivery-state.ts",
+                "harness/src/delivery-store.ts",
+                "harness/src/delivery-run.ts",
+                "harness/tests/delivery.test.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "GitHub delivery is explicitly not exactly-once: WorkflowState fencing does not fence GitHub, external check→action races remain, remote reconciliation/no-force-push/expected-head checks are mitigations, and merged PRs are never treated as authority to merge. Remote side effects can require reconciliation.",
+              "evidencePaths": [
+                "harness/src/delivery-run.ts",
+                "harness/src/delivery-state.ts",
+                "harness/tests/delivery.test.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Verified repository memory has durable file-backed persistence and restart retrieval: admitted records are validated, immutable against rewrite, scoped to repository, and stale claims rejected before injection. Durable workflow execution explicitly rejects memory retrieval/promotion, so memory is a separate optional artifact mechanism and cannot participate in durable resume state.",
+              "evidencePaths": [
+                "harness/src/memory-store.ts",
+                "harness/src/memory.ts",
+                "harness/tests/memory.test.ts",
+                "harness/tests/durability.test.ts"
+              ]
+            },
+            {
+              "claim": "Bounded fan-out has runtime scheduling and workspace/source-delta artifacts, but no durable queue, child checkpoint, restart/resume protocol, or persisted child execution state. Sequential/parallel scheduling awaits children and deterministic fan-in detects conflicts/lost changes within one invocation; crash/restart support is absent.",
+              "evidencePaths": [
+                "harness/src/fan-out.ts",
+                "harness/tests/fan-out.test.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "Planner, subagent delegation, and conversation-state orchestration are experimental runtime mechanisms whose outputs are reports/traces, not durable workflow checkpoints. Experiment code writes reports and copies trial traces; architecture keeps Planner and bounded research subagent off by default. No persisted child queue or restart ownership is implemented. previous_response_id is provider continuation within an episode, not crash/restart durability.",
+              "evidencePaths": [
+                "harness/src/orchestration-experiment.ts",
+                "harness/src/subagents-experiment.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            },
+            {
+              "claim": "The outer harness retains authority over workflow consequence: models do not mutate WorkflowState or decide retry admission; durable transitions, workspace binding, verification/review gates, retry budget, leases/fencing, delivery phase, and terminal outcomes are harness-owned. Trace JSONL and experiment artifacts are evidentiary rather than authoritative state.",
+              "evidencePaths": [
+                "harness/src/workflow-store.ts",
+                "harness/src/retry.ts",
+                "harness/src/run-durable-invocation.ts",
+                "docs/architecture/harness-architecture.md"
+              ]
+            }
+          ],
+          "uncertainties": [
+            "No production crash-injection test was found for mid-Worker, mid-VERIFY, file rename, or an external GitHub side effect; those windows remain unsupported or require reconciliation.",
+            "Fan-out, Planner, subagent, and orchestration conclusions rely on inspected runtime experiment code/tests/docs; no durable-run adapter was found.",
+            "Filesystem atomic rename and lease/mutex behavior are application-level guarantees, not proven against power loss or network filesystems."
+          ]
+        }
+      }
+    ]
+  }
+}
