@@ -2412,3 +2412,38 @@ Retained precision corrections:
 - timeout after `SendMessage` is an ambiguous outcome. The Task may exist while its `taskId` is unknown to the client, so safe recovery requires reconciliation/dedup/idempotency policy rather than blind resend.
 
 **Topic Chat decision:** Module 25 CLOSED. A2A01 remains a mechanism PASS only; default delegation remains off. Return to Master for next-module selection.
+
+---
+
+## SWM01 — bounded multi-agent investigation
+
+### Hypothesis
+
+A shallow Lead plus 2–3 fresh read-only workers can cover a breadth-first harness audit with the same final `InvestigationReport` schema as one investigator. The probe asks what coverage, wall time, and token cost that split produces. It does not ask whether multi-agent should become the default.
+
+### Frozen task
+
+Audit the current harness's optional and experimental agentic mechanisms: entry, activation owner, capabilities, artifact, retained outer authority, durable support, and default/opt-in/conditional status. Claims need repository paths. Uncertainties stay explicit.
+
+The grader's nine surfaces and expected statuses are frozen in `harness/src/swm01-contract.ts` before any model output. They were not revised after a run, because no model run exists.
+
+### Arms
+
+Same objective, same `config.model`, same read-only repository tools, same final schema, same grader.
+
+- Baseline: one investigator.
+- Variant: Lead plan → harness admission → 2–3 concurrent workers → Lead synthesis.
+
+### Result
+
+**Not run.** On 2026-09-27 the cloud environment had no `OPENAI_API_KEY` and no `OPENAI_MODEL`. `npm run benchmark:swm01` exits 1 before creating a workspace or calling a model:
+
+```text
+Missing required env OPENAI_API_KEY. Set it in .env or the environment.
+```
+
+No base SHA, grader scores, token counts, worker objectives, path overlap, or lost-finding count exists for a live pair. Deterministic tests cover admission, the read-only tool boundary, concurrent overlap, and partial child failure. Those tests are not the paired probe.
+
+### SWM01 rule
+
+Not claimed. A mechanism PASS still requires one valid live pair plus the deterministic boundaries. Default remains Spec → one Worker.

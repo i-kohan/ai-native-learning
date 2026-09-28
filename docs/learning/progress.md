@@ -30,7 +30,7 @@ Completed modules:
 24. ✅ 24 — Memory Architectures (closed by Master on 2026-09-25; MEM01 PASS; memory remains opt-in/off by default)
 25. ✅ 25 — A2A / Agent Interoperability (closed by Master on 2026-09-27; A2A01 PASS; A2A remains opt-in/off by default)
 
-Next module: **26 — Large Multi-Agent Systems / Swarms**.
+Module 26 is **not closed**. The SWM01 seam and deterministic tests are in the repo. The paired model probe has not run.
 
 ---
 
@@ -57,6 +57,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional MCP repository-read mechanism behind `mcpRepoReadEnabled` (Module 23). Implementation Worker can replace direct `read_file` with Host-admitted `repo_read_file` over a real local stdio MCP boundary. Default remains direct `read_file`; MCP does not own Spec, writes, VERIFY, REVIEW, retry, or workflow success.
 - optional verified repository memory behind explicit `memory` options (Module 24). Repository scope comes from the bound `config.repoRoot`. A harness-admitted implementation-surface fact can persist outside `WorkflowState` and, after current-repository validation, enter Worker context as one advisory hint. Default `runV1Harness()` does not read or write memory.
 - optional A2A impact delegation behind `a2aDelegationEnabled` (Module 25). The implementation Worker may call `delegate_remote_analysis` once. The Host discovers an Agent Card, admits one local HTTP+JSON agent, and may pass a validated artifact back as advisory evidence. Default remains off. The remote process does not own WorkflowState, VERIFY, or REVIEW.
+- optional SWM01 bounded multi-agent investigation (`npm run benchmark:swm01`). It is not called from `runV1Harness()`. Default remains Spec → one Worker.
 
 Conceptual default flow:
 
@@ -75,6 +76,55 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 26 — Bounded multi-agent investigation
+
+**Status:** not closed. SWM01 seam and deterministic tests are in place. The paired baseline/variant model probe did not start: this environment has no `OPENAI_API_KEY` or `OPENAI_MODEL`.
+
+Theory:
+
+`docs/learning/lessons/26-bounded-multi-agent/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/26-bounded-multi-agent/notes.md`
+
+## What was implemented
+
+A separate investigation probe:
+
+```text
+objective
+→ Lead proposes SwarmPlan
+→ harness admission (2–3 workers, no model-controlled authority)
+→ fresh read-only workers via Promise.all
+→ ChildInvestigationReport with harness-observed provenance
+→ Lead synthesis from reports and explicit failures
+→ same InvestigationReport schema as the single-investigator baseline
+→ frozen external grader
+```
+
+`runV1Harness()` is unchanged. Workers are advertised only `list_files`, `read_file`, and `submit_investigation_report`.
+
+## Important design decisions
+
+The Lead does not choose the model, tools, turn limits, write access, or rounds. Those live in `SWARM_INVESTIGATION_POLICY`. An over-budget plan is rejected and no worker starts.
+
+A failed child is not respawned. The harness appends that failure to the final report so coverage cannot silently look complete.
+
+The grader's expected surfaces were frozen in `harness/src/swm01-contract.ts` before any model output. Both arms would use `config.model` directly, with no repair-model routing difference.
+
+## Current result
+
+Harness tests: **333 passed** (11 new SWM01 tests). The full suite needs `OPENAI_API_KEY` only because an existing fan-out test calls `loadConfig()`; a placeholder value is enough for that test. It is not a model call.
+
+SWM01 probe: not started. `npx tsx src/swm01-probe.ts` exits 1 with `Missing required env OPENAI_API_KEY`. No baseline metrics, variant metrics, or trace were produced. Do not treat the deterministic tests as the paired experiment.
+
+## Closure / remaining boundaries
+
+No adoption claim. Default remains one Worker. The module stays open until one valid baseline and one valid variant run against one committed SHA, with the frozen grader.
 
 ---
 

@@ -252,6 +252,14 @@ Not adopted:
 
 **Revisit when:** a task has an impact-analysis episode that should run in a separate agent runtime, and A2A01 has been measured on that workload. This seam does not replace MCP or the Module 13 subagent.
 
+### Experimental: bounded multi-agent investigation (SWM01)
+
+**Status:** mechanism probe only. It is not wired into `runV1Harness()`.
+
+One Lead may propose a 2–3 worker `SwarmPlan`. The harness admits the plan, runs fresh read-only workers concurrently, and asks the Lead to synthesize an `InvestigationReport`. The Lead does not choose models, tools, turn limits, or write access. This is not the default coding path and it is not a swarm platform.
+
+**Revisit when:** a breadth-first investigation workload shows that the extra tokens and handoff loss are worth the coverage or wall-time change. Until then the default remains one Worker.
+
 ### Retained routing boundary
 
 The current policy routes all normal episodes to the same model, but the deterministic routing boundary is cheap and useful for future requalification. Keep it.
@@ -312,7 +320,7 @@ Worktree isolation and security containment are separate concerns.
 
 - generic Planner framework;
 - generic subagent framework;
-- swarm/manager hierarchy;
+- swarm/manager hierarchy as the default path (SWM01 is one bounded probe, not that platform);
 - parallel task scheduler;
 - stacked-PR platform;
 - a generic Temporal-style workflow engine (Module 16 is one local checkpoint, not that).
