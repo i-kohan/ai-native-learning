@@ -1,6 +1,6 @@
 # 27 — Closure
 
-Status: **CLOSED by Topic Chat on 2026-09-29**.
+Status: **MASTER CLOSED on 2026-09-29**.
 
 HIER01: **NO IMPLEMENTATION JUSTIFIED FOR CURRENT WORKLOAD**.
 
@@ -100,3 +100,58 @@ No toy hierarchy implementation is warranted.
 Revisit deep hierarchy only when a real workload shows measurable coordinator degradation and natural subtrees whose local coordination can plausibly remove that bottleneck.
 
 Default remains the current shallow/default execution architecture.
+
+
+## Master acceptance
+
+Master review accepted HIER01 as the correct advanced/conditional result.
+
+The decision is grounded in current evidence rather than preference:
+
+```text
+current shallow coordinator fan-in = 3 child reports
+synthesis input                    ≈ 24.6 KB
+measured coordinator saturation    = none
+measured failure-bookkeeping issue = none
+measured routing/span overload     = none
+stable shallow-swarm ROI           = not demonstrated
+```
+
+Therefore adding another coordinator layer would currently introduce:
+
+```text
+extra critical-path synthesis
++ another lossy handoff/compression boundary
++ budget/authority propagation complexity
++ harder tracing/failure propagation
+```
+
+without an observed bottleneck to remove.
+
+The future re-entry rule is accepted:
+
+```text
+fan-in / coordination load grows
+→ coordinator degradation becomes measurable
+→ natural independent subtrees exist
+→ manager layer plausibly removes that bottleneck
+→ bounded hierarchy eval
+```
+
+The following invariants are also accepted for any future hierarchy:
+
+- no authority amplification;
+- global/subtree resource envelopes;
+- explicit upward failure/incompleteness propagation;
+- dereferenceable leaf-artifact provenance;
+- hierarchy remains separate from A2A transport and distributed execution mechanics.
+
+Final Master decision:
+
+```text
+deep hierarchy concepts        = understood
+current failure mode requiring it= absent
+implementation                  = intentionally not performed
+adoption                        = not justified
+remaining Module 27 blockers    = none
+```
