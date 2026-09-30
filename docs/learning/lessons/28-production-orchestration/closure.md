@@ -1,6 +1,6 @@
 # Module 28 — Closure
 
-**Status:** CLOSED from Topic Chat side on 2026-09-30.
+**Status:** MASTER CLOSED on 2026-10-01.
 
 ## Understanding check
 
@@ -49,3 +49,53 @@ See:
 - `orch01-decision.md`
 
 No harness code changed in Module 28.
+
+
+## Master acceptance
+
+Master review accepted ORCH01 and the decision not to implement production orchestration infrastructure for the current workload.
+
+The module correctly separates:
+
+```text
+workflow engine / control plane
+= reliable distributed execution mechanics
+
+agent harness / domain layer
+= Spec, model/context/tool policy, workspace semantics,
+  VERIFY, REVIEW, repair policy, reconciliation, human escalation,
+  and software-correctness consequences
+```
+
+The following production gaps are correctly identified as absent from the current harness:
+
+- distributed scheduling / Task Queues / Worker fleet;
+- automatic worker-loss redispatch;
+- durable timers and external-event waits;
+- Activity heartbeat/liveness semantics;
+- backpressure / rate limiting / fairness;
+- live Worker-version coexistence;
+- fleet-level observability;
+- distributed workspace recovery.
+
+The retry/idempotency/reconciliation distinction is accepted. A workflow engine may reliably redeliver work without making arbitrary external effects exactly-once.
+
+Precision retained:
+
+- a read-only/stochastic LLM episode such as REVIEW is generally replayable with respect to external side effects, but another attempt is not semantically guaranteed to return the same judgment; retry remains harness-budgeted/admitted;
+- the proposed mid-Implementation policy (discard/reconstruct from last authoritative checkpoint) is a future production design direction, not a claim that the current harness automatically performs this recovery.
+
+Current decision:
+
+```text
+current learning workload
+→ keep lightweight custom orchestration
+
+future long-running / multi-worker production workload
+crossing ORCH01 migration triggers
+→ prefer a mature durable workflow engine
+over growing local JSON/store/lease mechanisms
+into a bespoke distributed scheduler
+```
+
+No Module 28 implementation is required. Remaining closure blockers: none.
