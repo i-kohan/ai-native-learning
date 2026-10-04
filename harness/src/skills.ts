@@ -114,8 +114,8 @@ function skillFilePath(repoRoot: string, skillId: SkillId): string {
 
 function isNotFound(error: unknown): boolean {
   return (
-    Boolean(error) &&
     typeof error === "object" &&
+    error !== null &&
     "code" in error &&
     (error as { code: unknown }).code === "ENOENT"
   );

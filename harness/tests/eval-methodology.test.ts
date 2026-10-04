@@ -119,8 +119,12 @@ function harnessResult(
       tokenUsage: {
         specInputTokens: 10,
         specOutputTokens: 2,
+        plannerInputTokens: 0,
+        plannerOutputTokens: 0,
         implInputTokens: 20,
         implOutputTokens: 4,
+        researchInputTokens: 0,
+        researchOutputTokens: 0,
         repairInputTokens: 0,
         repairOutputTokens: 0,
         reviewInputTokens: 0,

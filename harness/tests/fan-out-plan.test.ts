@@ -87,7 +87,7 @@ function startedResult(
       ok: true,
       failureReason: null,
     },
-  } as HarnessRunResult;
+  } as unknown as HarnessRunResult;
 }
 
 function sampleSpec(acceptance: string[]): Spec {
@@ -577,7 +577,7 @@ describe("PAR01 trial validity", () => {
           childDurationSumMs: 20,
           childIntervalMs: 10,
         },
-      } as HarnessRunResult,
+      } as unknown as HarnessRunResult,
       false,
       100,
       "fp",
@@ -636,7 +636,7 @@ describe("PAR01 trial validity", () => {
           childDurationSumMs: 20,
           childIntervalMs: 20,
         },
-      } as HarnessRunResult,
+      } as unknown as HarnessRunResult,
       true,
       1000,
       "fp",

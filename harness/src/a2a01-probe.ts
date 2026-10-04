@@ -100,7 +100,7 @@ export async function runA2a01Probe(): Promise<void> {
     storedRecord.taskTerminalState === "TASK_STATE_COMPLETED" &&
     storedRecord.artifactAdmission === "accepted" &&
     storedRecord.outcome === "accepted" &&
-    storedRecord.grantsWorkflowSuccess !== true &&
+    (storedRecord.grantsWorkflowSuccess as boolean) !== true &&
     delegation?.cardDiscovered === true &&
     delegation.admission === "pass" &&
     delegation.sendMessagePerformed === true &&

@@ -83,7 +83,7 @@ function scriptedCreate(
             `unexpected extra Responses call #${requests.length}`,
           );
         }
-        return next;
+        return next as unknown as Awaited<ReturnType<ResponsesCreateFn>>;
       },
       { requests },
     );

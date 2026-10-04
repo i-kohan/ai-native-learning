@@ -65,7 +65,7 @@ function scriptedCreate(
             `unexpected extra Responses call #${requests.length}`,
           );
         }
-        return next;
+        return next as unknown as Awaited<ReturnType<ResponsesCreateFn>>;
       },
       { requests },
     );
@@ -129,11 +129,11 @@ describe("conversation-state helpers", () => {
     const next = applyToolOutputs("previous_response_id", afterModel, tools);
     assert.deepEqual(next, tools);
     assert.equal(
-      next.some((item) => item.type === "function_call"),
+      next.some((item) => (item as { type: string }).type === "function_call"),
       false,
     );
     assert.equal(
-      next.some((item) => item.role === "user"),
+      next.some((item) => (item as { role?: string }).role === "user"),
       false,
     );
 
