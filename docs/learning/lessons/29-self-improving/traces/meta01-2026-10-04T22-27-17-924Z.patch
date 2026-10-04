@@ -1,0 +1,180 @@
+diff --git a/harness/src/loop-ext/worker-capabilities.ts b/harness/src/loop-ext/worker-capabilities.ts
+new file mode 100644
+index 0000000..0e1591e
+--- /dev/null
++++ b/harness/src/loop-ext/worker-capabilities.ts
+@@ -0,0 +1,174 @@
++import type { HarnessConfig } from "../config.ts";
++import {
++  MAX_RESEARCH_DELEGATIONS,
++  RESEARCH_CHILD_MAX_TURNS,
++  parseDelegateResearch,
++  workerToolsForEpisode,
++} from "../evidence.ts";
++import { AGENT_INSTRUCTIONS, REPAIR_INSTRUCTIONS } from "../instructions.ts";
++import { REVIEW_REPAIR_INSTRUCTIONS } from "../review-instructions.ts";
++import {
++  DELEGATE_REMOTE_ANALYSIS_TOOL,
++  WORKER_A2A_INSTRUCTIONS,
++  delegateRemoteAnalysis,
++  parseDelegateRemoteAnalysis,
++  type A2aDelegationRecord,
++} from "../a2a/delegation.ts";
++import {
++  openRepoReadSession,
++  REPO_READ_TOOL_NAME,
++  type RepoReadSession,
++} from "../mcp/repo-read-host.ts";
++import { executeTool } from "../tools.ts";
++import {
++  deniedResearchDelegation,
++  runResearchSubagent,
++  type ResearchDelegationRecord,
++} from "../research-subagent.ts";
++import type { ReusableContext } from "../context.ts";
++import type { Tracer } from "../trace.ts";
++import type { ResponsesCreateFn, EpisodePhase } from "../loop.ts";
++
++export type WorkerCapabilityState = {
++  tools: unknown[];
++  mcpSession: RepoReadSession | null;
++  remainingDelegations: number;
++  remainingA2aDelegations: number;
++};
++
++export function createWorkerCapabilityState(options: {
++  phase: EpisodePhase;
++  subagentsEnabled: boolean;
++  mcpRepoReadEnabled: boolean;
++  a2aDelegationEnabled: boolean;
++}): WorkerCapabilityState {
++  return {
++    tools: workerToolsForEpisode({
++      phase: options.phase,
++      subagentsEnabled: options.subagentsEnabled,
++    }),
++    mcpSession: null,
++    remainingDelegations:
++      options.subagentsEnabled && options.phase === "implementation"
++        ? MAX_RESEARCH_DELEGATIONS
++        : 0,
++    remainingA2aDelegations: options.a2aDelegationEnabled ? 1 : 0,
++  };
++}
++
++export function episodeInstructions(options: {
++  phase: EpisodePhase;
++  subagentsEnabled: boolean;
++  mcpRepoReadEnabled: boolean;
++  a2aDelegationEnabled: boolean;
++}): string {
++  if (options.phase === "repair") return REPAIR_INSTRUCTIONS;
++  if (options.phase === "review_repair") return REVIEW_REPAIR_INSTRUCTIONS;
++  let base = options.subagentsEnabled
++    ? `${AGENT_INSTRUCTIONS.trim()}\n${WORKER_RESEARCH_INSTRUCTIONS.trim()}\n`
++    : AGENT_INSTRUCTIONS;
++  if (options.mcpRepoReadEnabled) {
++    base = `${base.trim()}\nRead repository files with repo_read_file. Path is relative to target-app/. There is no read_file tool in this episode.\n`;
++  }
++  return options.a2aDelegationEnabled
++    ? `${base.trim()}\n${WORKER_A2A_INSTRUCTIONS}\n`
++    : base;
++}
++
++export async function admitWorkerCapabilities(options: {
++  config: HarnessConfig;
++  phase: EpisodePhase;
++  mcpRepoReadEnabled: boolean;
++  a2aDelegationEnabled: boolean;
++  state: WorkerCapabilityState;
++  tracer: Tracer;
++}): Promise<void> {
++  if (options.mcpRepoReadEnabled) {
++    const session = await openRepoReadSession({ allowedRoot: options.config.targetAppRoot });
++    if (session.tools.length !== 1 || session.tools[0]?.name !== REPO_READ_TOOL_NAME) {
++      await session.close();
++      throw new Error("MCP host admission did not expose repo_read_file.");
++    }
++    options.state.mcpSession = session;
++    options.state.tools = workerToolsForEpisode({
++      phase: options.phase,
++      subagentsEnabled: options.state.remainingDelegations > 0,
++      mcpRepoReadTools: session.tools,
++    });
++    options.tracer.record("mcp_repo_read_admitted", {
++      protocolRevision: session.protocolRevision() ?? null,
++      protocolEra: session.protocolEra() ?? null,
++      admittedTools: session.tools.map((tool) => tool.name),
++      replacedDirectTools: ["read_file"],
++    });
++  }
++  if (options.a2aDelegationEnabled) {
++    options.state.tools = [...options.state.tools, DELEGATE_REMOTE_ANALYSIS_TOOL];
++  }
++}
++
++export async function executeWorkerCapability(options: {
++  config: HarnessConfig;
++  workflowId: string;
++  state: WorkerCapabilityState;
++  subagentsEnabled: boolean;
++  a2aDelegationEnabled: boolean;
++  name: string;
++  argsJson: string;
++  tracer: Tracer;
++  reusableContext?: ReusableContext;
++  responsesCreate?: ResponsesCreateFn;
++  delegateImpactAnalysis?: typeof delegateRemoteAnalysis;
++}): Promise<{ ok: boolean; output: string; delegation?: ResearchDelegationRecord; a2aDelegation?: A2aDelegationRecord }> {
++  if (options.state.mcpSession && options.name === "read_file") {
++    return { ok: false, output: "read_file is not exposed for this episode. Use repo_read_file." };
++  }
++  if (options.name === REPO_READ_TOOL_NAME) {
++    if (!options.state.mcpSession) return { ok: false, output: "repo_read_file is not admitted for this episode." };
++    return options.state.mcpSession.call(options.name, options.argsJson);
++  }
++  if (options.name === "delegate_remote_analysis") return executeRemoteAnalysisTool(options);
++  if (options.name !== "delegate_research" || !options.subagentsEnabled) {
++    return executeTool(options.config, options.name, options.argsJson);
++  }
++
++  const parsed = parseDelegateResearch(options.argsJson);
++  const objective = parsed.ok ? parsed.value.objective : "";
++  const scope = parsed.ok ? parsed.value.scope : "";
++  const childModel = (await import("../model-routing.ts")).resolveModel("research", options.config).model;
++  if (options.state.remainingDelegations <= 0) {
++    const reason = "delegate_research denied: at most one research delegation is allowed per Worker implementation episode.";
++    options.tracer.record("research_delegation_requested", { parentEpisode: "implementation", objective, scope, denied: true, reason });
++    return { ok: false, output: reason, delegation: deniedResearchDelegation({ objective, scope, childModel, workspaceRoot: options.config.repoRoot, reason }) };
++  }
++  if (!parsed.ok) {
++    const record: ResearchDelegationRecord = { ...deniedResearchDelegation({ objective, scope, childModel, workspaceRoot: options.config.repoRoot, reason: parsed.error }), outcome: "invalid_args" };
++    options.tracer.record("research_delegation_requested", { parentEpisode: "implementation", objective, scope, denied: true, reason: parsed.error });
++    return { ok: false, output: parsed.error, delegation: record };
++  }
++  options.tracer.record("research_delegation_requested", { parentEpisode: "implementation", objective: parsed.value.objective, scope: parsed.value.scope, denied: false, childModel, grantedTools: ["list_files", "read_file", "submit_evidence_report"], turnBudget: RESEARCH_CHILD_MAX_TURNS });
++  const child = await runResearchSubagent({ config: options.config, objective: parsed.value.objective, scope: parsed.value.scope, tracer: options.tracer, repositoryMap: options.reusableContext?.repositoryMap, responsesCreate: options.responsesCreate });
++  return { ok: child.ok, output: child.output, delegation: child.record };
++}
++
++async function executeRemoteAnalysisTool(options: {
++  config: HarnessConfig; workflowId: string; state: WorkerCapabilityState; a2aDelegationEnabled: boolean; argsJson: string; tracer: Tracer; delegateImpactAnalysis?: typeof delegateRemoteAnalysis;
++}): Promise<{ ok: boolean; output: string; a2aDelegation?: A2aDelegationRecord }> {
++  if (!options.a2aDelegationEnabled) return executeTool(options.config, "delegate_remote_analysis", options.argsJson);
++  const parsed = parseDelegateRemoteAnalysis(options.argsJson);
++  if (options.state.remainingA2aDelegations <= 0) {
++    const output = "delegate_remote_analysis denied: at most one remote impact delegation is allowed per Worker implementation episode.";
++    options.tracer.record("a2a_delegation", { workflowId: options.workflowId, denied: true, reason: output });
++    return { ok: false, output };
++  }
++  if (!parsed.ok) {
++    options.tracer.record("a2a_delegation", { workflowId: options.workflowId, denied: true, reason: parsed.error });
++    return { ok: false, output: parsed.error };
++  }
++  const delegate = options.delegateImpactAnalysis ?? delegateRemoteAnalysis;
++  const result = await delegate({ config: options.config, workflowId: options.workflowId, objective: parsed.value.objective, scope: parsed.value.scope });
++  options.tracer.record("a2a_delegation", { ...result.record });
++  return { ok: result.ok, output: result.output, a2aDelegation: result.record };
++}
++
++import { WORKER_RESEARCH_INSTRUCTIONS } from "../research-instructions.ts";

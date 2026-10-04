@@ -33,10 +33,10 @@ The host sets `HARNESS_EPISODE_EXTENSION=local-inspection` for the grader proces
 
 ## Result
 
-`experiment_stopped_insufficient_regression_evidence` on `meta01-2026-10-04T21-06-22-807Z`.
+`candidate_rejected` on parent `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`, run `meta01-2026-10-04T22-11-44-292Z`.
 
-H0 `tsc` failed (exit 2) on `fa640a0`. H1 and maintenance were not scored. Integrity passed. Candidate revision `b25ddbe340e8b66f4d67f2c14596ddd5ae04d5f3` adds only `harness/src/loop-ext/capabilities.ts` (+65). `loop.ts` is unchanged. `main` did not move.
+H0 and H1 passed the full regression gate. Integrity passed. Candidate `ac8e333458de9600b4c2e84debd6c98194993c31` adds only `harness/src/loop-ext/worker-capabilities.ts` (+174). `loop.ts` is unchanged. Maintenance grader was 0/3 on both arms. Median core functions and loop lines stayed 0. `main` did not move.
 
-Record: `docs/learning/lessons/29-self-improving/traces/meta01-2026-10-04T21-08-37-423Z.json`.
+Record: `docs/learning/lessons/29-self-improving/traces/meta01-2026-10-04T22-27-17-924Z.json`.
 
-The earlier `EISDIR` abort is a host bug, not this verdict.
+The `fa640a0` stop was the earlier `tsc` evidence failure. Thresholds were not changed.

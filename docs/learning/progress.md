@@ -124,7 +124,7 @@ If H0 does not confirm the frozen regression commands, the run stops as `experim
 
 ## Current result
 
-`experiment_stopped_insufficient_regression_evidence` on `fa640a0`. H0 `tsc` failed there, so H1 was not scored and maintenance did not run. The rerun parent is `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. Integrity passed. The detached candidate adds an unwired `loop-ext/capabilities.ts` and does not change `loop.ts`. Details are in `docs/learning/experiments.md`.
+`candidate_rejected` on parent `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. Regression passed on H0 and H1. The candidate adds an unwired `loop-ext/worker-capabilities.ts` and does not change `loop.ts`. Maintenance grader was 0/3 on both arms, and the structural medians did not fall. `main` stayed put. Details are in `docs/learning/experiments.md`.
 
 ## Closure / remaining boundaries
 

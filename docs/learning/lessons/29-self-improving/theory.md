@@ -34,13 +34,11 @@ A refactor can make one later change smaller and still be the wrong default. MET
 
 ## Observations
 
-The valid run stopped at H0 `tsc`. Existing type errors on the frozen parent made the live suite and H1 unscored. The stop is an evidence failure.
+After the type-only parent fix, both arms passed the same regression gate, including the live suite. The stop on `fa640a0` was an evidence failure.
 
-The improver still produced one bounded patch: a new `loop-ext/capabilities.ts` of 65 lines. It did not edit `loop.ts`, so the proposed plan is not connected to the loop.
+The admitted patch is a new `loop-ext/worker-capabilities.ts` of 174 lines. `loop.ts` was not edited, so the proposed boundary is not connected to the loop.
 
-Integrity and the detached revision worked. `main` did not move. The candidate was not asked to accept itself.
-
-The first attempt died in the host patch reader before any gate. That crash is not a candidate verdict.
+The hidden maintenance grader failed on every H0 and H1 trial. Median core-function and loop-line counts stayed at 0, so the frozen structural rule rejected the candidate. `main` did not move.
 
 ## Takeaways
 

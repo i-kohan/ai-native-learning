@@ -2587,25 +2587,25 @@ The candidate cannot accept itself. The record is evidence. It is not merged.
 
 ### Observed result
 
-Valid run: `meta01-2026-10-04T21-06-22-807Z`, model `gpt-5.6-luna`.
+Rerun parent: `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. Run: `meta01-2026-10-04T22-11-44-292Z`, model `gpt-5.6-luna`.
 
-Decision: `experiment_stopped_insufficient_regression_evidence`.
+Decision: `candidate_rejected`. Hard gates passed and provenance is valid. The frozen structural conditions were not met.
 
-H0 `tsc --noEmit` exited 2 on parent `fa640a0bbeec2edb2177775e757c127fd9ec599b`. The tail is existing type errors in `tests/fan-out-plan.test.ts`, `tests/loop.test.ts`, and `tests/subagents.test.ts`. ISO01, SEC01, T01–T04, R01, and REV01 were not run. H1 was not scored. Maintenance was not run. This is not `candidate_rejected`.
+H0 and H1 both passed `tsc`, `npm test`, ISO01, SEC01, T01–T04, R01, and REV01. Integrity passed. Detached candidate `ac8e333458de9600b4c2e84debd6c98194993c31`. `main` did not move. Patch hash `5e31aac1210cf890a10d30be532232008d1684598f68664e76cd721daddf8060`.
 
-Integrity passed before that stop. Detached candidate `b25ddbe340e8b66f4d67f2c14596ddd5ae04d5f3` (`refs/meta01/candidates/meta01-2026-10-04T21-06-22-807Z`). `main` stayed on the parent. Patch hash `8a41aee89e65b055987f11cd03f3502a5bb6e2c29fb95a5634c18c460dea44d8`.
+The patch adds only `harness/src/loop-ext/worker-capabilities.ts` (+174 / 0). `loop.ts` is unchanged.
 
-The admitted patch adds only `harness/src/loop-ext/capabilities.ts` (+65 / 0). `loop.ts` is unchanged, so the new module is not wired into the loop.
+Maintenance grader failed 3/3 on both arms. Median `coreFunctionsTouched` is 0 on both. Median `loopChangedLines` is 0 on both. Median `totalChangedLines` is 464 on H0 and 419 on H1.
 
 Hypothesis:
 
-- observedProblem: runAgentLoop directly coordinates each optional capability in several places: it normalizes flags, chooses tools, mutates tools after MCP/A2A admission, composes instructions, and carries separate delegation counters into every tool call. This makes the core model/tool loop feature-aware and increases the chance that a new optional capability changes default or phase behavior.
-- suspectedCause: Capability policy and episode setup are interleaved with the transport loop instead of being represented as one phase-scoped plan. The loop therefore owns both orchestration mechanics and capability-specific admission/composition decisions.
-- proposedMutation: Add one loop-ext capability-plan module that creates the normalized episode capability state, composes instructions, builds the initial tool list, and applies admitted MCP/A2A tools. Use that plan from loop.ts while leaving execution, authority checks, counters, tracing, and all existing feature implementations unchanged.
-- expectedBenefit: The core loop will consume a single capability plan for instructions/tools and will no longer repeat feature-flag composition logic; default behavior, phase gating, tool admission, and delegation authority remain explicit and testable in one bounded module.
-- expectedRisks: a moved initialization could expose an optional tool in repair or review; instruction or tool order could change; the plan could hide later counter updates.
+- observedProblem: runAgentLoop directly coordinates every optional capability: it derives feature flags, composes instructions and tools, admits MCP tools, appends A2A tools, and branches tool execution for research/MCP/A2A alongside the generic model/tool loop.
+- suspectedCause: Capability policy and execution were added incrementally in the core loop instead of being represented as one episode-scoped boundary, so feature-specific authority and state leak into the orchestration path.
+- proposedMutation: Add one loop-ext worker-capabilities module that owns episode capability composition and optional-tool dispatch, then make loop.ts use that boundary while leaving generic conversation, tracing, budgets, and result accounting unchanged.
+- expectedBenefit: The core loop becomes capability-agnostic at its setup and dispatch points; adding or reviewing optional capabilities is localized, while existing phase gates, host admission, delegation limits, and tool semantics remain explicit in the adapter.
+- expectedRisks: a moved branch could change MCP/A2A/research ordering or error text; the adapter may concentrate coupling instead of removing it; the default tool set and phase restrictions must stay exact.
 
-An earlier attempt (`meta01-2026-10-04T21-04-56-676Z`) aborted in the host before integrity (`EISDIR` while reading an untracked directory). That record is not the verdict. Thresholds were not changed after this outcome.
+The earlier stop on `fa640a0` remains a separate evidence failure: H0 `tsc` failed before this parent existed. Thresholds were not changed.
 
-Record: `docs/learning/lessons/29-self-improving/traces/meta01-2026-10-04T21-08-37-423Z.json`.
+Record: `docs/learning/lessons/29-self-improving/traces/meta01-2026-10-04T22-27-17-924Z.json`.
 

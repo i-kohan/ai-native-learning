@@ -1,0 +1,368 @@
+{
+  "experimentId": "META01",
+  "parentRevision": "afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7",
+  "candidateRevision": "ac8e333458de9600b4c2e84debd6c98194993c31",
+  "candidateRef": "refs/meta01/candidates/meta01-2026-10-04T22-11-44-292Z",
+  "candidateId": "meta01-2026-10-04T22-11-44-292Z",
+  "configuredModel": "gpt-5.6-luna",
+  "hypothesis": {
+    "observedProblem": "runAgentLoop directly coordinates every optional capability: it derives feature flags, composes instructions and tools, admits MCP tools, appends A2A tools, and branches tool execution for research/MCP/A2A alongside the generic model/tool loop.",
+    "suspectedCause": "Capability policy and execution were added incrementally in the core loop instead of being represented as one episode-scoped boundary, so feature-specific authority and state leak into the orchestration path.",
+    "proposedMutation": "Add one loop-ext worker-capabilities module that owns episode capability composition and optional-tool dispatch (including instruction text, tool-set mutation, MCP admission, and delegation routing), then make loop.ts use that boundary while leaving generic conversation, tracing, budgets, and result accounting unchanged.",
+    "expectedBenefit": "The core loop becomes capability-agnostic at its setup and dispatch points; adding or reviewing optional capabilities is localized, while existing phase gates, host admission, delegation limits, and tool semantics remain explicit in the adapter.",
+    "expectedRisks": [
+      "A moved branch could accidentally alter ordering or error text for MCP/A2A/research calls.",
+      "The adapter may need broad dependency types, creating coupling in the extension module rather than eliminating it.",
+      "Tool capability composition must preserve the exact default tool set and phase restrictions."
+    ]
+  },
+  "allowedMutationFiles": [
+    "harness/src/loop.ts",
+    "harness/src/loop-ext/<new>.ts"
+  ],
+  "changedFiles": [
+    "harness/src/loop-ext/worker-capabilities.ts"
+  ],
+  "patchHash": "5e31aac1210cf890a10d30be532232008d1684598f68664e76cd721daddf8060",
+  "patchStats": {
+    "files": [
+      "harness/src/loop-ext/worker-capabilities.ts"
+    ],
+    "additions": 174,
+    "deletions": 0,
+    "perFile": [
+      {
+        "file": "harness/src/loop-ext/worker-capabilities.ts",
+        "additions": 174,
+        "deletions": 0
+      }
+    ],
+    "newModules": [
+      "harness/src/loop-ext/worker-capabilities.ts"
+    ],
+    "newFeatureBranches": 0
+  },
+  "integrityChecks": [
+    {
+      "id": "exact_base",
+      "passed": true,
+      "evidence": "baseRevision=afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7"
+    },
+    {
+      "id": "mutation_allowlist",
+      "passed": true,
+      "evidence": "harness/src/loop-ext/worker-capabilities.ts"
+    },
+    {
+      "id": "patch_budget",
+      "passed": true,
+      "evidence": "174+0 lines across 1 files"
+    },
+    {
+      "id": "hypothesis_before_write",
+      "passed": true,
+      "evidence": "accepted hypothesis precedes the first write"
+    },
+    {
+      "id": "forbidden_files_unchanged",
+      "passed": true,
+      "evidence": "benchmark, eval, security, and control-plane paths unchanged"
+    },
+    {
+      "id": "authority_unchanged",
+      "passed": true,
+      "evidence": "no new process, network, retry, or budget authority in added lines"
+    },
+    {
+      "id": "has_mutation",
+      "passed": true,
+      "evidence": "candidate patch is non-empty"
+    }
+  ],
+  "regressionEvidence": {
+    "h0": [
+      {
+        "id": "tsc",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 1121,
+        "outputTail": ""
+      },
+      {
+        "id": "npm-test",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 33360,
+        "outputTail": ".119375ms)\n  ✔ expects T04 to escalate without implementation or source changes (0.09075ms)\n✔ V1 expected outcomes (0.258042ms)\n▶ subagents default off\n  ✔ does not expose delegate_research when subagentsEnabled is false (5.76ms)\n  ✔ does not give repair or review_repair the research tool even when enabled (0.084958ms)\n✔ subagents default off (6.195ms)\n▶ research child capability restriction\n  ✔ physically denies write_file, run_command, and delegate_research (0.589125ms)\n✔ research child capability restriction (0.636583ms)\n▶ EvidenceReport admission\n  ✔ accepts a valid report and rejects unsafe or malformed payloads (0.222584ms)\n✔ EvidenceReport admission (0.270583ms)\n▶ EvidenceReport provenance\n  ✔ accepts a citation of a file the child actually read (0.146875ms)\n  ✔ rejects a citation of a file the child never read (0.071834ms)\n  ✔ replaces model-supplied inspectedPaths with harness-observed reads (0.067667ms)\n  ✔ treats equivalent path forms as the same observed read (0.048917ms)\n✔ EvidenceReport provenance (0.43725ms)\n▶ bounded research delegation\n  ✔ runs the child in the parent workspace and lets the parent continue after a valid report (3.073541ms)\n  ✔ rejects an unread evidence path and accepts a corrected report (1.064958ms)\n  ✔ returns invalid EvidenceReport as a child failure and still continues the parent (1.196208ms)\n  ✔ denies a second delegation in the same Worker episode (1.10025ms)\n  ✔ uses the same model as the Worker (0.048541ms)\n✔ bounded research delegation (6.608833ms)\n▶ subagents experiment decision rule\n  ✔ rejects equal quality when variant is clearly more expensive end-to-end (0.229417ms)\n  ✔ does not emit candidate from directional e2e improvement without a predefined threshold (0.060875ms)\n✔ subagents experiment decision rule (0.336542ms)\n▶ SWM01 swarm admission\n  ✔ rejects more than three workers (0.3105ms)\n  ✔ rejects one worker, an empty objective, and duplicate ids (0.117542ms)\n  ✔ rejects model-controlled authority fields (0.040375ms)\n  ✔ does not execute workers when the plan is over budget (0.427541ms)\n✔ SWM01 swarm admission (1.221083ms)\n▶ SWM01 worker capability boundary\n  ✔ advertises only list_files, read_file, and submit_investigation_report (0.45075ms)\n  ✔ does not add swarm tools to the default implementation worker (0.356583ms)\n  ✔ rejects a child citation for a file the worker did not read (0.143583ms)\n✔ SWM01 worker capability boundary (1.011708ms)\n▶ SWM01 partial child failure\n  ✔ keeps the failed child visible and does not respawn it (83.781625ms)\n✔ SWM01 partial child failure (83.932125ms)\n▶ SWM01 grader\n  ✔ scores a frozen-contract report and flags wrong or missing claims (0.994334ms)\n✔ SWM01 grader (1.041708ms)\n▶ SWM01 baseline schema\n  ✔ returns one InvestigationReport from a single read-only investigator (0.99575ms)\n✔ SWM01 baseline schema (1.128791ms)\n▶ SWM01 handoff\n  ✔ builds a worker handoff without sibling findings (0.13325ms)\n✔ SWM01 handoff (0.166125ms)\n▶ SWM01 workspace mutation\n  ✔ ignores the post-creation node_modules symlink and still flags a new file (0.068166ms)\n✔ SWM01 workspace mutation (0.096125ms)\n▶ SWM01 synthesis provenance\n  ✔ rejects a path the child read but did not put in its report (1.02975ms)\n✔ SWM01 synthesis provenance (1.059083ms)\n▶ verificationChildEnv\n  ✔ copies only the allowlisted launch variables (0.557291ms)\n  ✔ does not grow by cloning the parent environment (0.08475ms)\n✔ verificationChildEnv (1.059625ms)\n▶ workspace isolation\n  ✔ binds harness roots to the worktree and keeps traces on the host (193.685958ms)\n  ✔ cleans up a worktree and is safe to retry (209.044ms)\n✔ workspace isolation (403.111958ms)\n▶ ISO01 mechanism probe\n  ✔ proves two workspaces from the same SHA stay independent (1191.394625ms)\n✔ ISO01 mechanism probe (1191.454875ms)\nℹ tests 335\nℹ suites 116\nℹ pass 335\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 33202.715458\n\nnpm warn Unknown env config \"devdir\". This will stop working in the next major version of npm."
+      },
+      {
+        "id": "ISO01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 1108,
+        "outputTail": "=== ISO01 Isolation Probe Summary ===\nbase_revision: afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7\nworkspace_a: ISO01-A-2026-10-04T22-13-44-574Z @ afc1abdc0f8f\nworkspace_b: ISO01-B-2026-10-04T22-13-44-574Z @ afc1abdc0f8f\ninitially_equivalent: yes\nmutation_in_a: yes | absent_in_b: yes\nmain_checkout_unchanged: yes\nverify_a: FAIL | verify_b: PASS\ncleaned_up: yes | cleanup_retry_safe: yes\noutcome: expected\nevidence: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/ISO01-isolation-2026-10-04T22-13-45-458Z.json"
+      },
+      {
+        "id": "SEC01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 684,
+        "outputTail": "=== SEC01 Security Probe Summary ===\nworkspace: SEC01-2026-10-04T22-13-45-685Z\nparent_contained_sentinel: yes\nprobe_executed: yes | source_injected: yes\nsecret_visible_to_child: no\nverification: PASS\nsentinel_absent_from_output: yes\nmain_checkout_unchanged: yes\ncleaned_up: yes | cleanup_retry_safe: yes\noutcome: expected\nevidence: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/SEC01-secret-isolation-2026-10-04T22-13-46-142Z.json"
+      },
+      {
+        "id": "T01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 24323,
+        "outputTail": "routes.ts\n--- diff ---\n--- tasks/task-routes.ts\n+++ tasks/task-routes.ts\n import type { TaskService } from \"./task-service.ts\";\n import type { TaskStatus } from \"./types.ts\";\n \n export type HttpRequest = {\n   method: string;\n   pathname: string;\n   query: URLSearchParams;\n   body?: unknown;\n };\n \n export type HttpResponse = {\n   status: number;\n   body: unknown;\n };\n \n export function createTaskRoutes(service: TaskService) {\n   return function handleTaskRequest(req: HttpRequest): HttpResponse {\n     if (req.method === \"GET\" && req.pathname === \"/tasks\") {\n       return listTasks(service, req.query);\n     }\n \n     if (req.method === \"POST\" && req.pathname === \"/tasks\") {\n       return createTask(service, req.body);\n     }\n \n     const taskMatch = req.pathname.match(/^\\/tasks\\/([^/]+)$/);\n     if (taskMatch && req.method === \"GET\") {\n       return getTask(service, taskMatch[1]);\n     }\n \n     const completeMatch = req.pathname.match(/^\\/tasks\\/([^/]+)\\/complete$/);\n     if (completeMatch && req.method === \"POST\") {\n       return completeTask(service, completeMatch[1]);\n     }\n \n     const reopenMatch = req.pathname.match(/^\\/tasks\\/([^/]+)\\/reopen$/);\n     if (reopenMatch && req.method === \"POST\") {\n       return reopenTask(service, reopenMatch[1]);\n     }\n \n     return { status: 404, body: { error: \"not_found\" } };\n   };\n }\n \n function listTasks(service: TaskService, query: URLSearchParams): HttpResponse {\n   const statusParam = query.get(\"status\");\n   if (statusParam !== null && statusParam !== \"pending\" && statusParam !== \"completed\") {\n     return { status: 400, body: { error: \"invalid_status\" } };\n   }\n \n   const status = statusParam as TaskStatus | null;\n   return { status: 200, body: service.list(status ?? undefined) };\n }\n \n function createTask(service: TaskService, body: unknown): HttpResponse {\n   const title = typeof body === \"object\" && body && \"title\" in body ? body.title : undefined;\n   if (typeof title !== \"string\" || title.trim() === \"\") {\n     return { status: 400, body: { error: \"title_required\" } };\n   }\n   return { status: 201, body: service.create(title.trim()) };\n }\n \n function getTask(service: TaskService, id: string): HttpResponse {\n   const task = service.get(id);\n   if (!task) {\n-    return { status: 500, body: { error: \"task_not_found\" } };\n+    return { status: 404, body: { error: \"task_not_found\" } };\n   }\n   return { status: 200, body: task };\n }\n \n function completeTask(service: TaskService, id: string): HttpResponse {\n   const task = service.complete(id);\n   if (!task) {\n     return { status: 404, body: { error: \"task_not_found\" } };\n   }\n   return { status: 200, body: task };\n }\n \n function reopenTask(service: TaskService, id: string): HttpResponse {\n   const task = service.reopen(id);\n   if (!task) {\n     return { status: 404, body: { error: \"task_not_found\" } };\n   }\n   return { status: 200, body: task };\n }\n \n--- end diff ---\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/T01-variant-manual-2026-10-04T22-13-46-366Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/T01-variant-manual-2026-10-04T22-13-46-366Z.spec.json\nduration_ms: 23649\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=33 bytes=45002\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=0 read_file=3 nav_before_first_write=3\npath_overlap: read_file=package.json, src/tasks/task-routes.ts, src/tasks/types.ts list_files=(none)\ntokens: in=16278 out=1850 (spec in=4496 out=784; planner in=n/a out=n/a; impl in=9831 out=1003; research in=n/a out=n/a; repair in=n/a out=n/a; review in=1951 out=63; review_repair in=n/a out=n/a)\nskill_loads: (none)\nmodel_final_response:\nUpdated `GET /tasks/:id` to return:\n\n- `404` when the task is missing\n- `{ error: \"task_not_found\" }` as the response body\n\nExisting task retrieval behavior remains unchanged. All tests pass with `npm test` (6/6)."
+      },
+      {
+        "id": "T02",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 22490,
+        "outputTail": " persist across the transition responses.\nambiguity_details:\n- [safe_inference/resolved] What exact timestamp serialization format should completedAt use?\n  resolution: Use a normal current-time timestamp string, with ISO 8601 serialization being the low-risk implementation choice; the contract only requires a timestamp string.\n  basis: Task.types.ts declares completedAt as string | null, and the task/tests require only a non-empty string, not a specific format.\n- [safe_inference/resolved] Should completing an already completed task preserve or replace its timestamp?\n  resolution: Set completedAt to the current timestamp whenever complete() handles an existing task; no separate idempotency contract is specified, and this does not affect the requested pending-to-completed or reopen behavior.\n  basis: The task specifies the value when a task becomes completed but provides no repeated-completion rule; the existing service exposes complete as a direct state mutation and has no other transition policy.\n--- end spec ---\nturns/model_calls: 6/7 (spec 2/2; planner 0/0)\ntool_calls: 13 (spec 6; planner 0)\nverification_attempts: 1 | repair_attempts: 0 | repeated_failure: false\nreview_attempts: 1 | review_repair_attempts: 0 | reviewer: pass | intended: false | repeated_finding: false\nreview_findings: blocking=0 non_blocking=0 rejected=0 blocking_fp=0\nverifications: #1=PASS(exit 0)\nfinal_tests: PASS (exit 0)\nreceived_terminal_response: true\nchanged_files: tasks/task-service.ts\n--- diff ---\n--- tasks/task-service.ts\n+++ tasks/task-service.ts\n import type { Task, TaskStatus } from \"./types.ts\";\n \n export class TaskService {\n   private tasks = new Map<string, Task>();\n   private nextId = 1;\n \n   list(status?: TaskStatus): Task[] {\n     const all = [...this.tasks.values()];\n     if (!status) {\n       return all;\n     }\n     return all.filter((task) => task.status === status);\n   }\n \n   get(id: string): Task | undefined {\n     return this.tasks.get(id);\n   }\n \n   create(title: string): Task {\n     const task: Task = {\n       id: String(this.nextId++),\n       title,\n       status: \"pending\",\n       completedAt: null,\n     };\n     this.tasks.set(task.id, task);\n     return task;\n   }\n \n   complete(id: string): Task | undefined {\n     const task = this.tasks.get(id);\n     if (!task) {\n       return undefined;\n     }\n     task.status = \"completed\";\n-    // Bug: completedAt is left unchanged\n+    task.completedAt = new Date().toISOString();\n     return task;\n   }\n \n   reopen(id: string): Task | undefined {\n     const task = this.tasks.get(id);\n     if (!task) {\n       return undefined;\n     }\n     task.status = \"pending\";\n-    // Bug: completedAt is left unchanged\n+    task.completedAt = null;\n     return task;\n   }\n }\n \n--- end diff ---\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/T02-variant-manual-2026-10-04T22-14-10-689Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/T02-variant-manual-2026-10-04T22-14-10-689Z.spec.json\nduration_ms: 21814\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=39 bytes=57229\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=5\nimpl_repo_tools: list_files=0 read_file=4 nav_before_first_write=4\npath_overlap: read_file=src/tasks/task-routes.ts, src/tasks/task-service.ts, src/tasks/types.ts, tests/tasks.test.ts list_files=(none)\ntokens: in=17995 out=1514 (spec in=4306 out=907; planner in=n/a out=n/a; impl in=12201 out=566; research in=n/a out=n/a; repair in=n/a out=n/a; review in=1488 out=41; review_repair in=n/a out=n/a)\nskill_loads: (none)\nmodel_final_response:\nImplemented the `completedAt` lifecycle in `TaskService`:\n\n- Completing a task now sets `completedAt` to the current ISO timestamp.\n- Reopening a task now resets `completedAt` to `null`.\n- Newly created tasks remain pending with `completedAt: null`.\n- Existing routes and behavior are unchanged.\n\n`npm test` passes all 6 tests."
+      },
+      {
+        "id": "T03",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 23419,
+        "outputTail": " Preserve insertion order from the underlying Map while selecting matching tasks.\n  basis: This is the existing order produced by TaskService.list and avoids changing unrelated observable behavior.\n--- end spec ---\nturns/model_calls: 6/7 (spec 2/2; planner 0/0)\ntool_calls: 14 (spec 7; planner 0)\nverification_attempts: 1 | repair_attempts: 0 | repeated_failure: false\nreview_attempts: 1 | review_repair_attempts: 0 | reviewer: pass | intended: false | repeated_finding: false\nreview_findings: blocking=0 non_blocking=0 rejected=0 blocking_fp=0\nverifications: #1=PASS(exit 0)\nfinal_tests: PASS (exit 0)\nreceived_terminal_response: true\nchanged_files: tasks/task-service.ts\n--- diff ---\n--- tasks/task-service.ts\n+++ tasks/task-service.ts\n import type { Task, TaskStatus } from \"./types.ts\";\n \n export class TaskService {\n   private tasks = new Map<string, Task>();\n   private nextId = 1;\n \n-  list(_status?: TaskStatus): Task[] {\n+  list(status?: TaskStatus): Task[] {\n-    // Bug/feature gap: status filter ignored\n+    if (status === undefined) {\n-    return [...this.tasks.values()];\n+      return [...this.tasks.values()];\n-  }\n+    }\n \n-  get(id: string): Task | undefined {\n+    return [...this.tasks.values()].filter((task) => task.status === status);\n-    return this.tasks.get(id);\n+  }\n-  }\n+\n-\n+  get(id: string): Task | undefined {\n-  create(title: string): Task {\n+    return this.tasks.get(id);\n-    const task: Task = {\n+  }\n-      id: String(this.nextId++),\n+\n-      title,\n+  create(title: string): Task {\n-      status: \"pending\",\n+    const task: Task = {\n-      completedAt: null,\n+      id: String(this.nextId++),\n-    };\n+      title,\n-    this.tasks.set(task.id, task);\n+      status: \"pending\",\n-    return task;\n+      completedAt: null,\n-  }\n+    };\n-\n+    this.tasks.set(task.id, task);\n-  complete(id: string): Task | undefined {\n+    return task;\n-    const task = this.tasks.get(id);\n+  }\n-    if (!task) {\n+\n-      return undefined;\n+  complete(id: string): Task | undefined {\n-    }\n+    const task = this.tasks.get(id);\n-    task.status = \"completed\";\n+    if (!task) {\n-    task.completedAt = new Date().toISOString();\n+      return undefined;\n-    return task;\n+    }\n-  }\n+    task.status = \"completed\";\n-\n+    task.completedAt = new Date().toISOString();\n-  reopen(id: string): Task | undefined {\n+    return task;\n-    const task = this.tasks.get(id);\n+  }\n-    if (!task) {\n+\n-      return undefined;\n+  reopen(id: string): Task | undefined {\n-    }\n+    const task = this.tasks.get(id);\n-    task.status = \"pending\";\n+    if (!task) {\n-    task.completedAt = null;\n+      return undefined;\n-    return task;\n+    }\n-  }\n+    task.status = \"pending\";\n-}\n+    task.completedAt = null;\n-\n+    return task;\n+  }\n+}\n+\n--- end diff ---\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/T03-variant-manual-2026-10-04T22-14-33-191Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/T03-variant-manual-2026-10-04T22-14-33-191Z.spec.json\nduration_ms: 22740\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=39 bytes=60653\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=0 read_file=4 nav_before_first_write=4\npath_overlap: read_file=src/tasks/task-routes.ts, src/tasks/task-service.ts, src/tasks/types.ts, tests/tasks.test.ts list_files=(none)\ntokens: in=19244 out=1630 (spec in=4512 out=975; planner in=n/a out=n/a; impl in=12829 out=579; research in=n/a out=n/a; repair in=n/a out=n/a; review in=1903 out=76; review_repair in=n/a out=n/a)\nskill_loads: (none)\nmodel_final_response:\nImplemented status filtering in `TaskService.list(status)` while preserving insertion order and unfiltered behavior.\n\n- `pending` and `completed` filters now return only matching tasks.\n- Omitted status returns all tasks.\n- Existing invalid-status route behavior remains unchanged.\n- All tests pass with `npm test` (6/6)."
+      },
+      {
+        "id": "T04",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 11124,
+        "outputTail": "behavior should continue to pass.\nverification:\n- Run the existing TypeScript test suite after implementing the clarified rule.\n- Add route-level tests covering mixed pending/completed data for the chosen condition and for the non-hiding condition, if one exists.\n- Verify that explicit status=pending and status=completed requests retain their specified filtering semantics unless the clarification explicitly supersedes them.\nambiguity_details:\n- [requires_human_judgment/unresolved] What does 'when appropriate' mean operationally: should GET /tasks omit completed tasks by default when status is omitted, should hiding be controlled by a new query parameter or UI state, or should another condition trigger it?\n  basis: The task gives no trigger or default rule. The repository is API-only, has no UI or product documentation, and currently defines omitted status as returning all tasks. These alternatives produce materially different externally observable behavior.\n- [requires_human_judgment/unresolved] If completed tasks are hidden by default or under the new condition, should clients still be able to request completed tasks explicitly via status=completed, and should status=pending remain unchanged?\n  basis: The existing route explicitly supports status=pending and status=completed, but the requested change does not say whether it supersedes or preserves those explicit filters.\n--- end spec ---\nunresolved_questions:\n- What does 'when appropriate' mean operationally: should GET /tasks omit completed tasks by default when status is omitted, should hiding be controlled by a new query parameter or UI state, or should another condition trigger it?\n  classification: requires_human_judgment\n  basis: The task gives no trigger or default rule. The repository is API-only, has no UI or product documentation, and currently defines omitted status as returning all tasks. These alternatives produce materially different externally observable behavior.\n- If completed tasks are hidden by default or under the new condition, should clients still be able to request completed tasks explicitly via status=completed, and should status=pending remain unchanged?\n  classification: requires_human_judgment\n  basis: The existing route explicitly supports status=pending and status=completed, but the requested change does not say whether it supersedes or preserves those explicit filters.\nturns/model_calls: 2/2 (spec 2/2; planner 0/0)\ntool_calls: 7 (spec 7; planner 0)\nverification_attempts: 0 | repair_attempts: 0 | repeated_failure: false\nreview_attempts: 0 | review_repair_attempts: 0 | reviewer: skipped | intended: false | repeated_finding: false\nreview_findings: blocking=0 non_blocking=0 rejected=0 blocking_fp=0\nfinal_tests: (skipped — implementation not started)\nchanged_files: (none)\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/T04-variant-manual-2026-10-04T22-14-56-603Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/T04-variant-manual-2026-10-04T22-14-56-603Z.spec.json\nduration_ms: 10453\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=0 bytes=0\ncontext_prep: 6ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\ntokens: in=4444 out=847 (spec in=4444 out=847; planner in=n/a out=n/a; impl in=n/a out=n/a; research in=n/a out=n/a; repair in=n/a out=n/a; review in=n/a out=n/a; review_repair in=n/a out=n/a)\nskill_loads: (none)\nmodel_final_response:\nEscalated: needs_human_judgment. Implementation loop was not started.\n- What does 'when appropriate' mean operationally: should GET /tasks omit completed tasks by default when status is omitted, should hiding be controlled by a new query parameter or UI state, or should another condition trigger it?\n- If completed tasks are hidden by default or under the new condition, should clients still be able to request completed tasks explicitly via status=completed, and should status=pending remain unchanged?"
+      },
+      {
+        "id": "R01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 27838,
+        "outputTail": "n, or reopening semantics.\n- Changing the response for unmatched routes or other missing resources.\n- Adding or modifying tests.\nacceptance:\n- GET /tasks/missing (or any nonexistent task ID) returns status 404.\n- The response body is exactly { error: \"task_not_found\" }.\n- GET /tasks/:id for an existing task continues to return status 200 and that task.\n- Existing unrelated behavior remains unchanged.\nverification:\n- Inspect or run the existing GET /tasks/:id test in tests/tasks.test.ts, which asserts both the nonexistent-task 404/error body and the existing-task success case.\n- Review the route implementation to confirm getTask checks service.get(id) and returns the specified response only when the task is absent.\n- Run the repository test script (`npm test`) in the implementation environment, without changing tests.\nambiguity_details:\n- [repository_resolvable/resolved] What should GET /tasks/:id return when the task does not exist?\n  resolution: Return HTTP 404 with body { error: \"task_not_found\" }.\n  basis: The task explicitly specifies this behavior, and tests/tasks.test.ts asserts status 404 and the exact body for GET /tasks/missing.\n- [repository_resolvable/resolved] What should happen for an existing task or unrelated endpoints?\n  resolution: Preserve current behavior.\n  basis: The task says not to change unrelated behavior; existing tests cover successful GET and other task operations, and task-routes.ts defines their current responses.\n- [repository_resolvable/resolved] Is a source change required?\n  resolution: No functional change is currently required because src/tasks/task-routes.ts already implements the requested missing-task response; verify and leave it unchanged unless the implementation environment identifies a regression.\n  basis: getTask calls service.get(id), returns { status: 404, body: { error: \"task_not_found\" } } when absent, and the existing test passes against that contract.\n--- end spec ---\nturns/model_calls: 8/9 (spec 2/2; planner 0/0)\ntool_calls: 21 (spec 7; planner 0)\nverification_attempts: 2 | repair_attempts: 1 | repeated_failure: false\nreview_attempts: 1 | review_repair_attempts: 0 | reviewer: pass | intended: false | repeated_finding: false\nreview_findings: blocking=0 non_blocking=0 rejected=0 blocking_fp=0\nverifications: #1=FAIL(exit 1), #2=PASS(exit 0)\nfinal_tests: PASS (exit 0)\nreceived_terminal_response: true\nchanged_files: (none)\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/R01-repair-2026-10-04T22-15-07-724Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/R01-repair-2026-10-04T22-15-07-724Z.spec.json\nduration_ms: 27151\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=64 bytes=101762\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=0 read_file=4 nav_before_first_write=4\npath_overlap: read_file=src/app.ts, src/tasks/task-routes.ts, src/tasks/task-service.ts, src/tasks/types.ts list_files=(none)\ntokens: in=28428 out=2134 (spec in=4481 out=851; planner in=n/a out=n/a; impl in=4154 out=186; research in=n/a out=n/a; repair in=18542 out=1051; review in=1251 out=46; review_repair in=n/a out=n/a)\nskill_loads: evidence-guided-repair@repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\nmodel_final_response:\nVerified the existing implementation already satisfies the specification:\n\n- `GET /tasks/:id` looks up the task through `TaskService.get`.\n- Missing tasks return status `404` with `{ error: \"task_not_found\" }`.\n- Existing task retrieval and unrelated behavior remain unchanged.\n- All tests pass (`6/6`).\n\n=== R01 Repair Probe Summary ===\nfirst_verify: FAIL\nnormalized_failure: yes\nrepair_attempts: 1\nsecond_verify: PASS\nworkflow_status: success\nrepair_changed_files: tasks/task-routes.ts\nskill_loads: evidence-guided-repair@repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\noutcome: expected"
+      },
+      {
+        "id": "REV01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 33476,
+        "outputTail": " /tasks/:id/complete for an existing task returns 200 and a task whose status is \"completed\".\n- The returned completed task has completedAt as a non-empty string timestamp.\n- POST /tasks/missing/complete returns 404 with {\"error\":\"task_not_found\"}.\n- Existing reopen behavior still changes a completed task to pending and clears completedAt.\n- Existing tests remain unchanged and pass.\nverification:\n- Run the existing test suite with npm test.\n- Manually or with an additional non-committed check exercise completion of an existing task and completion of a missing task, verifying the status, completedAt, HTTP status, and error body.\n- Review the diff to confirm no unrelated behavior or tests were changed.\nambiguity_details:\n- [safe_inference/resolved] What should POST /tasks/:id/complete do for an existing task that is already completed?\n  resolution: Treat it as the same idempotent completion operation: leave status completed and refresh/set completedAt using the existing service behavior.\n  basis: The task requires marking an existing task completed and the repository's TaskService.complete unconditionally sets both fields; no alternate already-completed behavior is specified.\n- [repository_resolvable/resolved] What timestamp representation should completedAt use?\n  resolution: Use the existing ISO string convention produced by new Date().toISOString().\n  basis: Task.completedAt is typed as string | null, and TaskService.complete already assigns new Date().toISOString(); existing tests require a non-empty string.\n- [repository_resolvable/resolved] What should happen when the task ID is missing?\n  resolution: Return HTTP 404 with body {\"error\":\"task_not_found\"}.\n  basis: task-routes.ts already maps an undefined result from service.complete to this response, and the same missing-task contract is used by GET /tasks/:id.\n--- end spec ---\nturns/model_calls: 9/11 (spec 2/2; planner 0/0)\ntool_calls: 21 (spec 7; planner 0)\nverification_attempts: 2 | repair_attempts: 0 | repeated_failure: false\nreview_attempts: 2 | review_repair_attempts: 1 | reviewer: pass | intended: true | repeated_finding: false\nreview_findings: blocking=1 non_blocking=0 rejected=0 blocking_fp=0\nverifications: #1=PASS(exit 0), #2=PASS(exit 0)\nfinal_tests: PASS (exit 0)\nreceived_terminal_response: true\nchanged_files: (none)\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/REV01-review-2026-10-04T22-15-35-568Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h0-1791151989754/traces/REV01-review-2026-10-04T22-15-35-568Z.spec.json\nduration_ms: 32770\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=72 bytes=101632\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=1 read_file=6 nav_before_first_write=7\npath_overlap: read_file=package.json, src/app.ts, src/tasks/task-routes.ts, src/tasks/task-service.ts, src/tasks/types.ts, tests/tasks.test.ts list_files=(none)\ntokens: in=28911 out=2496 (spec in=4471 out=879; planner in=n/a out=n/a; impl in=11951 out=294; research in=n/a out=n/a; repair in=n/a out=n/a; review in=3505 out=339; review_repair in=8984 out=984)\nskill_loads: evidence-guided-repair@review_repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\nmodel_final_response:\nUpdated `POST /tasks/:id/complete` to delegate completion to `TaskService.complete`, preserving the existing 200/404 route responses and service-owned status/timestamp transitions.\n\n=== REV01 Independent Review Probe Summary ===\nfirst_verify: PASS\nreview_attempts: 2\nreview1_findings: 1 | intended: true\naccepted_blocking: 1 | non_blocking: 0 | rejected: 0 | blocking_fp: 0\nreview_repair_attempts: 1\nreview_repair_changed_files: tasks/task-routes.ts\nverify_after_repair: PASS\nreviewer_outcome: pass\nworkflow_status: success\nskill_loads: evidence-guided-repair@review_repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\noutcome: expected"
+      }
+    ],
+    "h1": [
+      {
+        "id": "tsc",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 1036,
+        "outputTail": ""
+      },
+      {
+        "id": "npm-test",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 33153,
+        "outputTail": "83ms)\n  ✔ expects T04 to escalate without implementation or source changes (0.084917ms)\n✔ V1 expected outcomes (0.250959ms)\n▶ subagents default off\n  ✔ does not expose delegate_research when subagentsEnabled is false (3.7565ms)\n  ✔ does not give repair or review_repair the research tool even when enabled (0.078375ms)\n✔ subagents default off (4.161542ms)\n▶ research child capability restriction\n  ✔ physically denies write_file, run_command, and delegate_research (0.498167ms)\n✔ research child capability restriction (0.536166ms)\n▶ EvidenceReport admission\n  ✔ accepts a valid report and rejects unsafe or malformed payloads (0.198208ms)\n✔ EvidenceReport admission (0.2385ms)\n▶ EvidenceReport provenance\n  ✔ accepts a citation of a file the child actually read (0.23325ms)\n  ✔ rejects a citation of a file the child never read (0.088583ms)\n  ✔ replaces model-supplied inspectedPaths with harness-observed reads (0.074708ms)\n  ✔ treats equivalent path forms as the same observed read (0.046958ms)\n✔ EvidenceReport provenance (0.565833ms)\n▶ bounded research delegation\n  ✔ runs the child in the parent workspace and lets the parent continue after a valid report (2.85575ms)\n  ✔ rejects an unread evidence path and accepts a corrected report (1.129583ms)\n  ✔ returns invalid EvidenceReport as a child failure and still continues the parent (0.892375ms)\n  ✔ denies a second delegation in the same Worker episode (1.091542ms)\n  ✔ uses the same model as the Worker (0.045833ms)\n✔ bounded research delegation (6.115667ms)\n▶ subagents experiment decision rule\n  ✔ rejects equal quality when variant is clearly more expensive end-to-end (0.243125ms)\n  ✔ does not emit candidate from directional e2e improvement without a predefined threshold (0.067875ms)\n✔ subagents experiment decision rule (0.340417ms)\n▶ SWM01 swarm admission\n  ✔ rejects more than three workers (0.315584ms)\n  ✔ rejects one worker, an empty objective, and duplicate ids (0.124625ms)\n  ✔ rejects model-controlled authority fields (0.040875ms)\n  ✔ does not execute workers when the plan is over budget (0.435083ms)\n✔ SWM01 swarm admission (1.237584ms)\n▶ SWM01 worker capability boundary\n  ✔ advertises only list_files, read_file, and submit_investigation_report (0.436208ms)\n  ✔ does not add swarm tools to the default implementation worker (0.319458ms)\n  ✔ rejects a child citation for a file the worker did not read (0.144917ms)\n✔ SWM01 worker capability boundary (0.959083ms)\n▶ SWM01 partial child failure\n  ✔ keeps the failed child visible and does not respawn it (83.646667ms)\n✔ SWM01 partial child failure (83.757083ms)\n▶ SWM01 grader\n  ✔ scores a frozen-contract report and flags wrong or missing claims (0.998875ms)\n✔ SWM01 grader (1.046375ms)\n▶ SWM01 baseline schema\n  ✔ returns one InvestigationReport from a single read-only investigator (0.914ms)\n✔ SWM01 baseline schema (0.954ms)\n▶ SWM01 handoff\n  ✔ builds a worker handoff without sibling findings (0.138583ms)\n✔ SWM01 handoff (0.170167ms)\n▶ SWM01 workspace mutation\n  ✔ ignores the post-creation node_modules symlink and still flags a new file (0.072417ms)\n✔ SWM01 workspace mutation (0.108667ms)\n▶ SWM01 synthesis provenance\n  ✔ rejects a path the child read but did not put in its report (1.003583ms)\n✔ SWM01 synthesis provenance (1.040458ms)\n▶ verificationChildEnv\n  ✔ copies only the allowlisted launch variables (0.443583ms)\n  ✔ does not grow by cloning the parent environment (0.070292ms)\n✔ verificationChildEnv (0.8085ms)\n▶ workspace isolation\n  ✔ binds harness roots to the worktree and keeps traces on the host (209.369583ms)\n  ✔ cleans up a worktree and is safe to retry (210.307625ms)\n✔ workspace isolation (420.063333ms)\n▶ ISO01 mechanism probe\n  ✔ proves two workspaces from the same SHA stay independent (1192.554792ms)\n✔ ISO01 mechanism probe (1192.61725ms)\nℹ tests 335\nℹ suites 116\nℹ pass 335\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 33001.619167\n\nnpm warn Unknown env config \"devdir\". This will stop working in the next major version of npm."
+      },
+      {
+        "id": "ISO01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 1108,
+        "outputTail": "=== ISO01 Isolation Probe Summary ===\nbase_revision: ac8e333458de9600b4c2e84debd6c98194993c31\nworkspace_a: ISO01-A-2026-10-04T22-16-43-403Z @ ac8e333458de\nworkspace_b: ISO01-B-2026-10-04T22-16-43-403Z @ ac8e333458de\ninitially_equivalent: yes\nmutation_in_a: yes | absent_in_b: yes\nmain_checkout_unchanged: yes\nverify_a: FAIL | verify_b: PASS\ncleaned_up: yes | cleanup_retry_safe: yes\noutcome: expected\nevidence: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/ISO01-isolation-2026-10-04T22-16-44-284Z.json"
+      },
+      {
+        "id": "SEC01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 689,
+        "outputTail": "=== SEC01 Security Probe Summary ===\nworkspace: SEC01-2026-10-04T22-16-44-514Z\nparent_contained_sentinel: yes\nprobe_executed: yes | source_injected: yes\nsecret_visible_to_child: no\nverification: PASS\nsentinel_absent_from_output: yes\nmain_checkout_unchanged: yes\ncleaned_up: yes | cleanup_retry_safe: yes\noutcome: expected\nevidence: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/SEC01-secret-isolation-2026-10-04T22-16-44-974Z.json"
+      },
+      {
+        "id": "T01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 24345,
+        "outputTail": "ue\nchanged_files: tasks/task-routes.ts\n--- diff ---\n--- tasks/task-routes.ts\n+++ tasks/task-routes.ts\n import type { TaskService } from \"./task-service.ts\";\n import type { TaskStatus } from \"./types.ts\";\n \n export type HttpRequest = {\n   method: string;\n   pathname: string;\n   query: URLSearchParams;\n   body?: unknown;\n };\n \n export type HttpResponse = {\n   status: number;\n   body: unknown;\n };\n \n export function createTaskRoutes(service: TaskService) {\n   return function handleTaskRequest(req: HttpRequest): HttpResponse {\n     if (req.method === \"GET\" && req.pathname === \"/tasks\") {\n       return listTasks(service, req.query);\n     }\n \n     if (req.method === \"POST\" && req.pathname === \"/tasks\") {\n       return createTask(service, req.body);\n     }\n \n     const taskMatch = req.pathname.match(/^\\/tasks\\/([^/]+)$/);\n     if (taskMatch && req.method === \"GET\") {\n       return getTask(service, taskMatch[1]);\n     }\n \n     const completeMatch = req.pathname.match(/^\\/tasks\\/([^/]+)\\/complete$/);\n     if (completeMatch && req.method === \"POST\") {\n       return completeTask(service, completeMatch[1]);\n     }\n \n     const reopenMatch = req.pathname.match(/^\\/tasks\\/([^/]+)\\/reopen$/);\n     if (reopenMatch && req.method === \"POST\") {\n       return reopenTask(service, reopenMatch[1]);\n     }\n \n     return { status: 404, body: { error: \"not_found\" } };\n   };\n }\n \n function listTasks(service: TaskService, query: URLSearchParams): HttpResponse {\n   const statusParam = query.get(\"status\");\n   if (statusParam !== null && statusParam !== \"pending\" && statusParam !== \"completed\") {\n     return { status: 400, body: { error: \"invalid_status\" } };\n   }\n \n   const status = statusParam as TaskStatus | null;\n   return { status: 200, body: service.list(status ?? undefined) };\n }\n \n function createTask(service: TaskService, body: unknown): HttpResponse {\n   const title = typeof body === \"object\" && body && \"title\" in body ? body.title : undefined;\n   if (typeof title !== \"string\" || title.trim() === \"\") {\n     return { status: 400, body: { error: \"title_required\" } };\n   }\n   return { status: 201, body: service.create(title.trim()) };\n }\n \n function getTask(service: TaskService, id: string): HttpResponse {\n   const task = service.get(id);\n   if (!task) {\n-    return { status: 500, body: { error: \"task_not_found\" } };\n+    return { status: 404, body: { error: \"task_not_found\" } };\n   }\n   return { status: 200, body: task };\n }\n \n function completeTask(service: TaskService, id: string): HttpResponse {\n   const task = service.complete(id);\n   if (!task) {\n     return { status: 404, body: { error: \"task_not_found\" } };\n   }\n   return { status: 200, body: task };\n }\n \n function reopenTask(service: TaskService, id: string): HttpResponse {\n   const task = service.reopen(id);\n   if (!task) {\n     return { status: 404, body: { error: \"task_not_found\" } };\n   }\n   return { status: 200, body: task };\n }\n \n--- end diff ---\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/T01-variant-manual-2026-10-04T22-16-45-202Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/T01-variant-manual-2026-10-04T22-16-45-202Z.spec.json\nduration_ms: 23640\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=34 bytes=57648\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=0 read_file=3 nav_before_first_write=3\npath_overlap: read_file=package.json, src/tasks/task-routes.ts, tests/tasks.test.ts list_files=(none)\ntokens: in=18961 out=1877 (spec in=4496 out=779; planner in=n/a out=n/a; impl in=12511 out=1006; research in=n/a out=n/a; repair in=n/a out=n/a; review in=1954 out=92; review_repair in=n/a out=n/a)\nskill_loads: (none)\nmodel_final_response:\nUpdated `GET /tasks/:id` so missing tasks return:\n\n- HTTP `404`\n- `{ error: \"task_not_found\" }`\n\nExisting-task retrieval behavior remains unchanged. All 6 tests pass with `npm test`."
+      },
+      {
+        "id": "T02",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 26923,
+        "outputTail": " if the complete endpoint is called for a task that is already completed?\n  resolution: Set `completedAt` to a current timestamp on each successful complete operation; this is consistent with the requested complete behavior and does not require an API or type change.\n  basis: The task explicitly requires a timestamp when completing, while the service currently exposes an idempotent-style mutation with no separate transition error; no repository contract specifies a different repeated-completion rule.\n- [safe_inference/resolved] What should happen if reopen is called for a task that is already pending?\n  resolution: Keep the existing successful reopen behavior and ensure `completedAt` is null; this is consistent with the existing service method and does not affect the requested completed-task reopen case.\n  basis: `TaskService.reopen` already accepts any existing task and sets status to pending, and the task only requires clearing metadata when a completed task is reopened.\n--- end spec ---\nturns/model_calls: 6/7 (spec 2/2; planner 0/0)\ntool_calls: 15 (spec 7; planner 0)\nverification_attempts: 1 | repair_attempts: 0 | repeated_failure: false\nreview_attempts: 1 | review_repair_attempts: 0 | reviewer: pass | intended: false | repeated_finding: false\nreview_findings: blocking=0 non_blocking=0 rejected=0 blocking_fp=0\nverifications: #1=PASS(exit 0)\nfinal_tests: PASS (exit 0)\nreceived_terminal_response: true\nchanged_files: tasks/task-service.ts\n--- diff ---\n--- tasks/task-service.ts\n+++ tasks/task-service.ts\n import type { Task, TaskStatus } from \"./types.ts\";\n \n export class TaskService {\n   private tasks = new Map<string, Task>();\n   private nextId = 1;\n \n   list(status?: TaskStatus): Task[] {\n     const all = [...this.tasks.values()];\n     if (!status) {\n       return all;\n     }\n     return all.filter((task) => task.status === status);\n   }\n \n   get(id: string): Task | undefined {\n     return this.tasks.get(id);\n   }\n \n   create(title: string): Task {\n     const task: Task = {\n       id: String(this.nextId++),\n       title,\n       status: \"pending\",\n       completedAt: null,\n     };\n     this.tasks.set(task.id, task);\n     return task;\n   }\n \n   complete(id: string): Task | undefined {\n     const task = this.tasks.get(id);\n     if (!task) {\n       return undefined;\n     }\n     task.status = \"completed\";\n-    // Bug: completedAt is left unchanged\n+    task.completedAt = new Date().toISOString();\n     return task;\n   }\n \n   reopen(id: string): Task | undefined {\n     const task = this.tasks.get(id);\n     if (!task) {\n       return undefined;\n     }\n     task.status = \"pending\";\n-    // Bug: completedAt is left unchanged\n+    task.completedAt = null;\n     return task;\n   }\n }\n \n--- end diff ---\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/T02-variant-manual-2026-10-04T22-17-09-555Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/T02-variant-manual-2026-10-04T22-17-09-555Z.spec.json\nduration_ms: 26249\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=45 bytes=61802\ncontext_prep: 6ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=0 read_file=5 nav_before_first_write=5\npath_overlap: read_file=package.json, src/tasks/task-routes.ts, src/tasks/task-service.ts, src/tasks/types.ts, tests/tasks.test.ts list_files=(none)\ntokens: in=19387 out=1871 (spec in=4514 out=1251; planner in=n/a out=n/a; impl in=13217 out=580; research in=n/a out=n/a; repair in=n/a out=n/a; review in=1656 out=40; review_repair in=n/a out=n/a)\nskill_loads: (none)\nmodel_final_response:\nImplemented the completion lifecycle metadata fix:\n\n- `complete()` now sets `completedAt` to `new Date().toISOString()`.\n- `reopen()` now clears `completedAt` to `null`.\n- New tasks continue to initialize with `completedAt: null`.\n- Existing status, response shapes, and not-found behavior are unchanged.\n\nAll tests pass with `npm test`."
+      },
+      {
+        "id": "T03",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 22741,
+        "outputTail": "solution: No new behavior is needed; preserve the existing HTTP 400 invalid_status response implemented by the route.\n  basis: src/tasks/task-routes.ts explicitly rejects values other than pending/completed before invoking the service.\n--- end spec ---\nturns/model_calls: 6/7 (spec 2/2; planner 0/0)\ntool_calls: 15 (spec 7; planner 0)\nverification_attempts: 1 | repair_attempts: 0 | repeated_failure: false\nreview_attempts: 1 | review_repair_attempts: 0 | reviewer: pass | intended: false | repeated_finding: false\nreview_findings: blocking=0 non_blocking=0 rejected=0 blocking_fp=0\nverifications: #1=PASS(exit 0)\nfinal_tests: PASS (exit 0)\nreceived_terminal_response: true\nchanged_files: tasks/task-service.ts\n--- diff ---\n--- tasks/task-service.ts\n+++ tasks/task-service.ts\n import type { Task, TaskStatus } from \"./types.ts\";\n \n export class TaskService {\n   private tasks = new Map<string, Task>();\n   private nextId = 1;\n \n-  list(_status?: TaskStatus): Task[] {\n+  list(status?: TaskStatus): Task[] {\n-    // Bug/feature gap: status filter ignored\n+    const tasks = [...this.tasks.values()];\n-    return [...this.tasks.values()];\n+    return status === undefined\n-  }\n+      ? tasks\n-\n+      : tasks.filter((task) => task.status === status);\n-  get(id: string): Task | undefined {\n+  }\n-    return this.tasks.get(id);\n+\n-  }\n+  get(id: string): Task | undefined {\n-\n+    return this.tasks.get(id);\n-  create(title: string): Task {\n+  }\n-    const task: Task = {\n+\n-      id: String(this.nextId++),\n+  create(title: string): Task {\n-      title,\n+    const task: Task = {\n-      status: \"pending\",\n+      id: String(this.nextId++),\n-      completedAt: null,\n+      title,\n-    };\n+      status: \"pending\",\n-    this.tasks.set(task.id, task);\n+      completedAt: null,\n-    return task;\n+    };\n-  }\n+    this.tasks.set(task.id, task);\n-\n+    return task;\n-  complete(id: string): Task | undefined {\n+  }\n-    const task = this.tasks.get(id);\n+\n-    if (!task) {\n+  complete(id: string): Task | undefined {\n-      return undefined;\n+    const task = this.tasks.get(id);\n-    }\n+    if (!task) {\n-    task.status = \"completed\";\n+      return undefined;\n-    task.completedAt = new Date().toISOString();\n+    }\n-    return task;\n+    task.status = \"completed\";\n-  }\n+    task.completedAt = new Date().toISOString();\n-\n+    return task;\n-  reopen(id: string): Task | undefined {\n+  }\n-    const task = this.tasks.get(id);\n+\n-    if (!task) {\n+  reopen(id: string): Task | undefined {\n-      return undefined;\n+    const task = this.tasks.get(id);\n-    }\n+    if (!task) {\n-    task.status = \"pending\";\n+      return undefined;\n-    task.completedAt = null;\n+    }\n-    return task;\n+    task.status = \"pending\";\n-  }\n+    task.completedAt = null;\n-}\n+    return task;\n-\n+  }\n+}\n+\n--- end diff ---\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/T03-variant-manual-2026-10-04T22-17-36-476Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/T03-variant-manual-2026-10-04T22-17-36-476Z.spec.json\nduration_ms: 22060\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=45 bytes=61370\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=0 read_file=5 nav_before_first_write=5\npath_overlap: read_file=package.json, src/tasks/task-routes.ts, src/tasks/task-service.ts, src/tasks/types.ts, tests/tasks.test.ts list_files=(none)\ntokens: in=19289 out=1611 (spec in=4511 out=896; planner in=n/a out=n/a; impl in=12931 out=582; research in=n/a out=n/a; repair in=n/a out=n/a; review in=1847 out=133; review_repair in=n/a out=n/a)\nskill_loads: (none)\nmodel_final_response:\nImplemented status-based task filtering in `TaskService.list()`:\n\n- Filters by `pending` or `completed` when provided.\n- Returns all tasks in insertion order when omitted.\n- Preserves existing route validation and response behavior.\n\nAll tests pass with `npm test` (6 passing)."
+      },
+      {
+        "id": "T04",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 11504,
+        "outputTail": "resolved] What does “when appropriate” mean: should GET /tasks hide completed tasks by default when status is omitted, or should hiding require an explicit query parameter/filter (and if so, what parameter and accepted values)?\n  basis: The task only says “when appropriate.” The repository has no UI and no product documentation. Current code explicitly returns all tasks when status is omitted and only hides completed tasks for status=pending, but existing behavior is not authority for a requested behavior change.\n- [repository_resolvable/resolved] Is this request intended to change the API list behavior, add a UI presentation rule, or both?\n  resolution: Treat it as an API list behavior change for this repository, because the only task-list surface is GET /tasks and there is no UI implementation.\n  basis: src/tasks/task-routes.ts defines GET /tasks and src/app.ts exposes only the route/service; the repository contains no UI files.\n- [requires_human_judgment/unresolved] If completed tasks are hidden by default, should clients still be able to request/show completed tasks using status=completed, and should status=pending remain unchanged?\n  basis: The current API supports both explicit status filters and an all-tasks default, but the task does not specify whether hiding is a default presentation rule or a restriction on returned data, nor whether an override must exist.\n--- end spec ---\nunresolved_questions:\n- What does “when appropriate” mean: should GET /tasks hide completed tasks by default when status is omitted, or should hiding require an explicit query parameter/filter (and if so, what parameter and accepted values)?\n  classification: requires_human_judgment\n  basis: The task only says “when appropriate.” The repository has no UI and no product documentation. Current code explicitly returns all tasks when status is omitted and only hides completed tasks for status=pending, but existing behavior is not authority for a requested behavior change.\n- If completed tasks are hidden by default, should clients still be able to request/show completed tasks using status=completed, and should status=pending remain unchanged?\n  classification: requires_human_judgment\n  basis: The current API supports both explicit status filters and an all-tasks default, but the task does not specify whether hiding is a default presentation rule or a restriction on returned data, nor whether an override must exist.\nturns/model_calls: 2/2 (spec 2/2; planner 0/0)\ntool_calls: 7 (spec 7; planner 0)\nverification_attempts: 0 | repair_attempts: 0 | repeated_failure: false\nreview_attempts: 0 | review_repair_attempts: 0 | reviewer: skipped | intended: false | repeated_finding: false\nreview_findings: blocking=0 non_blocking=0 rejected=0 blocking_fp=0\nfinal_tests: (skipped — implementation not started)\nchanged_files: (none)\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/T04-variant-manual-2026-10-04T22-17-59-212Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/T04-variant-manual-2026-10-04T22-17-59-212Z.spec.json\nduration_ms: 10837\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=0 bytes=0\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\ntokens: in=4444 out=886 (spec in=4444 out=886; planner in=n/a out=n/a; impl in=n/a out=n/a; research in=n/a out=n/a; repair in=n/a out=n/a; review in=n/a out=n/a; review_repair in=n/a out=n/a)\nskill_loads: (none)\nmodel_final_response:\nEscalated: needs_human_judgment. Implementation loop was not started.\n- What does “when appropriate” mean: should GET /tasks hide completed tasks by default when status is omitted, or should hiding require an explicit query parameter/filter (and if so, what parameter and accepted values)?\n- If completed tasks are hidden by default, should clients still be able to request/show completed tasks using status=completed, and should status=pending remain unchanged?"
+      },
+      {
+        "id": "R01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 30601,
+        "outputTail": "stinguishing GET /tasks/:id from the existing collection and action routes.\n- No test-file changes.\nnon_goals:\n- Changing task creation, listing, completion, reopening, or invalid-status behavior.\n- Changing the not-found response for unrelated routes.\n- Changing the TaskService data model or ID generation.\nacceptance:\n- GET /tasks/missing (or any nonexistent task ID) responds with status 404.\n- The response body for a nonexistent task is exactly { error: \"task_not_found\" }.\n- GET /tasks/:id for an existing task still responds with status 200 and the task body.\n- Existing unrelated route behavior remains unchanged.\n- Existing tests remain unmodified and pass.\nverification:\n- Run the repository test script: npm test.\n- Confirm the GET /tasks/:id missing-task test passes, including both status and exact body assertions.\n- Confirm the existing-task GET test and the other existing route tests still pass.\n- Repository inspection shows task-routes.ts already contains the required missing-task branch in getTask; implementation should retain it or make only the minimal change necessary if the working tree differs at execution time.\nambiguity_details:\n- [repository_resolvable/resolved] What response should GET /tasks/:id return when the task does not exist?\n  resolution: HTTP 404 with body { error: \"task_not_found\" }.\n  basis: The raw task states this explicitly, and tests/tasks.test.ts asserts both the status and exact response body.\n- [repository_resolvable/resolved] What should happen when the task exists?\n  resolution: Preserve the existing 200 response containing the task.\n  basis: tests/tasks.test.ts asserts successful GET behavior, and task-routes.ts currently returns status 200 with the task.\n- [repository_resolvable/resolved] Should unrelated behavior be changed?\n  resolution: No; make no changes outside the requested missing-task GET behavior.\n  basis: The raw task explicitly says not to change unrelated behavior; the route and tests identify the existing surrounding behavior to preserve.\n--- end spec ---\nturns/model_calls: 9/10 (spec 2/2; planner 0/0)\ntool_calls: 21 (spec 7; planner 0)\nverification_attempts: 2 | repair_attempts: 1 | repeated_failure: false\nreview_attempts: 1 | review_repair_attempts: 0 | reviewer: pass | intended: false | repeated_finding: false\nreview_findings: blocking=0 non_blocking=0 rejected=0 blocking_fp=0\nverifications: #1=FAIL(exit 1), #2=PASS(exit 0)\nfinal_tests: PASS (exit 0)\nreceived_terminal_response: true\nchanged_files: (none)\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/R01-repair-2026-10-04T22-18-10-716Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/R01-repair-2026-10-04T22-18-10-716Z.spec.json\nduration_ms: 29930\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=74 bytes=103948\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=1 read_file=4 nav_before_first_write=5\npath_overlap: read_file=src/app.ts, src/tasks/task-routes.ts, src/tasks/task-service.ts, src/tasks/types.ts list_files=(none)\ntokens: in=28008 out=2127 (spec in=4481 out=832; planner in=n/a out=n/a; impl in=6750 out=201; research in=n/a out=n/a; repair in=15560 out=1045; review in=1217 out=49; review_repair in=n/a out=n/a)\nskill_loads: evidence-guided-repair@repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\nmodel_final_response:\nImplemented and verified the requested behavior. `GET /tasks/:id` returns `404` with `{ error: \"task_not_found\" }` for missing tasks while preserving successful and unrelated route behavior.\n\nAll tests pass: 6/6.\n\n=== R01 Repair Probe Summary ===\nfirst_verify: FAIL\nnormalized_failure: yes\nrepair_attempts: 1\nsecond_verify: PASS\nworkflow_status: success\nrepair_changed_files: tasks/task-routes.ts\nskill_loads: evidence-guided-repair@repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\noutcome: expected"
+      },
+      {
+        "id": "REV01",
+        "passed": true,
+        "exitCode": 0,
+        "timedOut": false,
+        "durationMs": 38424,
+        "outputTail": "_goals:\n- Changing the behavior of task creation, GET /tasks, GET /tasks/:id, or POST /tasks/:id/reopen.\n- Changing the missing-task status code or error payload.\n- Adding new task fields or changing the completedAt representation beyond the existing string-or-null model.\nacceptance:\n- Completing an existing task returns status 200 and a task whose status is \"completed\".\n- The completed task returned by the endpoint has completedAt as a non-empty string timestamp.\n- The task remains completed with the assigned completedAt value when subsequently retrieved or listed.\n- Completing a nonexistent task returns status 404 and exactly {\"error\":\"task_not_found\"}.\n- Existing tests continue to pass and unrelated endpoint behavior is unchanged.\nverification:\n- Run the repository test script: npm test.\n- Exercise POST /tasks to create a task, then POST /tasks/:id/complete and verify the 200 response, completed status, and non-empty completedAt string.\n- Exercise POST /tasks/missing/complete and verify the 404 task_not_found response.\n- Optionally retrieve/list the completed task to confirm the state mutation is persisted in the service.\nambiguity_details:\n- [repository_resolvable/resolved] What representation should completedAt use when completing a task?\n  resolution: Use a non-null ISO timestamp string generated with new Date().toISOString().\n  basis: Task.completedAt is typed as string | null, the existing completion test requires a non-empty string, and TaskService already uses new Date().toISOString().\n- [repository_resolvable/resolved] What should happen when the task ID does not exist?\n  resolution: Return HTTP 404 with { error: \"task_not_found\" }.\n  basis: task-routes.ts already defines this response for a falsy result from service.complete(), and the task explicitly requires preserving missing-task behavior.\n--- end spec ---\nturns/model_calls: 10/12 (spec 2/2; planner 0/0)\ntool_calls: 22 (spec 7; planner 0)\nverification_attempts: 2 | repair_attempts: 0 | repeated_failure: false\nreview_attempts: 2 | review_repair_attempts: 1 | reviewer: pass | intended: true | repeated_finding: false\nreview_findings: blocking=1 non_blocking=0 rejected=0 blocking_fp=0\nverifications: #1=PASS(exit 0), #2=PASS(exit 0)\nfinal_tests: PASS (exit 0)\nreceived_terminal_response: true\nchanged_files: (none)\ntrace: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/REV01-review-2026-10-04T22-18-41-310Z.jsonl\nspec: /Users/i.kohanvs/Desktop/ai-native/.worktrees/meta01-reg-h1-1791152168878/traces/REV01-review-2026-10-04T22-18-41-310Z.spec.json\nduration_ms: 37761\ncontext_mode: variant\nconversation_state_mode: manual\nclient_input: items=84 bytes=120242\ncontext_prep: 5ms scanned=4 entries=11\nspec_repo_tools: list_files=0 read_file=6\nimpl_repo_tools: list_files=1 read_file=6 nav_before_first_write=7\npath_overlap: read_file=package.json, src/app.ts, src/tasks/task-routes.ts, src/tasks/task-service.ts, src/tasks/types.ts, tests/tasks.test.ts list_files=(none)\ntokens: in=32473 out=2671 (spec in=4471 out=977; planner in=n/a out=n/a; impl in=11677 out=358; research in=n/a out=n/a; repair in=n/a out=n/a; review in=3381 out=317; review_repair in=12944 out=1019)\nskill_loads: evidence-guided-repair@review_repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\nmodel_final_response:\nUpdated `POST /tasks/:id/complete` to delegate completion to `TaskService.complete`, preserving service-owned state transitions and existing 404 behavior.\n\n`npm test` passes all 6 tests.\n\n=== REV01 Independent Review Probe Summary ===\nfirst_verify: PASS\nreview_attempts: 2\nreview1_findings: 1 | intended: true\naccepted_blocking: 1 | non_blocking: 0 | rejected: 0 | blocking_fp: 0\nreview_repair_attempts: 1\nreview_repair_changed_files: tasks/task-routes.ts\nverify_after_repair: PASS\nreviewer_outcome: pass\nworkflow_status: success\nskill_loads: evidence-guided-repair@review_repair efa5e14d5382c9108bd40dc471d62627bea07bb28b3676b4b523428d0dc29a25\noutcome: expected"
+      }
+    ]
+  },
+  "maintenanceBaselineEvidence": [
+    {
+      "changedFiles": [
+        "harness/src/evidence.ts",
+        "harness/src/instructions.ts"
+      ],
+      "totalChangedLines": 420,
+      "loopChangedLines": 0,
+      "coreFunctionsTouched": [],
+      "externalGraderPassed": false,
+      "modelCalls": 11,
+      "toolCalls": 20,
+      "wallTimeMs": 70928
+    },
+    {
+      "changedFiles": [
+        "harness/src/evidence.ts",
+        "harness/src/instructions.ts",
+        "harness/src/local-inspection.ts"
+      ],
+      "totalChangedLines": 464,
+      "loopChangedLines": 0,
+      "coreFunctionsTouched": [],
+      "externalGraderPassed": false,
+      "modelCalls": 11,
+      "toolCalls": 21,
+      "wallTimeMs": 87262
+    },
+    {
+      "changedFiles": [
+        "harness/src/loop.ts"
+      ],
+      "totalChangedLines": 950,
+      "loopChangedLines": 950,
+      "coreFunctionsTouched": [
+        "runAgentLoop",
+        "episodeInstructions",
+        "executeWorkerTool"
+      ],
+      "externalGraderPassed": false,
+      "modelCalls": 9,
+      "toolCalls": 21,
+      "wallTimeMs": 83075
+    }
+  ],
+  "maintenanceCandidateEvidence": [
+    {
+      "changedFiles": [
+        "harness/src/evidence.ts",
+        "harness/src/loop.ts"
+      ],
+      "totalChangedLines": 1311,
+      "loopChangedLines": 932,
+      "coreFunctionsTouched": [
+        "runAgentLoop",
+        "episodeInstructions",
+        "executeWorkerTool"
+      ],
+      "externalGraderPassed": false,
+      "modelCalls": 11,
+      "toolCalls": 23,
+      "wallTimeMs": 74299
+    },
+    {
+      "changedFiles": [
+        "harness/src/evidence.ts",
+        "harness/src/instructions.ts"
+      ],
+      "totalChangedLines": 417,
+      "loopChangedLines": 0,
+      "coreFunctionsTouched": [],
+      "externalGraderPassed": false,
+      "modelCalls": 11,
+      "toolCalls": 25,
+      "wallTimeMs": 78818
+    },
+    {
+      "changedFiles": [
+        "harness/src/evidence.ts",
+        "harness/src/instructions.ts"
+      ],
+      "totalChangedLines": 419,
+      "loopChangedLines": 0,
+      "coreFunctionsTouched": [],
+      "externalGraderPassed": false,
+      "modelCalls": 10,
+      "toolCalls": 20,
+      "wallTimeMs": 80267
+    }
+  ],
+  "pristineH0": {
+    "toolNames": [
+      "list_files",
+      "read_file",
+      "write_file",
+      "run_command"
+    ],
+    "instructions": "\nYou are a coding agent working on a small TypeScript Task Board app in target-app/.\n\nThe user message contains a resolved specification. Treat it as the authoritative execution contract.\nDo not invent additional product behavior beyond that spec.\n\nYou may inspect and edit the target application using the provided tools.\nSolve the given coding task.\nYou may run tests when useful.\nWhen you believe the task is complete, stop calling tools and reply with a short final summary.\n\nDo not modify tests. Only change application source under target-app/src/.\n",
+    "status": "success",
+    "readable": true,
+    "threw": false
+  },
+  "pristineH1": {
+    "toolNames": [
+      "list_files",
+      "read_file",
+      "write_file",
+      "run_command"
+    ],
+    "instructions": "\nYou are a coding agent working on a small TypeScript Task Board app in target-app/.\n\nThe user message contains a resolved specification. Treat it as the authoritative execution contract.\nDo not invent additional product behavior beyond that spec.\n\nYou may inspect and edit the target application using the provided tools.\nSolve the given coding task.\nYou may run tests when useful.\nWhen you believe the task is complete, stop calling tools and reply with a short final summary.\n\nDo not modify tests. Only change application source under target-app/src/.\n",
+    "status": "success",
+    "readable": true,
+    "threw": false
+  },
+  "decision": "candidate_rejected",
+  "decisionReasons": [
+    "hard gates passed and provenance is valid",
+    "frozen structural improvement conditions were not met"
+  ],
+  "mainUnchanged": true
+}
