@@ -260,6 +260,14 @@ One Lead may propose a 2–3 worker `SwarmPlan`. The harness admits the plan, ru
 
 **Revisit when:** a breadth-first investigation workload shows that the extra tokens and handoff loss are worth the coverage or wall-time change. Until then the default remains one Worker.
 
+### Experimental: META01 self-improvement control plane
+
+**Status:** separate probe only. It is not wired into `runV1Harness()`.
+
+`npm run benchmark:meta01` runs one bounded Meta-Improver against frozen parent `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. The candidate may overwrite `harness/src/loop.ts` and create at most two new files under `harness/src/loop-ext/`. The host materializes a detached `candidateRevision`, scores it, and leaves adoption to a human. A candidate verdict does not move `main` or become the runtime default.
+
+**Revisit when:** a later module needs another bounded harness-mutation experiment. This seam is not a self-improvement framework.
+
 ### Retained routing boundary
 
 The current policy routes all normal episodes to the same model, but the deterministic routing boundary is cheap and useful for future requalification. Keep it.

@@ -30,6 +30,7 @@
     "benchmark:mem01": "tsx src/mem01-probe.ts",
     "benchmark:a2a01": "tsx src/a2a01-probe.ts",
     "benchmark:swm01": "tsx src/swm01-probe.ts",
+    "benchmark:meta01": "tsx src/meta01-probe.ts",
     "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts"
   },
   "dependencies": {

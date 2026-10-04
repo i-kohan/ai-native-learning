@@ -1,0 +1,71 @@
+diff --git a/harness/src/loop-ext/capabilities.ts b/harness/src/loop-ext/capabilities.ts
+new file mode 100644
+index 0000000..d5f4380
+--- /dev/null
++++ b/harness/src/loop-ext/capabilities.ts
+@@ -0,0 +1,65 @@
++import { AGENT_INSTRUCTIONS, REPAIR_INSTRUCTIONS } from "../instructions.ts";
++import { REVIEW_REPAIR_INSTRUCTIONS } from "../review-instructions.ts";
++import {
++  shouldEnableSubagents,
++  workerToolsForEpisode,
++} from "../evidence.ts";
++import { WORKER_RESEARCH_INSTRUCTIONS } from "../research-instructions.ts";
++import { WORKER_A2A_INSTRUCTIONS, DELEGATE_REMOTE_ANALYSIS_TOOL } from "../a2a/delegation.ts";
++import type { ResponsesFunctionTool, RepoReadSession } from "../mcp/repo-read-host.ts";
++import type { EpisodePhase } from "../loop.ts";
++
++/**
++ * The loop consumes this immutable, phase-scoped capability plan.  Optional
++ * capabilities are admitted here; execution and authority remain in loop.ts.
++ */
++export type EpisodeCapabilities = {
++  subagentsEnabled: boolean;
++  mcpRepoReadEnabled: boolean;
++  a2aDelegationEnabled: boolean;
++  instructions: string;
++  tools: ResponsesFunctionTool[];
++};
++
++export function createEpisodeCapabilities(options: {
++  phase: EpisodePhase;
++  subagentsRequested: boolean;
++  mcpRepoReadRequested: boolean;
++  a2aDelegationRequested: boolean;
++}): EpisodeCapabilities {
++  const subagentsEnabled = shouldEnableSubagents(options.subagentsRequested);
++  const implementation = options.phase === "implementation";
++  const mcpRepoReadEnabled = implementation && options.mcpRepoReadRequested;
++  const a2aDelegationEnabled = implementation && options.a2aDelegationRequested;
++  let instructions =
++    options.phase === "repair"
++      ? REPAIR_INSTRUCTIONS
++      : options.phase === "review_repair"
++        ? REVIEW_REPAIR_INSTRUCTIONS
++        : subagentsEnabled
++          ? `${AGENT_INSTRUCTIONS.trim()}\n${WORKER_RESEARCH_INSTRUCTIONS.trim()}\n`
++          : AGENT_INSTRUCTIONS;
++  if (mcpRepoReadEnabled) {
++    instructions = `${instructions.trim()}\nRead repository files with repo_read_file. Path is relative to target-app/. There is no read_file tool in this episode.\n`;
++  }
++  if (a2aDelegationEnabled) {
++    instructions = `${instructions.trim()}\n${WORKER_A2A_INSTRUCTIONS}\n`;
++  }
++  let tools = workerToolsForEpisode({ phase: options.phase, subagentsEnabled });
++  if (a2aDelegationEnabled) tools = [...tools, DELEGATE_REMOTE_ANALYSIS_TOOL];
++  return { subagentsEnabled, mcpRepoReadEnabled, a2aDelegationEnabled, instructions, tools };
++}
++
++export function admitEpisodeTools(
++  capabilities: EpisodeCapabilities,
++  mcpSession: RepoReadSession,
++): ResponsesFunctionTool[] {
++  const tools = workerToolsForEpisode({
++    phase: "implementation",
++    subagentsEnabled: capabilities.subagentsEnabled,
++    mcpRepoReadTools: mcpSession.tools,
++  });
++  return capabilities.a2aDelegationEnabled
++    ? [...tools, DELEGATE_REMOTE_ANALYSIS_TOOL]
++    : tools;
++}

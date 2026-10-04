@@ -33,6 +33,8 @@ Completed modules:
 27. ✅ 27 — Deep Agent Hierarchies (closed by Master on 2026-09-29; HIER01 = `no_implementation_justified`)
 28. ✅ 28 — Production-Grade Distributed Orchestration (closed by Master on 2026-10-01; ORCH01 = `no_distributed_engine_justified_current_workload`)
 
+Module 29 is **not closed**. META01 is one bounded self-improvement experiment. The candidate is evidence only. It does not become the runtime default.
+
 Module 26 is **closed from the Topic Chat side**. SWM01 demonstrated the intended bounded Lead → workers → synthesis topology with real concurrent read-only children and harness-owned authority. The paired probes did not show a stable quality/latency advantage over one Investigator and consistently cost more input tokens. Default remains one Worker. No general multi-agent adoption claim.
 
 Module 27 is **closed from the Topic Chat side**. HIER01 found no measured coordinator bottleneck in the current SWM01 topology: the final pair has three child reports totaling 24,619 bytes of synthesis input. Deep hierarchy is therefore not implemented. Revisit only if fan-in growth causes measurable coordinator degradation and work naturally partitions into subtrees. Authority must narrow downward; subtree/global budgets, failure propagation, and leaf-artifact provenance remain harness-owned invariants.
@@ -65,6 +67,7 @@ The capstone remains **V3 Spec-Driven + targeted context + bounded verify/repair
 - optional verified repository memory behind explicit `memory` options (Module 24). Repository scope comes from the bound `config.repoRoot`. A harness-admitted implementation-surface fact can persist outside `WorkflowState` and, after current-repository validation, enter Worker context as one advisory hint. Default `runV1Harness()` does not read or write memory.
 - optional A2A impact delegation behind `a2aDelegationEnabled` (Module 25). The implementation Worker may call `delegate_remote_analysis` once. The Host discovers an Agent Card, admits one local HTTP+JSON agent, and may pass a validated artifact back as advisory evidence. Default remains off. The remote process does not own WorkflowState, VERIFY, or REVIEW.
 - optional SWM01 bounded multi-agent investigation (`npm run benchmark:swm01`). It is not called from `runV1Harness()`. Default remains Spec → one Worker.
+- optional META01 control plane (`npm run benchmark:meta01`). It is not called from `runV1Harness()`. One candidate is evidence only. Default runtime stays the parent harness.
 
 Conceptual default flow:
 
@@ -83,6 +86,49 @@ raw task
 Security note: this is still not a general sandbox; executed repository code can access host filesystem/network/subprocesses within OS account permissions.
 
 Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/lessons/*`.
+
+---
+
+# Module 29 — Self-Modifying / Self-Improving Systems
+
+**Status:** not closed. META01 is one bounded experiment. No adoption claim.
+
+Theory:
+
+`docs/learning/lessons/29-self-improving/theory.md`
+
+Practical notes:
+
+`docs/learning/lessons/29-self-improving/notes.md`
+
+## What was implemented
+
+A host-owned control plane, separate from `runV1Harness()`:
+
+```text
+exact worktree at afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7
+→ Meta-Improver submits one hypothesis, then may patch
+→ static integrity
+→ detached candidateRevision
+→ H0 then H1 regression, including T01–T04, R01, REV01
+→ pristine H1 architecture check
+→ 3+3 hidden maintenance trials
+→ host decision
+```
+
+Writable surface: `harness/src/loop.ts` plus at most two new files under `harness/src/loop-ext/`. Patch budget: 3 files and 300 added plus deleted lines. Meta-Improver: 12 turns. Maintenance: 16 turns. One candidate.
+
+The maintenance grader enables the hidden capability through `HARNESS_EPISODE_EXTENSION=local-inspection`. It does not require a new `runAgentLoop` boolean. The Meta-Improver does not receive that task.
+
+If H0 does not confirm the frozen regression commands, the run stops as `experiment_stopped_insufficient_regression_evidence` and does not score H1.
+
+## Current result
+
+`experiment_stopped_insufficient_regression_evidence` on `fa640a0`. H0 `tsc` failed there, so H1 was not scored and maintenance did not run. The rerun parent is `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. Integrity passed. The detached candidate adds an unwired `loop-ext/capabilities.ts` and does not change `loop.ts`. Details are in `docs/learning/experiments.md`.
+
+## Closure / remaining boundaries
+
+Module 29 stays open. The candidate record is review evidence. It does not merge itself.
 
 ---
 

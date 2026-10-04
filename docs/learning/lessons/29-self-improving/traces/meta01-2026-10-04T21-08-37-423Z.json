@@ -1,0 +1,104 @@
+{
+  "experimentId": "META01",
+  "parentRevision": "fa640a0bbeec2edb2177775e757c127fd9ec599b",
+  "candidateRevision": "b25ddbe340e8b66f4d67f2c14596ddd5ae04d5f3",
+  "candidateRef": "refs/meta01/candidates/meta01-2026-10-04T21-06-22-807Z",
+  "candidateId": "meta01-2026-10-04T21-06-22-807Z",
+  "configuredModel": "gpt-5.6-luna",
+  "hypothesis": {
+    "observedProblem": "runAgentLoop directly coordinates each optional capability in several places: it normalizes flags, chooses tools, mutates tools after MCP/A2A admission, composes instructions, and carries separate delegation counters into every tool call. This makes the core model/tool loop feature-aware and increases the chance that a new optional capability changes default or phase behavior.",
+    "suspectedCause": "Capability policy and episode setup are interleaved with the transport loop instead of being represented as one phase-scoped plan. The loop therefore owns both orchestration mechanics and capability-specific admission/composition decisions.",
+    "proposedMutation": "Add one loop-ext capability-plan module that creates the normalized episode capability state, composes instructions, builds the initial tool list, and applies admitted MCP/A2A tools. Use that plan from loop.ts while leaving execution, authority checks, counters, tracing, and all existing feature implementations unchanged.",
+    "expectedBenefit": "The core loop will consume a single capability plan for instructions/tools and will no longer repeat feature-flag composition logic; default behavior, phase gating, tool admission, and delegation authority remain explicit and testable in one bounded module.",
+    "expectedRisks": [
+      "A refactor of initialization/composition could accidentally expose an optional tool in repair or review phases.",
+      "Moving instruction/tool composition could alter exact prompt or tool ordering and break snapshot-style harness expectations.",
+      "The plan may hide capability state enough to make future tracing or counter updates less obvious."
+    ]
+  },
+  "allowedMutationFiles": [
+    "harness/src/loop.ts",
+    "harness/src/loop-ext/<new>.ts"
+  ],
+  "changedFiles": [
+    "harness/src/loop-ext/capabilities.ts"
+  ],
+  "patchHash": "8a41aee89e65b055987f11cd03f3502a5bb6e2c29fb95a5634c18c460dea44d8",
+  "patchStats": {
+    "files": [
+      "harness/src/loop-ext/capabilities.ts"
+    ],
+    "additions": 65,
+    "deletions": 0,
+    "perFile": [
+      {
+        "file": "harness/src/loop-ext/capabilities.ts",
+        "additions": 65,
+        "deletions": 0
+      }
+    ],
+    "newModules": [
+      "harness/src/loop-ext/capabilities.ts"
+    ],
+    "newFeatureBranches": 0
+  },
+  "integrityChecks": [
+    {
+      "id": "exact_base",
+      "passed": true,
+      "evidence": "baseRevision=fa640a0bbeec2edb2177775e757c127fd9ec599b"
+    },
+    {
+      "id": "mutation_allowlist",
+      "passed": true,
+      "evidence": "harness/src/loop-ext/capabilities.ts"
+    },
+    {
+      "id": "patch_budget",
+      "passed": true,
+      "evidence": "65+0 lines across 1 files"
+    },
+    {
+      "id": "hypothesis_before_write",
+      "passed": true,
+      "evidence": "accepted hypothesis precedes the first write"
+    },
+    {
+      "id": "forbidden_files_unchanged",
+      "passed": true,
+      "evidence": "benchmark, eval, security, and control-plane paths unchanged"
+    },
+    {
+      "id": "authority_unchanged",
+      "passed": true,
+      "evidence": "no new process, network, retry, or budget authority in added lines"
+    },
+    {
+      "id": "has_mutation",
+      "passed": true,
+      "evidence": "candidate patch is non-empty"
+    }
+  ],
+  "regressionEvidence": {
+    "h0": [
+      {
+        "id": "tsc",
+        "passed": false,
+        "exitCode": 2,
+        "timedOut": false,
+        "durationMs": 1200,
+        "outputTail": "ationStarted: true; finalVerificationPassed: true; finalReviewerOutcome: \"pass\"; repairAttempts: number; ... 8 more ...; fanOut: { ...; }; }' to type 'HarnessRunResult' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.\n  Type '{ specDecision: { status: \"executable\"; spec: Spec; }; workflowStatus: \"success\"; implementationStarted: true; finalVerificationPassed: true; finalReviewerOutcome: \"pass\"; repairAttempts: number; ... 8 more ...; fanOut: { ...; }; }' is missing the following properties from type 'HarnessRunResult': task, unresolvedQuestions, implementation, specTurns, and 37 more.\ntests/fan-out-plan.test.ts(525,7): error TS2352: Conversion of type '{ workflowStatus: \"failure\"; failureReason: \"fan_in_conflict\"; specDecision: { status: \"executable\"; spec: Spec; }; implementationStarted: true; finalVerificationPassed: false; finalVerification: null; ... 10 more ...; fanOut: { ...; }; }' to type 'HarnessRunResult' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.\n  Type '{ workflowStatus: \"failure\"; failureReason: \"fan_in_conflict\"; specDecision: { status: \"executable\"; spec: Spec; }; implementationStarted: true; finalVerificationPassed: false; finalVerification: null; ... 10 more ...; fanOut: { ...; }; }' is missing the following properties from type 'HarnessRunResult': task, unresolvedQuestions, implementation, specTurns, and 36 more.\ntests/fan-out-plan.test.ts(594,7): error TS2352: Conversion of type '{ workflowStatus: \"success\"; specDecision: { status: \"executable\"; spec: Spec; }; implementationStarted: true; finalVerificationPassed: true; finalReviewerOutcome: \"pass\"; repairAttempts: number; ... 9 more ...; fanOut: { ...; }; }' to type 'HarnessRunResult' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.\n  Type '{ workflowStatus: \"success\"; specDecision: { status: \"executable\"; spec: Spec; }; implementationStarted: true; finalVerificationPassed: true; finalReviewerOutcome: \"pass\"; repairAttempts: number; ... 9 more ...; fanOut: { ...; }; }' is missing the following properties from type 'HarnessRunResult': task, unresolvedQuestions, implementation, specTurns, and 36 more.\ntests/loop.test.ts(58,9): error TS2322: Type '((request: ResponsesCreateRequest) => Promise<ResponsesCreateResult>) & { requests: ResponsesCreateRequest[]; }' is not assignable to type 'ResponsesCreateFn & { requests: ResponsesCreateRequest[]; }'.\n  Type '((request: ResponsesCreateRequest) => Promise<ResponsesCreateResult>) & { requests: ResponsesCreateRequest[]; }' is not assignable to type 'ResponsesCreateFn'.\n    Type 'Promise<ResponsesCreateResult>' is not assignable to type 'Promise<Response>'.\n      Type 'ResponsesCreateResult' is missing the following properties from type 'Response': created_at, error, incomplete_details, instructions, and 8 more.\ntests/loop.test.ts(132,27): error TS2367: This comparison appears to be unintentional because the types '\"function_call_output\"' and '\"function_call\"' have no overlap.\ntests/loop.test.ts(136,32): error TS2339: Property 'role' does not exist on type 'FunctionCallOutputItem'.\ntests/subagents.test.ts(76,9): error TS2322: Type '((request: ResponsesCreateRequest) => Promise<ResponsesCreateResult>) & { requests: ResponsesCreateRequest[]; }' is not assignable to type 'ResponsesCreateFn & { requests: ResponsesCreateRequest[]; }'.\n  Type '((request: ResponsesCreateRequest) => Promise<ResponsesCreateResult>) & { requests: ResponsesCreateRequest[]; }' is not assignable to type 'ResponsesCreateFn'.\n    Type 'Promise<ResponsesCreateResult>' is not assignable to type 'Promise<Response>'.\n      Type 'ResponsesCreateResult' is missing the following properties from type 'Response': created_at, error, incomplete_details, instructions, and 8 more."
+      }
+    ],
+    "h1": []
+  },
+  "maintenanceBaselineEvidence": [],
+  "maintenanceCandidateEvidence": [],
+  "pristineH0": null,
+  "pristineH1": null,
+  "decision": "experiment_stopped_insufficient_regression_evidence",
+  "decisionReasons": [
+    "H0 did not confirm the frozen regression contracts in this environment. H1 was not scored."
+  ],
+  "mainUnchanged": true
+}
