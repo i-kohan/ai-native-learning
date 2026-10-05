@@ -32,8 +32,9 @@ Completed modules:
 26. ✅ 26 — Bounded Multi-Agent Systems (closed by Master on 2026-09-28; SWM01 mechanism PASS; default remains one Worker)
 27. ✅ 27 — Deep Agent Hierarchies (closed by Master on 2026-09-29; HIER01 = `no_implementation_justified`)
 28. ✅ 28 — Production-Grade Distributed Orchestration (closed by Master on 2026-10-01; ORCH01 = `no_distributed_engine_justified_current_workload`)
+29. ✅ 29 — Self-Modifying / Self-Improving Systems (closed by Topic Chat on 2026-10-05; META01 = `candidate_rejected`; no adoption)
 
-Module 29 is **not closed**. META01 is one bounded self-improvement experiment. The candidate is evidence only. It does not become the runtime default.
+Module 29 is **closed from the Topic Chat side**. META01 demonstrated one bounded self-modification/evaluation cycle with external authority. The candidate was rejected and never adopted.
 
 Module 26 is **closed from the Topic Chat side**. SWM01 demonstrated the intended bounded Lead → workers → synthesis topology with real concurrent read-only children and harness-owned authority. The paired probes did not show a stable quality/latency advantage over one Investigator and consistently cost more input tokens. Default remains one Worker. No general multi-agent adoption claim.
 
@@ -91,7 +92,7 @@ Detailed evidence lives in `docs/learning/experiments.md` and `docs/learning/les
 
 # Module 29 — Self-Modifying / Self-Improving Systems
 
-**Status:** not closed. META01 is one bounded experiment. No adoption claim.
+**Status:** ✅ COMPLETED — closed by Topic Chat on 2026-10-05. META01 = `candidate_rejected`; candidate not adopted.
 
 Theory:
 
@@ -101,35 +102,45 @@ Practical notes:
 
 `docs/learning/lessons/29-self-improving/notes.md`
 
+Closure:
+
+`docs/learning/lessons/29-self-improving/closure.md`
+
 ## What was implemented
 
-A host-owned control plane, separate from `runV1Harness()`:
+A host-owned bounded self-improvement control plane, separate from `runV1Harness()`:
 
 ```text
-Episode A worktree at fa640a0bbeec2edb2177775e757c127fd9ec599b stopped at tsc
-Episode B explicitly re-froze afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7
-→ Meta-Improver submits one hypothesis, then may patch
-→ static integrity, including removed authority guards and behavioral invariants
+frozen H0
+→ bounded Meta-Improver / hypothesis-before-write
+→ isolated candidate mutation
+→ authority + integrity admission
 → detached candidateRevision
-→ H0 then H1 regression, including T01–T04, R01, REV01
-→ pristine H1 architecture check
-→ 3+3 hidden maintenance trials
-→ host decision
+→ H0/H1 regression
+→ hidden maintenance evaluation
+→ host deterministic decision
+→ human adoption boundary
 ```
 
-Writable surface: `harness/src/loop.ts` plus at most two new files under `harness/src/loop-ext/`. Patch budget: 3 files and 300 added plus deleted lines. Meta-Improver: 12 turns. Maintenance: 16 turns. One candidate.
+Episode A froze `fa640a0` and stopped because H0 failed `tsc`. Episode B explicitly re-froze the type-clean `afc1abd`, generated a fresh candidate, and returned `candidate_rejected`.
 
-The maintenance grader enables the hidden capability through `HARNESS_EPISODE_EXTENSION=local-inspection`. It does not require a new `runAgentLoop` boolean. The Meta-Improver does not receive that task.
+The candidate proposed a capability-composition boundary but only added `loop-ext/worker-capabilities.ts`; it did not wire that module into `loop.ts`. Existing regressions remained green.
 
-If H0 does not confirm the frozen regression commands, the run stops as `experiment_stopped_insufficient_regression_evidence` and does not score H1.
+Maintenance evidence was `0/3` on H0 and `0/3` on H1. This rejects H1 under the frozen adoption rule but does not establish that either arm is more maintainable.
 
-## Current result
+Post-run review hardened authority integrity so deletion/relocation of known guards is considered alongside host-owned behavioral invariants. The historical candidate record was not rewritten and no H2 was generated.
 
-Episode A on `fa640a0` stopped as `experiment_stopped_insufficient_regression_evidence` because H0 `tsc` failed. Episode B re-froze `afc1abd` and remains historical `candidate_rejected`: regression passed, the candidate left `loop.ts` unwired, and maintenance was 0/3 on both arms. That comparison rejects H1. It does not rank maintainability. A later review hardened authority integrity for deleted guards. The historical record was not rewritten, and no new candidate was run. Details are in `docs/learning/experiments.md`.
+Known bounded limitation: the META01 authority suite does not exhaustively exercise the full real MCP-admitted replacement path (`repo_read_file` replacing direct `read_file`) after every candidate refactor. This is documented rather than expanded into another learning run.
 
-## Closure / remaining boundaries
+## Closure
 
-Module 29 stays open. The candidate record is review evidence. It does not merge itself.
+Final Understanding Check: **PASS with precision corrections**.
+
+The learner can distinguish self-modification from demonstrated improvement; Target/Optimizer/Evaluator/Admission; Goodhart/reward hacking; hypothesis-before-patch; mutation budgets; hidden evaluation; hard gates; authority expansion through deletion; one-cycle META01 from recursive H1→H2→H3 improvement; and external evaluation/adoption authority.
+
+Default harness remains unchanged. META01 candidate is not adopted.
+
+See `docs/learning/lessons/29-self-improving/closure.md`.
 
 ---
 
