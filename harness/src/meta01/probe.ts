@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { REPO_ROOT, loadConfig, type HarnessConfig } from "../config.ts";
 import type { DefaultSnapshot } from "./grader.ts";
 import { pristineArchitectureFault } from "./grader.ts";
+import { assessAuthorityIntegrity, readAuthorityBehavior } from "./authority.ts";
 import { decideMeta01 } from "./decision.ts";
 import { integrityFromPatch } from "./integrity.ts";
 import { runMaintenanceAgent } from "./maintenance-agent.ts";
@@ -75,10 +76,23 @@ export async function runMeta01Experiment(): Promise<CandidateRecord> {
       newFeatureBranches: patch.newFeatureBranches,
     };
     const head = git(workspace.root, ["rev-parse", "HEAD"]).trim();
+    let behavior = readAuthorityBehavior(null);
+    try {
+      behavior = readAuthorityBehavior(runGradeChild(workspace.root, "authority"));
+    } catch {
+      behavior = readAuthorityBehavior(null);
+    }
+    const authorityIntegrity = assessAuthorityIntegrity({
+      addedLines: patch.addedLines,
+      removedLines: patch.removedLines,
+      behavior,
+    });
+    record.authorityIntegrity = authorityIntegrity;
     const integrity = integrityFromPatch({
       baseRevision: head,
       patch,
       hypothesisAcceptedBeforeFirstWrite: hypothesisAcceptedBeforeFirstWrite(session),
+      authorityIntegrity,
     });
     record.integrityChecks = integrity.checks;
     if (!integrity.passed) {
@@ -307,7 +321,7 @@ async function runMaintenanceArm(options: {
 
 function runGradeChild(
   workspaceRoot: string,
-  mode: "baseline" | "grade",
+  mode: "baseline" | "grade" | "authority",
   baselinePath?: string,
 ): unknown {
   const tsx = path.join(REPO_ROOT, "harness", "node_modules", ".bin", "tsx");

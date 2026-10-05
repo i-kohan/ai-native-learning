@@ -106,9 +106,10 @@ Practical notes:
 A host-owned control plane, separate from `runV1Harness()`:
 
 ```text
-exact worktree at afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7
+Episode A worktree at fa640a0bbeec2edb2177775e757c127fd9ec599b stopped at tsc
+Episode B explicitly re-froze afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7
 → Meta-Improver submits one hypothesis, then may patch
-→ static integrity
+→ static integrity, including removed authority guards and behavioral invariants
 → detached candidateRevision
 → H0 then H1 regression, including T01–T04, R01, REV01
 → pristine H1 architecture check
@@ -124,7 +125,7 @@ If H0 does not confirm the frozen regression commands, the run stops as `experim
 
 ## Current result
 
-`candidate_rejected` on parent `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. Regression passed on H0 and H1. The candidate adds an unwired `loop-ext/worker-capabilities.ts` and does not change `loop.ts`. Maintenance grader was 0/3 on both arms, and the structural medians did not fall. `main` stayed put. Details are in `docs/learning/experiments.md`.
+Episode A on `fa640a0` stopped as `experiment_stopped_insufficient_regression_evidence` because H0 `tsc` failed. Episode B re-froze `afc1abd` and remains historical `candidate_rejected`: regression passed, the candidate left `loop.ts` unwired, and maintenance was 0/3 on both arms. That comparison rejects H1. It does not rank maintainability. A later review hardened authority integrity for deleted guards. The historical record was not rewritten, and no new candidate was run. Details are in `docs/learning/experiments.md`.
 
 ## Closure / remaining boundaries
 
@@ -201,10 +202,10 @@ The grader's expected surfaces were frozen in `harness/src/swm01-contract.ts` be
 
 Paired probe on 2026-09-28, model `gpt-5.6-luna`, base SHA `f992e3a669860ba49f51f265d1f0f604bb6f851b`. Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T11-04-13-012Z.json`.
 
-| Arm | Wall | Input tokens | Coverage | Correctness |
-| --- | ---: | ---: | ---: | ---: |
-| Baseline | 70,200 ms | 174,332 | 8/9 | 0.25 |
-| Variant | 107,213 ms | 621,400 | 9/9 | 0.7778 |
+| Arm      |       Wall | Input tokens | Coverage | Correctness |
+| -------- | ---------: | -----------: | -------: | ----------: |
+| Baseline |  70,200 ms |      174,332 |      8/9 |        0.25 |
+| Variant  | 107,213 ms |      621,400 |      9/9 |      0.7778 |
 
 Three workers genuinely overlapped. The variant used about 3.56× the baseline input tokens and was about 53% slower end to end. That pair's `mechanismPass` was false only because `createWorkspace()`'s `target-app/node_modules` symlink was counted as a worker mutation. The live mechanism checks themselves passed. The read-only check now compares git status with the post-creation baseline.
 
@@ -214,19 +215,19 @@ The frozen grader in `swm01-contract.ts` was not retuned after this pair.
 
 Fresh pair after the review fixes, same model, base SHA `828eafadf4b1e3b8cec3d89728f1ddff4fbefd69` (HEAD includes the SWM01 commit, so this is not the same tree as `f992e3a`). Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T11-48-16-516Z.json`. `mechanismPass` true. Workspace dirty: no. Three workers overlapped. One child hit `max_turns_exceeded` and stayed visible.
 
-| Arm | Wall | Input tokens | Coverage | Correctness |
-| --- | ---: | ---: | ---: | ---: |
-| Baseline | 46,894 ms | 209,701 | 8/9 | 0.25 |
-| Variant | 89,073 ms | 615,951 | 8/9 | 0 |
+| Arm      |      Wall | Input tokens | Coverage | Correctness |
+| -------- | --------: | -----------: | -------: | ----------: |
+| Baseline | 46,894 ms |      209,701 |      8/9 |        0.25 |
+| Variant  | 89,073 ms |      615,951 |      8/9 |           0 |
 
 Versus the `f992e3a` pair: baseline coverage and correctness stayed 8/9 and 0.25; variant coverage fell from 9/9 to 8/9 (`review_plan` unmatched) and correctness fell from 0.7778 to 0. Variant input tokens were about 2.94× baseline and wall time about 90% higher. `droppedChildEvidencePaths` length 6. Deterministic suite: **335 passed, 0 failed**.
 
 Third pair, same SHA and model, grader unchanged. Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T15-24-39-165Z.json`. `mechanismPass` true. All three workers succeeded and overlapped.
 
-| Arm | Wall | Input tokens | Coverage | Correctness |
-| --- | ---: | ---: | ---: | ---: |
-| Baseline | 88,096 ms | 290,930 | 8/9 | 1 |
-| Variant | 90,206 ms | 533,716 | 7/9 | 0.7143 |
+| Arm      |      Wall | Input tokens | Coverage | Correctness |
+| -------- | --------: | -----------: | -------: | ----------: |
+| Baseline | 88,096 ms |      290,930 |      8/9 |           1 |
+| Variant  | 90,206 ms |      533,716 |      7/9 |      0.7143 |
 
 The variant missed `review_plan` and `github_ci_delivery`. It used about 1.83× baseline input tokens. Wall time was almost the same, about 2% higher. `droppedChildEvidencePaths` length 13.
 
@@ -289,12 +290,12 @@ Negative card admission, out-of-scope artifact paths, traversal scope `../../out
 
 A2A01 DEV probe, T01 variant, seam enabled. Two earlier runs the same day died in Spec (`Request timed out.`, ~32.7 s) before delegation. Run 3 passed before the review fixes and is not the evidence for those fixes.
 
-| Run | Workspace | Outcome | Report |
-| --- | --- | --- | --- |
-| 1 | `T01-variant-manual-2026-09-26T12-19-56-296Z` | Spec timeout, delegation 0 | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-20-29-676Z.txt` |
-| 2 | `T01-variant-manual-2026-09-26T12-21-13-688Z` | Spec timeout, delegation 0 | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-21-47-041Z.txt` |
-| 3 | `T01-variant-manual-2026-09-26T15-47-26-326Z` | mechanism PASS, exit 0, 35997 ms | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T15-48-02-944Z.txt` |
-| 4 | `T01-variant-manual-2026-09-26T17-45-22-646Z` | fresh mechanism PASS after review fixes, exit 0, 36586 ms | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T17-45-58-631Z.txt` |
+| Run | Workspace                                     | Outcome                                                   | Report                                                                       |
+| --- | --------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1   | `T01-variant-manual-2026-09-26T12-19-56-296Z` | Spec timeout, delegation 0                                | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-20-29-676Z.txt` |
+| 2   | `T01-variant-manual-2026-09-26T12-21-13-688Z` | Spec timeout, delegation 0                                | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T12-21-47-041Z.txt` |
+| 3   | `T01-variant-manual-2026-09-26T15-47-26-326Z` | mechanism PASS, exit 0, 35997 ms                          | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T15-48-02-944Z.txt` |
+| 4   | `T01-variant-manual-2026-09-26T17-45-22-646Z` | fresh mechanism PASS after review fixes, exit 0, 36586 ms | `docs/learning/lessons/25-a2a/traces/a2a01-t01-2026-09-26T17-45-58-631Z.txt` |
 
 Fresh evidence run: card discovered, admission pass, `SendMessage`, `taskId` `de7f1a0f-0623-4f0a-8892-1132d7319218` distinct from `workflowId` and `delegationId` `1c97cc7a-4d15-4193-9fdc-4c46f64d30aa`, `contextId` `0f33fa7e-a27e-44a9-8624-5e8de3159b08`, remote pid 90292, `TASK_STATE_COMPLETED`, artifact accepted, `implementation.a2aDelegations` length 1, `grantsWorkflowSuccess` false, VERIFY PASS, REVIEW pass, expected T01 outcome. The remote credential was set on the probe process only. No code fallback to `OPENAI_API_KEY`.
 
@@ -1317,6 +1318,5 @@ Known non-blocking limits:
 4. No fallback/escalation graph yet.
 5. Provider model capabilities/pricing can drift and require requalification.
 6. Spec/reviewer quality remains harder to route safely because important misses may be invisible to deterministic graders.
-
 
 Module 28 is closed by Master. Next module: **29 — Self-Modifying / Self-Improving Systems**.

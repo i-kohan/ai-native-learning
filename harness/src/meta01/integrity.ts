@@ -1,6 +1,9 @@
+import {
+  authorityIntegrityPasses,
+  type AuthorityIntegrity,
+} from "./authority.ts";
 import { META01_PARENT_REVISION } from "./policy.ts";
 import {
-  findAuthorityExpansions,
   mutationBoundaryHolds,
   patchWithinBudget,
   type PatchStats,
@@ -19,7 +22,7 @@ export function evaluateIntegrity(input: {
   deletions: number;
   hypothesisAcceptedBeforeFirstWrite: boolean;
   hasMutation: boolean;
-  authorityFindings: string[];
+  authorityIntegrity: AuthorityIntegrity;
 }): { passed: boolean; checks: IntegrityCheck[] } {
   const outside = mutationBoundaryHolds(input.changedFiles);
   const budget = patchWithinBudget({
@@ -65,16 +68,20 @@ export function evaluateIntegrity(input: {
     },
     {
       id: "authority_unchanged",
-      passed: input.authorityFindings.length === 0,
-      evidence:
-        input.authorityFindings.length === 0
-          ? "no new process, network, retry, or budget authority in added lines"
-          : input.authorityFindings.join(" | "),
+      passed: authorityIntegrityPasses(input.authorityIntegrity),
+      evidence: authorityIntegrityPasses(input.authorityIntegrity)
+        ? input.authorityIntegrity.findings.length === 0
+          ? "effective capability boundaries held"
+          : `preserved after review: ${input.authorityIntegrity.findings.join(" | ")}`
+        : input.authorityIntegrity.findings.join(" | ") ||
+          "authority integrity failed",
     },
     {
       id: "has_mutation",
       passed: input.hasMutation,
-      evidence: input.hasMutation ? "candidate patch is non-empty" : "candidate produced no mutation",
+      evidence: input.hasMutation
+        ? "candidate patch is non-empty"
+        : "candidate produced no mutation",
     },
   ];
   return { passed: checks.every((check) => check.passed), checks };
@@ -82,16 +89,18 @@ export function evaluateIntegrity(input: {
 
 export function integrityFromPatch(input: {
   baseRevision: string;
-  patch: PatchStats & { addedLines: string[] };
+  patch: PatchStats & { addedLines: string[]; removedLines: string[] };
   hypothesisAcceptedBeforeFirstWrite: boolean;
+  authorityIntegrity: AuthorityIntegrity;
 }): { passed: boolean; checks: IntegrityCheck[] } {
   return evaluateIntegrity({
     baseRevision: input.baseRevision,
     changedFiles: input.patch.files,
     additions: input.patch.additions,
     deletions: input.patch.deletions,
-    hypothesisAcceptedBeforeFirstWrite: input.hypothesisAcceptedBeforeFirstWrite,
+    hypothesisAcceptedBeforeFirstWrite:
+      input.hypothesisAcceptedBeforeFirstWrite,
     hasMutation: input.patch.files.length > 0,
-    authorityFindings: findAuthorityExpansions(input.patch.addedLines),
+    authorityIntegrity: input.authorityIntegrity,
   });
 }

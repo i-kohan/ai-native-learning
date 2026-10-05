@@ -30,9 +30,11 @@ export type PatchStats = {
 
 export function collectWorktreePatch(workspaceRoot: string): PatchStats & {
   addedLines: string[];
+  removedLines: string[];
 } {
   const files = new Map<string, { additions: number; deletions: number }>();
   const addedLines: string[] = [];
+  const removedLines: string[] = [];
   const diff = git(workspaceRoot, ["diff", "--numstat", "HEAD"]);
   for (const line of diff.split("\n")) {
     if (!line.trim()) {
@@ -71,6 +73,8 @@ export function collectWorktreePatch(workspaceRoot: string): PatchStats & {
   for (const line of unified.split("\n")) {
     if (line.startsWith("+") && !line.startsWith("+++")) {
       addedLines.push(line.slice(1));
+    } else if (line.startsWith("-") && !line.startsWith("---")) {
+      removedLines.push(line.slice(1));
     }
   }
   let additions = 0;
@@ -92,6 +96,7 @@ export function collectWorktreePatch(workspaceRoot: string): PatchStats & {
     newModules: fileList.filter((file) => isCreateOnlyFile(file)),
     newFeatureBranches: countFeatureBranches(addedLines),
     addedLines,
+    removedLines,
   };
 }
 
@@ -106,7 +111,9 @@ export function patchWithinBudget(stats: {
       error: `write denied: patch budget exceeded (${stats.files.length} files > ${META01_MAX_FILES})`,
     };
   }
-  const newFiles = stats.files.filter((file) => file !== CANDIDATE_EXISTING_FILE);
+  const newFiles = stats.files.filter(
+    (file) => file !== CANDIDATE_EXISTING_FILE,
+  );
   if (newFiles.length > META01_MAX_NEW_FILES) {
     return {
       ok: false,
@@ -150,7 +157,9 @@ export function coreFunctionsTouched(
   afterSource: string,
 ): CoreLoopFunction[] {
   return CORE_LOOP_FUNCTIONS.filter((name) => {
-    return extractFunction(beforeSource, name) !== extractFunction(afterSource, name);
+    return (
+      extractFunction(beforeSource, name) !== extractFunction(afterSource, name)
+    );
   });
 }
 

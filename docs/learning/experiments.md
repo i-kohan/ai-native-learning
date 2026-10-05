@@ -2386,7 +2386,6 @@ expected_t01: true
 
 **PASS** as a mechanism probe after the review fixes. Current SDK `1.2.1` with A2A v1.0 HTTP+JSON semantics. The fresh run showed a separate remote process, card discovery, Host admission, real `SendMessage`, a completed Task whose id is not `workflowId`, a validated advisory artifact, a stored delegation record, then normal VERIFY and independent REVIEW. Invalid scope fails closed in tests. The scope fix is not a post-hoc expansion of the experiment goal: it restores the already intended bounded-authority boundary. This is not a quality, latency, or cost claim, and it does not close Module 25.
 
-
 ### Module 25 — Final understanding / Topic Chat closure
 
 Final Understanding Check: **PASS with precision corrections** on 2026-09-27.
@@ -2438,10 +2437,10 @@ Same objective, same `config.model`, same read-only repository tools, same final
 
 One pair on 2026-09-28. Model `gpt-5.6-luna`. Base SHA `f992e3a669860ba49f51f265d1f0f604bb6f851b`. Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T11-04-13-012Z.json`.
 
-| Arm | Wall | Input tokens | Coverage | Correctness |
-| --- | ---: | ---: | ---: | ---: |
-| Baseline | 70,200 ms | 174,332 | 8/9 | 0.25 |
-| Variant | 107,213 ms | 621,400 | 9/9 | 0.7778 |
+| Arm      |       Wall | Input tokens | Coverage | Correctness |
+| -------- | ---------: | -----------: | -------: | ----------: |
+| Baseline |  70,200 ms |      174,332 |      8/9 |        0.25 |
+| Variant  | 107,213 ms |      621,400 |      9/9 |      0.7778 |
 
 Three workers genuinely overlapped. The variant used about 3.56× the baseline input tokens and was about 53% slower end to end.
 
@@ -2457,10 +2456,10 @@ Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T11-
 
 `mechanismPass`: true. `workspaceDirty`: empty. Overlap: true (`commonOverlapMs` 23,676). Child failures: 1 (`mechanism-entry-inventory`, `max_turns_exceeded`). `dropped_child_evidence_paths`: 6.
 
-| Arm | Wall | Input tokens | Coverage | Correctness |
-| --- | ---: | ---: | ---: | ---: |
-| Baseline | 46,894 ms | 209,701 | 8/9 (`github_ci_delivery` missing) | 0.25 |
-| Variant | 89,073 ms | 615,951 | 8/9 (`review_plan` missing) | 0 |
+| Arm      |      Wall | Input tokens |                           Coverage | Correctness |
+| -------- | --------: | -----------: | ---------------------------------: | ----------: |
+| Baseline | 46,894 ms |      209,701 | 8/9 (`github_ci_delivery` missing) |        0.25 |
+| Variant  | 89,073 ms |      615,951 |        8/9 (`review_plan` missing) |           0 |
 
 Changed from the `f992e3a` pair: mechanism false → true; baseline coverage and correctness unchanged; variant coverage 9/9 → 8/9; variant correctness 0.7778 → 0; variant input tokens 621,400 → 615,951; variant wall 107,213 ms → 89,073 ms. On this pair the variant used about 2.94× baseline input tokens and was about 90% slower. The six dropped paths are evidence-path omissions, not a count of lost findings.
 
@@ -2472,10 +2471,10 @@ Trace: `docs/learning/lessons/26-bounded-multi-agent/traces/swm01-2026-09-28T15-
 
 `mechanismPass`: true. `workspaceDirty`: empty. Overlap: true (`commonOverlapMs` 31,117). Child failures: 0. `dropped_child_evidence_paths`: 13.
 
-| Arm | Wall | Input tokens | Coverage | Correctness |
-| --- | ---: | ---: | ---: | ---: |
-| Baseline | 88,096 ms | 290,930 | 8/9 (`github_ci_delivery` missing) | 1 |
-| Variant | 90,206 ms | 533,716 | 7/9 (`review_plan`, `github_ci_delivery` missing) | 0.7143 |
+| Arm      |      Wall | Input tokens |                                          Coverage | Correctness |
+| -------- | --------: | -----------: | ------------------------------------------------: | ----------: |
+| Baseline | 88,096 ms |      290,930 |                8/9 (`github_ci_delivery` missing) |           1 |
+| Variant  | 90,206 ms |      533,716 | 7/9 (`review_plan`, `github_ci_delivery` missing) |      0.7143 |
 
 The variant used about 1.83× baseline input tokens. End-to-end wall time was about 2% higher. The thirteen dropped paths are evidence-path omissions, not preserved or lost findings.
 
@@ -2512,13 +2511,17 @@ Allowed claim, only if the frozen rule below is met: observed improvement for th
 
 This is not a claim that the harness is self-improving, and it is not recursive self-improvement.
 
-### Frozen parent
+### Two episodes
 
-`afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`
+The parent revision changed between episodes. Thresholds did not.
 
-This is `fa640a0bbeec2edb2177775e757c127fd9ec599b` plus a type-only `tsc` fix. The first stop on `fa640a0` stays in the observed result below. Thresholds are unchanged.
+Episode A frozen H0: `fa640a0bbeec2edb2177775e757c127fd9ec599b`.
 
-The candidate is built in an isolated worktree at that SHA. The host then creates a detached `candidateRevision`. `main` is not moved. H0 is not rewritten.
+Baseline qualification failed at `tsc`, so the result is `experiment_stopped_insufficient_regression_evidence`. That is not a candidate rejection. Episode A ended there.
+
+Episode B then used a separate type-only cleanup parent: `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. That SHA was explicitly re-frozen as a new H0. A fresh Meta-Improver candidate was generated, and a fresh META01 episode ran. Episode B is not a continuation of Episode A.
+
+The candidate is built in an isolated worktree at the episode's H0. The host then creates a detached `candidateRevision`. `main` is not moved. H0 is not rewritten.
 
 ### Control plane
 
@@ -2587,15 +2590,19 @@ The candidate cannot accept itself. The record is evidence. It is not merged.
 
 ### Observed result
 
-Rerun parent: `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. Run: `meta01-2026-10-04T22-11-44-292Z`, model `gpt-5.6-luna`.
+Episode A, parent `fa640a0bbeec2edb2177775e757c127fd9ec599b`: `experiment_stopped_insufficient_regression_evidence`. H0 `tsc` failed. H1 was not scored. Record: `docs/learning/lessons/29-self-improving/traces/meta01-2026-10-04T21-08-37-423Z.json`.
 
-Decision: `candidate_rejected`. Hard gates passed and provenance is valid. The frozen structural conditions were not met.
+Episode B, newly frozen parent `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. Run: `meta01-2026-10-04T22-11-44-292Z`, model `gpt-5.6-luna`.
+
+Decision: `candidate_rejected`. Hard gates passed and provenance is valid. The frozen structural conditions were not met. This historical verdict was not rewritten after the later authority-integrity hardening.
 
 H0 and H1 both passed `tsc`, `npm test`, ISO01, SEC01, T01–T04, R01, and REV01. Integrity passed. Detached candidate `ac8e333458de9600b4c2e84debd6c98194993c31`. `main` did not move. Patch hash `5e31aac1210cf890a10d30be532232008d1684598f68664e76cd721daddf8060`.
 
 The patch adds only `harness/src/loop-ext/worker-capabilities.ts` (+174 / 0). `loop.ts` is unchanged.
 
-Maintenance grader failed 3/3 on both arms. Median `coreFunctionsTouched` is 0 on both. Median `loopChangedLines` is 0 on both. Median `totalChangedLines` is 464 on H0 and 419 on H1.
+Maintenance grader failed 0/3 on H0 and 0/3 on H1. Median `coreFunctionsTouched` is 0 on both. Median `loopChangedLines` is 0 on both. Median `totalChangedLines` is 464 on H0 and 419 on H1. Some trials left `loop.ts` untouched. Others rewrote hundreds of lines.
+
+The frozen adoption rule validly rejects H1. Because neither arm produced a successful maintenance implementation, META01 does not provide positive comparative evidence that H1 was easier or harder to extend than H0. The supported claim is that H1 failed the frozen adoption criterion. It is not that H0 is demonstrably more maintainable than H1.
 
 Hypothesis:
 
@@ -2605,7 +2612,10 @@ Hypothesis:
 - expectedBenefit: The core loop becomes capability-agnostic at its setup and dispatch points; adding or reviewing optional capabilities is localized, while existing phase gates, host admission, delegation limits, and tool semantics remain explicit in the adapter.
 - expectedRisks: a moved branch could change MCP/A2A/research ordering or error text; the adapter may concentrate coupling instead of removing it; the default tool set and phase restrictions must stay exact.
 
-The earlier stop on `fa640a0` remains a separate evidence failure: H0 `tsc` failed before this parent existed. Thresholds were not changed.
-
 Record: `docs/learning/lessons/29-self-improving/traces/meta01-2026-10-04T22-27-17-924Z.json`.
 
+### Post-run methodology review
+
+After Episode B, review found that candidate integrity only scanned added lines. A deleted authority guard could expand capability without a suspicious addition. The control plane now records removed lines, flags known guard removals, and requires host-owned behavioral invariants before admission. Both `staticDiffPassed` and `behavioralInvariantsPassed` are required. A moved guard can stay if the same behavior is proven. A guard that disappears, or whose effect cannot be verified, fails closed.
+
+That hardening was not part of Episode A or Episode B. The historical `candidate_rejected` record was not edited to claim the new gate. No new candidate and no H2 were generated. Frozen decision thresholds are unchanged.

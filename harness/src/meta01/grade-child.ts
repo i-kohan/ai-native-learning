@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { DefaultSnapshot } from "./grader.ts";
+import { runAuthorityInvariants } from "./authority.ts";
 import { captureDefaultEpisode, gradeCapability } from "./grader.ts";
 import type { runAgentLoop } from "../loop.ts";
 
@@ -14,6 +15,10 @@ async function main(): Promise<void> {
   };
   if (mode === "baseline") {
     emit(await captureDefaultEpisode(loaded.runAgentLoop));
+    return;
+  }
+  if (mode === "authority") {
+    emit(await runAuthorityInvariants(loaded.runAgentLoop));
     return;
   }
   if (mode === "grade") {

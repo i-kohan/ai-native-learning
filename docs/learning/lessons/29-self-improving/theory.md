@@ -34,16 +34,18 @@ A refactor can make one later change smaller and still be the wrong default. MET
 
 ## Observations
 
-After the type-only parent fix, both arms passed the same regression gate, including the live suite. The stop on `fa640a0` was an evidence failure.
+Episode A froze H0 at `fa640a0` and stopped because that parent failed `tsc`. That stop is an evidence failure, not a candidate rejection. Episode A ended there.
 
-The admitted patch is a new `loop-ext/worker-capabilities.ts` of 174 lines. `loop.ts` was not edited, so the proposed boundary is not connected to the loop.
+Episode B explicitly re-froze a type-only cleanup, `afc1abd`, as a new H0 and generated a fresh candidate. The parent changed between episodes. Thresholds did not. The patch is an unwired `loop-ext/worker-capabilities.ts`. The frozen rule rejected it.
 
-The hidden maintenance grader failed on every H0 and H1 trial. Median core-function and loop-line counts stayed at 0, so the frozen structural rule rejected the candidate. `main` did not move.
+Maintenance was 0/3 on both arms, with trials that either skipped `loop.ts` or rewrote it heavily. That supports rejection. It does not rank which arm is easier to extend.
+
+A later review found that integrity missed authority expanded by deleting a guard. The host now checks removed lines and effective behavior. The historical rejection was not rewritten.
 
 ## Takeaways
 
-- Candidate generation can be automated. Evaluation, authority, and adoption stay outside the candidate.
-- A hidden task is what stops the improver from editing toward the grader.
-- An uncommitted patch disappears inside nested worktrees, so the host must materialize a revision without moving the parent branch.
-- If the known-good parent fails the regression gate, that is an evidence failure, not a candidate failure.
+- Candidate generation may be automated. Authority definition and verification remain host-owned.
+- The frozen parent is part of the methodology. Changing H0 starts a new explicitly re-frozen episode.
+- A hidden task that fails on both arms supports rejection under the rule. `0/3` versus `0/3` is not a maintainability ranking.
+- Authority can expand through deletion. Integrity has to judge effective boundaries, not only suspicious additions.
 - Do not move the frozen thresholds after seeing the candidate.

@@ -5,10 +5,20 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { decideMeta01, type DecisionInput } from "../src/meta01/decision.ts";
-import { captureDefaultEpisode, gradeCapability } from "../src/meta01/grader.ts";
+import {
+  captureDefaultEpisode,
+  gradeCapability,
+} from "../src/meta01/grader.ts";
 import { buildImproverPrompt } from "../src/meta01/improver.ts";
+import {
+  assessAuthorityIntegrity,
+  runAuthorityInvariants,
+} from "../src/meta01/authority.ts";
 import { evaluateIntegrity } from "../src/meta01/integrity.ts";
-import { readMaintenance, writeMaintenance } from "../src/meta01/maintenance-agent.ts";
+import {
+  readMaintenance,
+  writeMaintenance,
+} from "../src/meta01/maintenance-agent.ts";
 import {
   LOCAL_INSPECTION_SIGNAL,
   LOCAL_INSPECTION_SIGNAL_VALUE,
@@ -20,11 +30,17 @@ import {
   inspectedOutput,
 } from "../src/meta01/maintenance-task.ts";
 import { median, type TrialMetric } from "../src/meta01/metrics.ts";
-import { collectWorktreePatch, coreFunctionsTouched } from "../src/meta01/patch.ts";
+import {
+  collectWorktreePatch,
+  coreFunctionsTouched,
+} from "../src/meta01/patch.ts";
 import { evaluateAdmitted } from "../src/meta01/probe.ts";
 import { META01_PARENT_REVISION } from "../src/meta01/policy.ts";
 import { emptyRecord, writeCandidateRecord } from "../src/meta01/record.ts";
-import { materializeCandidateRevision, provenanceMatches } from "../src/meta01/revision.ts";
+import {
+  materializeCandidateRevision,
+  provenanceMatches,
+} from "../src/meta01/revision.ts";
 import {
   createCandidateSession,
   submitHypothesis,
@@ -55,7 +71,10 @@ describe("META01 candidate boundary", () => {
       );
       assert.equal(result.ok, false);
       assert.match(result.message, /hypothesis has not been accepted/);
-      assert.equal(fs.existsSync(path.join(root, "harness/src/loop-ext/extra.ts")), false);
+      assert.equal(
+        fs.existsSync(path.join(root, "harness/src/loop-ext/extra.ts")),
+        false,
+      );
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -74,7 +93,11 @@ describe("META01 candidate boundary", () => {
       const second = submitHypothesis(session, hypothesis());
       assert.equal(second.ok, false);
       assert.match(second.message, /only one submission/);
-      const write = writeCandidateFile(session, "harness/src/loop.ts", "export const changed = true;\n");
+      const write = writeCandidateFile(
+        session,
+        "harness/src/loop.ts",
+        "export const changed = true;\n",
+      );
       assert.equal(write.ok, false);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
@@ -85,7 +108,11 @@ describe("META01 candidate boundary", () => {
     const root = tempRepo();
     try {
       const session = acceptedSession(root);
-      const outside = writeCandidateFile(session, "harness/src/run.ts", "export const no = true;\n");
+      const outside = writeCandidateFile(
+        session,
+        "harness/src/run.ts",
+        "export const no = true;\n",
+      );
       assert.equal(outside.ok, false);
       assert.match(outside.message, /mutation boundary/);
       const traversal = writeCandidateFile(
@@ -126,9 +153,17 @@ describe("META01 candidate boundary", () => {
       const over = writeCandidateFile(session, "harness/src/loop.ts", huge);
       assert.equal(over.ok, false);
       assert.match(over.message, /patch budget exceeded/);
-      assert.doesNotMatch(fs.readFileSync(path.join(root, "harness/src/loop.ts"), "utf8"), /huge/);
-      fs.mkdirSync(path.join(root, "harness/src/loop-ext"), { recursive: true });
-      fs.writeFileSync(path.join(root, "harness/src/loop-ext/kept.ts"), "export const kept = 1;\n");
+      assert.doesNotMatch(
+        fs.readFileSync(path.join(root, "harness/src/loop.ts"), "utf8"),
+        /huge/,
+      );
+      fs.mkdirSync(path.join(root, "harness/src/loop-ext"), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(root, "harness/src/loop-ext/kept.ts"),
+        "export const kept = 1;\n",
+      );
       git(root, ["add", "--", "harness/src/loop-ext/kept.ts"]);
       git(root, ["commit", "-m", "existing extra"]);
       const overwrite = writeCandidateFile(
@@ -153,10 +188,13 @@ describe("META01 integrity and admission", () => {
       deletions: 2,
       hypothesisAcceptedBeforeFirstWrite: true,
       hasMutation: true,
-      authorityFindings: [],
+      authorityIntegrity: clearAuthority(),
     });
     assert.equal(mismatch.passed, false);
-    assert.equal(mismatch.checks.find((check) => check.id === "exact_base")?.passed, false);
+    assert.equal(
+      mismatch.checks.find((check) => check.id === "exact_base")?.passed,
+      false,
+    );
 
     const forbidden = evaluateIntegrity({
       baseRevision: META01_PARENT_REVISION,
@@ -165,11 +203,12 @@ describe("META01 integrity and admission", () => {
       deletions: 1,
       hypothesisAcceptedBeforeFirstWrite: true,
       hasMutation: true,
-      authorityFindings: [],
+      authorityIntegrity: clearAuthority(),
     });
     assert.equal(forbidden.passed, false);
     assert.equal(
-      forbidden.checks.find((check) => check.id === "forbidden_files_unchanged")?.passed,
+      forbidden.checks.find((check) => check.id === "forbidden_files_unchanged")
+        ?.passed,
       false,
     );
   });
@@ -215,12 +254,19 @@ describe("META01 revision provenance", () => {
         expectedParent: parent,
       });
       assert.equal(proved.ok, true);
-      const record = emptyRecord({ candidateId: "fixture", configuredModel: "test-model" });
+      const record = emptyRecord({
+        candidateId: "fixture",
+        configuredModel: "test-model",
+      });
       record.parentRevision = parent;
       record.candidateRevision = revision.candidateRevision;
       record.patchHash = revision.patchHash;
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), "meta01-record-"));
-      const written = writeCandidateRecord({ record, patch: revision.patch, repoRoot: dir });
+      const written = writeCandidateRecord({
+        record,
+        patch: revision.patch,
+        repoRoot: dir,
+      });
       const stored = JSON.parse(fs.readFileSync(written.jsonPath, "utf8")) as {
         parentRevision: string;
         candidateRevision: string;
@@ -231,7 +277,9 @@ describe("META01 revision provenance", () => {
       assert.equal(stored.patchHash, revision.patchHash);
       fs.rmSync(dir, { recursive: true, force: true });
     } finally {
-      spawnSync("git", ["worktree", "remove", "--force", worktree], { cwd: root });
+      spawnSync("git", ["worktree", "remove", "--force", worktree], {
+        cwd: root,
+      });
       fs.rmSync(worktree, { recursive: true, force: true });
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -243,18 +291,42 @@ describe("META01 maintenance authority", () => {
     const root = tempRepo();
     try {
       fs.mkdirSync(path.join(root, "harness/src/meta01"), { recursive: true });
-      fs.writeFileSync(path.join(root, "harness/src/meta01/grader.ts"), "export const hidden = true;\n");
-      assert.match(readMaintenance(root, "harness/src/meta01/grader.ts"), /read denied/);
+      fs.writeFileSync(
+        path.join(root, "harness/src/meta01/grader.ts"),
+        "export const hidden = true;\n",
+      );
       assert.match(
-        writeMaintenance(root, "harness/src/eval/grader.ts", "export const no = true;\n"),
+        readMaintenance(root, "harness/src/meta01/grader.ts"),
+        /read denied/,
+      );
+      assert.match(
+        writeMaintenance(
+          root,
+          "harness/src/eval/grader.ts",
+          "export const no = true;\n",
+        ),
         /write denied/,
       );
       assert.match(
-        writeMaintenance(root, "harness/tests/meta01.test.ts", "export const no = true;\n"),
+        writeMaintenance(
+          root,
+          "harness/tests/meta01.test.ts",
+          "export const no = true;\n",
+        ),
         /write denied/,
       );
-      assert.match(writeMaintenance(root, "../secret.ts", "export const no = true;\n"), /traversal|Absolute/i);
-      assert.match(writeMaintenance(root, "harness/src/loop.ts", "export const changed = true;\n"), /^wrote /);
+      assert.match(
+        writeMaintenance(root, "../secret.ts", "export const no = true;\n"),
+        /traversal|Absolute/i,
+      );
+      assert.match(
+        writeMaintenance(
+          root,
+          "harness/src/loop.ts",
+          "export const changed = true;\n",
+        ),
+        /^wrote /,
+      );
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -287,17 +359,26 @@ describe("META01 decision rule", () => {
       insufficientRegressionEvidence: true,
       h0RegressionConfirmed: false,
     });
-    assert.equal(decision.decision, "experiment_stopped_insufficient_regression_evidence");
+    assert.equal(
+      decision.decision,
+      "experiment_stopped_insufficient_regression_evidence",
+    );
   });
 
   it("accepts only the frozen structural outcome", () => {
-    assert.equal(decideMeta01(passingInput()).decision, "candidate_accepted_for_this_workload");
+    assert.equal(
+      decideMeta01(passingInput()).decision,
+      "candidate_accepted_for_this_workload",
+    );
   });
 
   it("marks mixed structural evidence promising when provenance is valid", () => {
     const input = passingInput();
     input.h1 = input.h1.map((trial) => ({ ...trial, totalChangedLines: 40 }));
-    assert.equal(decideMeta01(input).decision, "candidate_promising_but_inconclusive");
+    assert.equal(
+      decideMeta01(input).decision,
+      "candidate_promising_but_inconclusive",
+    );
   });
 
   it("rejects invalid provenance instead of calling it promising", () => {
@@ -313,7 +394,11 @@ describe("META01 decision rule", () => {
     const input = passingInput();
     input.h1 = input.h1.map((trial) => ({
       ...trial,
-      coreFunctionsTouched: ["runAgentLoop", "episodeInstructions", "executeWorkerTool"],
+      coreFunctionsTouched: [
+        "runAgentLoop",
+        "episodeInstructions",
+        "executeWorkerTool",
+      ],
     }));
     assert.equal(decideMeta01(input).decision, "candidate_rejected");
   });
@@ -323,7 +408,10 @@ describe("META01 decision rule", () => {
     input.h1 = input.h1.map((trial) => ({ ...trial, totalChangedLines: 40 }));
     const smuggled = input as DecisionInput & { selfDecision?: string };
     smuggled.selfDecision = "candidate_accepted_for_this_workload";
-    assert.equal(decideMeta01(smuggled).decision, "candidate_promising_but_inconclusive");
+    assert.equal(
+      decideMeta01(smuggled).decision,
+      "candidate_promising_but_inconclusive",
+    );
   });
 
   it("rejects a pristine architecture fault before maintenance metrics matter", () => {
@@ -341,7 +429,10 @@ describe("META01 decision rule", () => {
 describe("META01 improver isolation", () => {
   it("does not reveal the maintenance contract to the improver prompt", () => {
     const prompt = buildImproverPrompt();
-    const source = fs.readFileSync(new URL("../src/meta01/improver.ts", import.meta.url), "utf8");
+    const source = fs.readFileSync(
+      new URL("../src/meta01/improver.ts", import.meta.url),
+      "utf8",
+    );
     for (const secret of [
       LOCAL_INSPECTION_TOOL,
       LOCAL_INSPECTION_SIGNAL,
@@ -352,6 +443,126 @@ describe("META01 improver isolation", () => {
       assert.equal(prompt.includes(secret), false, secret);
       assert.equal(source.includes(secret), false, secret);
     }
+  });
+});
+
+describe("META01 authority integrity", () => {
+  it("rejects a deletion-only removal of a delegation gate", () => {
+    const authority = assessAuthorityIntegrity({
+      addedLines: ["return delegate();"],
+      removedLines: ["if (remainingDelegations <= 0) {", "return deny();"],
+      behavior: {
+        passed: false,
+        findings: ["research budget: second delegation was not denied"],
+        verifiedGuardIds: ["research_budget"],
+      },
+    });
+    assert.equal(authority.staticDiffPassed, true);
+    assert.equal(authority.behavioralInvariantsPassed, false);
+    assert.match(authority.findings.join("\n"), /removed: research_budget/);
+    const integrity = evaluateIntegrity({
+      baseRevision: META01_PARENT_REVISION,
+      changedFiles: ["harness/src/loop.ts"],
+      additions: 1,
+      deletions: 2,
+      hypothesisAcceptedBeforeFirstWrite: true,
+      hasMutation: true,
+      authorityIntegrity: authority,
+    });
+    assert.equal(integrity.passed, false);
+    assert.equal(
+      integrity.checks.find((check) => check.id === "authority_unchanged")
+        ?.passed,
+      false,
+    );
+  });
+
+  it("allows a guard that moved when the same behavior still holds", () => {
+    const authority = assessAuthorityIntegrity({
+      addedLines: ["if (state.remainingDelegations <= 0) {"],
+      removedLines: ["if (remainingDelegations <= 0) {"],
+      behavior: {
+        passed: true,
+        findings: [],
+        verifiedGuardIds: ["research_budget"],
+      },
+    });
+    assert.equal(authority.staticDiffPassed, true);
+    assert.equal(authority.behavioralInvariantsPassed, true);
+    assert.match(authority.findings.join("\n"), /moved: research_budget/);
+    const integrity = evaluateIntegrity({
+      baseRevision: META01_PARENT_REVISION,
+      changedFiles: [
+        "harness/src/loop.ts",
+        "harness/src/loop-ext/capabilities.ts",
+      ],
+      additions: 1,
+      deletions: 1,
+      hypothesisAcceptedBeforeFirstWrite: true,
+      hasMutation: true,
+      authorityIntegrity: authority,
+    });
+    assert.equal(
+      integrity.checks.find((check) => check.id === "authority_unchanged")
+        ?.passed,
+      true,
+    );
+  });
+
+  it("rejects an optional tool that leaks into repair", () => {
+    const authority = assessAuthorityIntegrity({
+      addedLines: [],
+      removedLines: [],
+      behavior: {
+        passed: false,
+        findings: ["phase leak: repair exposed delegate_research"],
+        verifiedGuardIds: ["subagents_opt_in"],
+      },
+    });
+    assert.equal(authority.behavioralInvariantsPassed, false);
+  });
+
+  it("rejects a default-off capability that becomes available", () => {
+    const authority = assessAuthorityIntegrity({
+      addedLines: [],
+      removedLines: [],
+      behavior: {
+        passed: false,
+        findings: ["default-off: tools were list_files, delegate_research"],
+        verifiedGuardIds: ["subagents_opt_in"],
+      },
+    });
+    assert.equal(authority.behavioralInvariantsPassed, false);
+  });
+
+  it("fail-closes when a removed MCP guard cannot be behaviorally verified", () => {
+    const authority = assessAuthorityIntegrity({
+      addedLines: [],
+      removedLines: [
+        'output: "read_file is not exposed for this episode. Use repo_read_file."',
+      ],
+      behavior: {
+        passed: true,
+        findings: [],
+        verifiedGuardIds: [
+          "subagents_opt_in",
+          "research_budget",
+          "mcp_unadmitted",
+          "a2a_budget",
+        ],
+      },
+    });
+    assert.equal(authority.behavioralInvariantsPassed, false);
+    assert.match(
+      authority.findings.join("\n"),
+      /unverified: mcp_direct_read_closed/,
+    );
+  });
+
+  it("keeps the current loop inside the authority invariants", async () => {
+    const behavior = await runAuthorityInvariants(runAgentLoop);
+    assert.deepEqual(behavior.findings, []);
+    assert.equal(behavior.passed, true);
   });
 });
 
@@ -366,10 +577,20 @@ describe("META01 core function diff", () => {
   });
 });
 
+function clearAuthority() {
+  return {
+    staticDiffPassed: true,
+    behavioralInvariantsPassed: true,
+    findings: [],
+  };
+}
+
 function hypothesis() {
   return {
-    observedProblem: "The loop mixes optional worker capabilities into its core.",
-    suspectedCause: "Instruction, tool, and budget branches live inside the loop.",
+    observedProblem:
+      "The loop mixes optional worker capabilities into its core.",
+    suspectedCause:
+      "Instruction, tool, and budget branches live inside the loop.",
     proposedMutation: "Move optional composition behind one boundary.",
     expectedBenefit: "A later capability touches fewer core functions.",
     expectedRisks: ["Behavior of an existing capability could drift."],
@@ -400,7 +621,11 @@ function tempRepo(): string {
 }
 
 function git(cwd: string, args: string[]): string {
-  const result = spawnSync("git", args, { cwd, encoding: "utf8", env: AUTHOR_ENV });
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: AUTHOR_ENV,
+  });
   if (result.status !== 0) {
     throw new Error(result.stderr || result.stdout || "git failed");
   }
@@ -413,7 +638,11 @@ function trial(overrides: Partial<TrialMetric> = {}): TrialMetric {
     changedFiles: ["harness/src/loop.ts"],
     totalChangedLines: 20,
     loopChangedLines: 12,
-    coreFunctionsTouched: ["runAgentLoop", "episodeInstructions", "executeWorkerTool"],
+    coreFunctionsTouched: [
+      "runAgentLoop",
+      "episodeInstructions",
+      "executeWorkerTool",
+    ],
     modelCalls: 4,
     toolCalls: 3,
     wallTimeMs: 1000,
@@ -465,27 +694,33 @@ function contractLoop(implementsCapability: boolean): typeof runAgentLoop {
       modelCalls += 1;
       const response = await create({
         model: "grade",
-        instructions: enabled ? `base\n${LOCAL_INSPECTION_INSTRUCTION}` : "base",
+        instructions: enabled
+          ? `base\n${LOCAL_INSPECTION_INSTRUCTION}`
+          : "base",
         input: carried ? [{ output: carried }] : [],
         tools: enabled
           ? [{ name: "read_file" }, { name: LOCAL_INSPECTION_TOOL }]
           : [{ name: "read_file" }],
       });
-      const calls = ((response.output ?? []) as unknown as Array<Record<string, unknown>>).filter(
-        (item) => item.type === "function_call",
-      );
+      const calls = (
+        (response.output ?? []) as unknown as Array<Record<string, unknown>>
+      ).filter((item) => item.type === "function_call");
       if (calls.length === 0) {
         return {
           status: "success",
           modelCalls,
           toolCalls,
           receivedTerminalResponse: true,
-          ...(enabled ? { boundedLocalInspection: { successfulUses, deniedUses } } : {}),
+          ...(enabled
+            ? { boundedLocalInspection: { successfulUses, deniedUses } }
+            : {}),
         };
       }
       for (const call of calls) {
         toolCalls += 1;
-        const args = JSON.parse(String(call.arguments ?? "{}")) as { note?: string };
+        const args = JSON.parse(String(call.arguments ?? "{}")) as {
+          note?: string;
+        };
         if (successfulUses >= 1) {
           deniedUses += 1;
           carried = LOCAL_INSPECTION_DENIAL;

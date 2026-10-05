@@ -8,7 +8,9 @@ Status: **not closed**. One candidate. No adoption. `runV1Harness()` is unchange
 npm run benchmark:meta01 --prefix harness
 ```
 
-Parent: `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7` (`fa640a0` plus a type-only `tsc` fix).
+Episode A parent: `fa640a0bbeec2edb2177775e757c127fd9ec599b`. Stopped at `tsc`. Not a candidate rejection.
+
+Episode B parent: `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`. Explicitly re-frozen after a type-only cleanup. Fresh candidate. The parent changed between episodes. Thresholds did not.
 
 ## Frozen budgets
 
@@ -33,10 +35,14 @@ The host sets `HARNESS_EPISODE_EXTENSION=local-inspection` for the grader proces
 
 ## Result
 
-`candidate_rejected` on parent `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`, run `meta01-2026-10-04T22-11-44-292Z`.
+Episode B: `candidate_rejected` on `afc1abdc0f8f528a3d45b2c1495fea35e74c6aa7`, run `meta01-2026-10-04T22-11-44-292Z`.
 
-H0 and H1 passed the full regression gate. Integrity passed. Candidate `ac8e333458de9600b4c2e84debd6c98194993c31` adds only `harness/src/loop-ext/worker-capabilities.ts` (+174). `loop.ts` is unchanged. Maintenance grader was 0/3 on both arms. Median core functions and loop lines stayed 0. `main` did not move.
+H0 and H1 passed the full regression gate. Integrity passed under the gates that existed then. Candidate `ac8e333458de9600b4c2e84debd6c98194993c31` adds only `harness/src/loop-ext/worker-capabilities.ts` (+174). `loop.ts` is unchanged. Maintenance grader was 0/3 on both arms. Some trials did not touch `loop.ts`. Others made very large rewrites. Median core functions and loop lines stayed 0. `main` did not move.
 
-Record: `docs/learning/lessons/29-self-improving/traces/meta01-2026-10-04T22-27-17-924Z.json`.
+That 0/3 versus 0/3 result rejects H1 under the frozen rule. It does not show that one arm was easier to extend.
 
-The `fa640a0` stop was the earlier `tsc` evidence failure. Thresholds were not changed.
+Record: `docs/learning/lessons/29-self-improving/traces/meta01-2026-10-04T22-27-17-924Z.json`. The file was not rewritten after the later authority hardening.
+
+## Post-run hardening
+
+Integrity used to scan only added lines. A deleted guard could widen authority with no suspicious addition. Admission now requires `staticDiffPassed` and `behavioralInvariantsPassed`. Known guards may move if behavior stays the same. A missing guard, or one whose effect cannot be checked, fails closed. No new candidate was generated to exercise this.

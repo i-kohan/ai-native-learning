@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../config.ts";
+import type { AuthorityIntegrity } from "./authority.ts";
 import type { ImprovementHypothesis } from "./hypothesis.ts";
 import type { IntegrityCheck } from "./integrity.ts";
 import type { TrialMetric } from "./metrics.ts";
@@ -23,6 +24,7 @@ export type CandidateRecord = {
   patchHash: string | null;
   patchStats: PatchStats | null;
   integrityChecks: IntegrityCheck[];
+  authorityIntegrity: AuthorityIntegrity | null;
   regressionEvidence: {
     h0: RegressionCommandResult[];
     h1: RegressionCommandResult[];
@@ -53,7 +55,10 @@ export function writeCandidateRecord(options: {
   let patchPath: string | null = null;
   if (options.patch !== null) {
     patchPath = `${base}.patch`;
-    fs.writeFileSync(patchPath, options.patch.endsWith("\n") ? options.patch : `${options.patch}\n`);
+    fs.writeFileSync(
+      patchPath,
+      options.patch.endsWith("\n") ? options.patch : `${options.patch}\n`,
+    );
   }
   return { jsonPath, markdownPath, patchPath };
 }
@@ -78,6 +83,7 @@ export function emptyRecord(options: {
     patchHash: null,
     patchStats: null,
     integrityChecks: [],
+    authorityIntegrity: null,
     regressionEvidence: { h0: [], h1: [] },
     maintenanceBaselineEvidence: [],
     maintenanceCandidateEvidence: [],
@@ -124,8 +130,15 @@ function renderRecord(record: CandidateRecord): string {
     "## Integrity",
     "",
     record.integrityChecks
-      .map((check) => `- ${check.passed ? "PASS" : "FAIL"} ${check.id}: ${check.evidence}`)
+      .map(
+        (check) =>
+          `- ${check.passed ? "PASS" : "FAIL"} ${check.id}: ${check.evidence}`,
+      )
       .join("\n") || "(not run)",
+    "",
+    "## Authority integrity",
+    "",
+    renderAuthority(record),
     "",
     "## Regression",
     "",
@@ -142,6 +155,20 @@ function renderRecord(record: CandidateRecord): string {
   ].join("\n");
 }
 
+function renderAuthority(record: CandidateRecord): string {
+  if (!record.authorityIntegrity) {
+    return "(not run)";
+  }
+  const result = record.authorityIntegrity;
+  return [
+    `staticDiffPassed: ${result.staticDiffPassed}`,
+    `behavioralInvariantsPassed: ${result.behavioralInvariantsPassed}`,
+    result.findings.length === 0
+      ? "findings: (none)"
+      : `findings: ${result.findings.join(" | ")}`,
+  ].join("\n");
+}
+
 function renderPatch(record: CandidateRecord): string {
   if (!record.patchStats) {
     return "(none)";
@@ -155,7 +182,10 @@ function renderPatch(record: CandidateRecord): string {
   ].join("\n");
 }
 
-function renderRegression(arm: string, results: RegressionCommandResult[]): string {
+function renderRegression(
+  arm: string,
+  results: RegressionCommandResult[],
+): string {
   if (results.length === 0) {
     return `### ${arm}\n\n(not run)`;
   }
@@ -163,9 +193,13 @@ function renderRegression(arm: string, results: RegressionCommandResult[]): stri
     (result) =>
       `| ${result.id} | ${result.passed ? "PASS" : "FAIL"} | ${result.exitCode ?? "null"} | ${result.durationMs} |`,
   );
-  return [`### ${arm}`, "", "| Task | Result | Exit | Ms |", "| --- | --- | ---: | ---: |", ...lines].join(
-    "\n",
-  );
+  return [
+    `### ${arm}`,
+    "",
+    "| Task | Result | Exit | Ms |",
+    "| --- | --- | ---: | ---: |",
+    ...lines,
+  ].join("\n");
 }
 
 function renderTrials(arm: string, trials: TrialMetric[]): string {
