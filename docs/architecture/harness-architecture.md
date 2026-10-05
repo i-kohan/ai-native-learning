@@ -1,6 +1,6 @@
 # Harness Architecture
 
-Last consolidated: 2026-09-22, after Module 22 bounded fan-out probe (not adopted).
+Last consolidated: 2026-10-05, after completion of Modules 01–29 (Module 21 intentionally skipped as not applicable).
 
 This document is a compact map of the **current architecture**, not a target-state design. Historical experiment details remain in `docs/learning/lessons/` and `docs/learning/experiments.md`.
 
@@ -120,6 +120,10 @@ Security-sensitive decisions belong here when the harness can technically enforc
 | Verified repository memory  | `harness/src/memory.ts`, `harness/src/memory-store.ts`                                                                          |
 | Evals / qualification       | `harness/src/eval/`                                                                                                             |
 | Benchmark/probe runner      | `harness/src/run-benchmark.ts`                                                                                                  |
+| MCP integration             | `harness/src/mcp/`, `harness/src/mcp01-probe.ts`                                                                                |
+| A2A integration             | `harness/src/a2a/`, `harness/src/a2a01-probe.ts`                                                                                |
+| Bounded multi-agent probe   | `harness/src/investigation-swarm.ts`, `harness/src/swarm-plan.ts`, `harness/src/swm01-probe.ts`                                |
+| Self-improvement probe      | `harness/src/meta01/`, `harness/src/meta01-probe.ts`                                                                            |
 
 ## 4. Normal architecture vs experimental seams
 
@@ -268,6 +272,22 @@ One Lead may propose a 2–3 worker `SwarmPlan`. The harness admits the plan, ru
 
 **Revisit when:** a later module needs another bounded harness-mutation experiment. This seam is not a self-improvement framework.
 
+### Decision only: deep agent hierarchy
+
+**Status:** understood and not implemented.
+
+HIER01 found no measured coordinator bottleneck in the current shallow multi-agent topology: three child reports and about 24.6 KB of synthesis input did not justify another coordinator layer.
+
+**Revisit when:** fan-in/context/coordination load causes measurable coordinator degradation and work naturally partitions into independent subtrees. Any future hierarchy must preserve no-authority-amplification, subtree/global budgets, explicit failure propagation, and dereferenceable leaf-artifact provenance.
+
+### Decision only: production distributed orchestration
+
+**Status:** architecture decision only; no workflow engine adopted.
+
+ORCH01 concluded that the current learning harness should stay lightweight. A real long-running multi-worker production system should prefer a mature durable workflow engine over extending local JSON/state/lease mechanisms into a bespoke distributed scheduler.
+
+**Migration triggers:** workflows span deployments, multiple worker processes/machines, durable timers/events, automatic redispatch, queue/backpressure, live worker-version coexistence, fleet observability, or distributed workspace recovery.
+
 ### Retained routing boundary
 
 The current policy routes all normal episodes to the same model, but the deterministic routing boundary is cheap and useful for future requalification. Keep it.
@@ -314,7 +334,7 @@ This is **not** a general sandbox. Repository code executed under the current OS
 
 Worktree isolation and security containment are separate concerns.
 
-## 7. Phase-3 consolidation decisions
+## 7. Post-roadmap architecture decisions
 
 ### Keep
 
@@ -333,13 +353,15 @@ Worktree isolation and security containment are separate concerns.
 - stacked-PR platform;
 - a generic Temporal-style workflow engine (Module 16 is one local checkpoint, not that).
 
-### Do not refactor yet
+### Refactor only with a concrete target architecture
 
-`run.ts` is now a gravity center, but extracting pieces only for file-size aesthetics would add churn without improving the model.
+`run.ts` and `loop.ts` remain gravity centers and now also contain several experiment-only seams. At roadmap completion, the next justified refactor is not cosmetic file splitting: it is separating a smaller production-shaped normal path from experiment adapters/runners **if** this repository is going to become a real portfolio/production harness.
 
-Durable Execution introduced bounded WorkflowState, harness-owned admission, a file persistence adapter, and resume dispatch for `implementation_ready` and `review_ready`. `run.ts` reuses post-Spec and post-VERIFY executors. It is still not a generic workflow engine.
+If the repository remains primarily a learning reference, keeping the experiment seams co-located may be more valuable than aggressively deleting them.
 
-## 8. Known cleanup / production debts entering Phase 4
+See `docs/learning/final-capstone-review.md`.
+
+## 8. Known cleanup / production debts after roadmap completion
 
 These are intentional follow-ups, not reasons to reopen completed modules.
 
@@ -350,20 +372,35 @@ These are intentional follow-ups, not reasons to reopen completed modules.
 5. **Provider snapshot provenance is limited to configured model identity.** Backend changes hidden behind a stable provider alias are not fully detectable.
 6. **Current security boundary is not hostile-code containment.** A real production deployment would require stronger process/container/network isolation.
 
-## 9. Remaining Phase 4 question
+## 9. Production boundary after Module 28
 
-Module 16/17 proved two checkpoints, Module 18 added bounded durable retry for independent REVIEW, and Module 19 added single-machine WorkflowState ownership:
+Modules 16–20 established local durability, retry, ownership/fencing, and GitHub/CI reconciliation. Module 28 made the remaining boundary explicit:
 
 ```text
-spec_required → implementation_ready → Worker/VERIFY → review_ready → (fresh process) REVIEW → terminal
-review_ready → transient REVIEW failure → harness-admitted retry → REVIEW → terminal
-durable invocation → acquire lease → fenced WorkflowState writes → release if still owner
+current harness
+= lightweight local durable orchestration
+
+future multi-worker / long-running production system
+= candidate for a mature durable workflow engine
 ```
 
-Module 20 added a linked post-terminal delivery lifecycle. It does not make GitHub a fenced resource.
+Still intentionally unresolved until a real workload requires them:
 
-Still open:
+- mid-Worker crash reconciliation;
+- durable/shared workspace strategy;
+- fencing or reconciliation for external side effects;
+- automatic heartbeat/liveness;
+- distributed Task Queues / worker fleet;
+- backpressure / fairness;
+- live worker-version coexistence;
+- fleet-level observability.
 
-> What happens if the process dies mid-Worker or mid-VERIFY, or a stale worker already mutated the workspace / external systems?
+A workflow engine would own reliable execution mechanics. The harness would still own Spec semantics, model/context/tool policy, workspace meaning, VERIFY, REVIEW, repair/admission policy, external reconciliation, human escalation, and software correctness.
 
-Ownership fencing protects only resources that actually enforce the fencing token. WorkflowState and DeliveryState are fenced locally. Workspace files, git, GitHub, and other side effects are not.
+## 10. Final roadmap status
+
+Modules 01–29 are covered. Module 21 Browser QA was intentionally skipped because the current capstone has no meaningful UI workload.
+
+The final decision matrix, capability assessment, cleanup priorities, and recommended next phase live in:
+
+`docs/learning/final-capstone-review.md`
