@@ -38,11 +38,17 @@ Module 29 is **closed by Master**. META01 demonstrated one bounded self-modifica
 
 **Roadmap status: COMPLETE.** Modules 01–29 have been covered; Module 21 was intentionally skipped as not applicable to the current non-UI capstone. Do not invent Module 30. Next phase: **Final Consolidation / Capstone Review** (not a numbered learning module).
 
-Module 26 is **closed from the Topic Chat side**. SWM01 demonstrated the intended bounded Lead → workers → synthesis topology with real concurrent read-only children and harness-owned authority. The paired probes did not show a stable quality/latency advantage over one Investigator and consistently cost more input tokens. Default remains one Worker. No general multi-agent adoption claim.
+Final consolidation:
+`docs/learning/final-capstone-review.md`
 
-Module 27 is **closed from the Topic Chat side**. HIER01 found no measured coordinator bottleneck in the current SWM01 topology: the final pair has three child reports totaling 24,619 bytes of synthesis input. Deep hierarchy is therefore not implemented. Revisit only if fan-in growth causes measurable coordinator degradation and work naturally partitions into subtrees. Authority must narrow downward; subtree/global budgets, failure propagation, and leaf-artifact provenance remain harness-owned invariants.
+Current architecture map:
+`docs/architecture/harness-architecture.md`
 
-Module 28 is **closed from the Topic Chat side**. ORCH01 records that the current local durable harness should stay lightweight: no distributed scheduler, Task Queue, Worker fleet, Temporal migration, or Kubernetes work is justified for the present workload. The module established the boundary between reliable distributed execution and harness-owned agent/software-engineering semantics, plus explicit migration triggers for a future long-running multi-worker production system. No harness code changed.
+Module 26 is **closed by Master**. SWM01 demonstrated the intended bounded Lead → workers → synthesis topology with real concurrent read-only children and harness-owned authority. The paired probes did not show a stable quality/latency advantage over one Investigator and consistently cost more input tokens. Default remains one Worker. No general multi-agent adoption claim.
+
+Module 27 is **closed by Master**. HIER01 found no measured coordinator bottleneck in the current SWM01 topology: the final pair has three child reports totaling 24,619 bytes of synthesis input. Deep hierarchy is therefore not implemented. Revisit only if fan-in growth causes measurable coordinator degradation and work naturally partitions into subtrees. Authority must narrow downward; subtree/global budgets, failure propagation, and leaf-artifact provenance remain harness-owned invariants.
+
+Module 28 is **closed by Master**. ORCH01 records that the current local durable harness should stay lightweight: no distributed scheduler, Task Queue, Worker fleet, Temporal migration, or Kubernetes work is justified for the present workload. The module established the boundary between reliable distributed execution and harness-owned agent/software-engineering semantics, plus explicit migration triggers for a future long-running multi-worker production system. No harness code changed.
 
 ---
 
