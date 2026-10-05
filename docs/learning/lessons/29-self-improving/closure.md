@@ -1,6 +1,6 @@
 # Module 29 — Closure
 
-**Status:** TOPIC CHAT CLOSED on 2026-10-05.
+**Status:** MASTER CLOSED on 2026-10-05.
 
 ## Final understanding check
 
@@ -148,3 +148,45 @@ Current architecture decision:
 Remaining Topic Chat blockers: **none**.
 
 Module 29 is closed from the Topic Chat side. No Module 30 is introduced.
+
+
+## Master acceptance
+
+Master review accepts META01 as the correct final-module result.
+
+Evidence supports:
+
+```text
+known-good parent frozen             = yes
+candidate isolated from main         = yes
+hypothesis recorded before mutation  = yes
+mutation surface / patch budget      = bounded
+eval / grader / admission authority  = outside candidate
+H0 regression gate                   = PASS
+H1 regression gate                   = PASS
+hidden maintenance trials            = H0 0/3, H1 0/3
+frozen structural adoption rule      = not satisfied
+decision                              = candidate_rejected
+candidate merged/adopted              = no
+recursive H2 generation               = no
+```
+
+The rejection is interpreted narrowly: H1 failed the frozen adoption criterion. It does not prove H0 is globally more maintainable.
+
+The post-run authority hardening is also accepted as a methodology improvement rather than retroactive evidence for H1. In particular, authority analysis now recognizes that deleting an existing guard can widen capability, and relevant behavioral invariants fail closed when the affected guard cannot be verified.
+
+The documented admitted-MCP blind spot remains a bounded-probe limitation rather than a closure blocker.
+
+Final Master decision:
+
+```text
+self-modification mechanism            = demonstrated
+external evaluation/admission boundary = demonstrated
+measured H1 improvement                = not demonstrated
+candidate                              = rejected
+normal harness                         = unchanged
+recursive self-improvement             = not attempted
+remaining Module 29 blockers           = none
+```
+
+Module 29 completes the planned 29-module learning roadmap. No Module 30 is implied.
