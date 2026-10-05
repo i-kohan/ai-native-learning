@@ -32,9 +32,11 @@ Completed modules:
 26. ✅ 26 — Bounded Multi-Agent Systems (closed by Master on 2026-09-28; SWM01 mechanism PASS; default remains one Worker)
 27. ✅ 27 — Deep Agent Hierarchies (closed by Master on 2026-09-29; HIER01 = `no_implementation_justified`)
 28. ✅ 28 — Production-Grade Distributed Orchestration (closed by Master on 2026-10-01; ORCH01 = `no_distributed_engine_justified_current_workload`)
-29. ✅ 29 — Self-Modifying / Self-Improving Systems (closed by Topic Chat on 2026-10-05; META01 = `candidate_rejected`; no adoption)
+29. ✅ 29 — Self-Modifying / Self-Improving Systems (closed by Master on 2026-10-05; META01 = `candidate_rejected`; no adoption)
 
-Module 29 is **closed from the Topic Chat side**. META01 demonstrated one bounded self-modification/evaluation cycle with external authority. The candidate was rejected and never adopted.
+Module 29 is **closed by Master**. META01 demonstrated one bounded self-modification/evaluation cycle with external authority. The candidate was rejected and never adopted.
+
+**Roadmap status: COMPLETE.** Modules 01–29 have been covered; Module 21 was intentionally skipped as not applicable to the current non-UI capstone. Do not invent Module 30. Next phase: **Final Consolidation / Capstone Review** (not a numbered learning module).
 
 Module 26 is **closed from the Topic Chat side**. SWM01 demonstrated the intended bounded Lead → workers → synthesis topology with real concurrent read-only children and harness-owned authority. The paired probes did not show a stable quality/latency advantage over one Investigator and consistently cost more input tokens. Default remains one Worker. No general multi-agent adoption claim.
 
