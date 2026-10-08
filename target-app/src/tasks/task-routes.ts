@@ -27,6 +27,9 @@ export function createTaskRoutes(service: TaskService) {
     if (taskMatch && req.method === "GET") {
       return getTask(service, taskMatch[1]);
     }
+    if (taskMatch && req.method === "DELETE") {
+      return deleteTask(service, taskMatch[1]);
+    }
 
     const completeMatch = req.pathname.match(/^\/tasks\/([^/]+)\/complete$/);
     if (completeMatch && req.method === "POST") {
@@ -58,6 +61,14 @@ function createTask(service: TaskService, body: unknown): HttpResponse {
     return { status: 400, body: { error: "title_required" } };
   }
   return { status: 201, body: service.create(title.trim()) };
+}
+
+function deleteTask(service: TaskService, id: string): HttpResponse {
+  const task = service.delete(id);
+  if (!task) {
+    return { status: 404, body: { error: "task_not_found" } };
+  }
+  return { status: 200, body: task };
 }
 
 function getTask(service: TaskService, id: string): HttpResponse {

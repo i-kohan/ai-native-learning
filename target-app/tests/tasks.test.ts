@@ -84,3 +84,23 @@ describe("GET /tasks status filter", () => {
     assert.equal((all.body as unknown[]).length, 2);
   });
 });
+
+describe("DELETE /tasks/:id", () => {
+  it("deletes an existing task", () => {
+    const app = createApp();
+    const created = request(app, "POST", "/tasks", { title: "Remove me" });
+    const id = (created.body as { id: string }).id;
+
+    const res = request(app, "DELETE", `/tasks/${id}`);
+    assert.equal(res.status, 200);
+    const missing = request(app, "GET", `/tasks/${id}`);
+    assert.equal(missing.status, 404);
+  });
+
+  it("returns 404 when the task does not exist", () => {
+    const app = createApp();
+    const res = request(app, "DELETE", "/tasks/missing");
+    assert.equal(res.status, 404);
+    assert.deepEqual(res.body, { error: "task_not_found" });
+  });
+});
